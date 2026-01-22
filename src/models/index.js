@@ -1,0 +1,100 @@
+const sequelize = require('../config/db');
+
+// Import all models
+const models = {
+    User: require('./User'),
+    Tenant: require('./Tenant'),
+    Plan: require('./Plan'),
+    Client: require('./Client'),
+    Professional: require('./Professional'),
+    Service: require('./Service'),
+    Appointment: require('./Appointment'),
+    FinancialTransaction: require('./FinancialTransaction'),
+    StockTransaction: require('./StockTransaction'),
+    Product: require('./Product'),
+    TimeRecord: require('./TimeRecord'),
+    CRMSettings: require('./CRMSettings'),
+    TrainingVideo: require('./TrainingVideo'),
+    AdBanner: require('./AdBanner')
+};
+
+// Initialize models
+const db = {};
+Object.keys(models).forEach(modelName => {
+    const modelExport = models[modelName];
+
+    // If it's a function and NOT a Sequelize model already (which has .sequelize property)
+    if (typeof modelExport === 'function' && !modelExport.sequelize) {
+        db[modelName] = modelExport(sequelize);
+    } else {
+        db[modelName] = modelExport;
+    }
+});
+
+// Establish Associations
+const {
+    User, Tenant, Plan, Client, Professional, Service, Appointment,
+    FinancialTransaction, StockTransaction, Product, TimeRecord,
+    CRMSettings, TrainingVideo, AdBanner
+} = db;
+
+// Tenant associations
+Tenant.hasMany(User, { foreignKey: 'tenant_id' });
+User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+
+Tenant.belongsTo(Plan, { foreignKey: 'plan_id', as: 'plan' });
+Plan.hasMany(Tenant, { foreignKey: 'plan_id' });
+
+// Professional associations
+Tenant.hasMany(Professional, { foreignKey: 'tenant_id' });
+Professional.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+Professional.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasOne(Professional, { foreignKey: 'user_id' });
+
+// Service associations
+Tenant.hasMany(Service, { foreignKey: 'tenant_id' });
+Service.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// Client associations
+Tenant.hasMany(Client, { foreignKey: 'tenant_id' });
+Client.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// Appointment associations
+Tenant.hasMany(Appointment, { foreignKey: 'tenant_id' });
+Appointment.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+Appointment.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+Client.hasMany(Appointment, { foreignKey: 'client_id' });
+
+Appointment.belongsTo(Professional, { foreignKey: 'professional_id', as: 'professional' });
+Professional.hasMany(Appointment, { foreignKey: 'professional_id' });
+
+Appointment.belongsTo(Service, { foreignKey: 'service_id', as: 'service' });
+Service.hasMany(Appointment, { foreignKey: 'service_id' });
+
+// FinancialTransaction associations
+Tenant.hasMany(FinancialTransaction, { foreignKey: 'tenant_id' });
+FinancialTransaction.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+FinancialTransaction.belongsTo(Appointment, { foreignKey: 'appointment_id', as: 'appointment' });
+Appointment.hasMany(FinancialTransaction, { foreignKey: 'appointment_id' });
+
+// Stock associations
+Tenant.hasMany(Product, { foreignKey: 'tenant_id' });
+Product.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+Product.hasMany(StockTransaction, { foreignKey: 'product_id', as: 'transactions' });
+StockTransaction.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+
+// Time Clock associations
+Professional.hasMany(TimeRecord, { foreignKey: 'professional_id', as: 'time_records' });
+TimeRecord.belongsTo(Professional, { foreignKey: 'professional_id', as: 'professional' });
+
+// CRM associations
+Tenant.hasOne(CRMSettings, { foreignKey: 'tenant_id', as: 'crm_settings' });
+CRMSettings.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+db.sequelize = sequelize;
+
+module.exports = db;
