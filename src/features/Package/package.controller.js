@@ -47,12 +47,25 @@ exports.createPackage = async (req, res) => {
             active: data.isActive !== undefined ? data.isActive : true
         });
 
-        res.json(pkg);
+        console.log('Package created:', pkg.id);
+        res.json(formatPackage(pkg));
     } catch (error) {
         console.error('Error creating package:', error);
         res.status(500).json({ error: error.message });
     }
 };
+
+function formatPackage(p) {
+    return {
+        id: p.id,
+        name: p.name,
+        price: parseFloat(p.price),
+        description: p.description,
+        duration: p.duration,
+        isActive: p.active,
+        createdAt: p.created_at
+    };
+}
 
 exports.updatePackage = async (req, res) => {
     try {
@@ -83,7 +96,7 @@ async function updateAndSend(pkg, data, res) {
         duration: data.duration,
         active: data.isActive
     });
-    return res.json(pkg);
+    return res.json(formatPackage(pkg));
 }
 
 exports.deletePackage = async (req, res) => {
@@ -165,7 +178,7 @@ exports.createSubscription = async (req, res) => {
         const tenantId = req.user.tenant_id;
         const data = req.body;
 
-        const subscription = await PackageSubscription.create({
+        const s = await PackageSubscription.create({
             tenant_id: tenantId,
             package_id: data.packageId,
             client_name: data.clientName,
@@ -180,30 +193,59 @@ exports.createSubscription = async (req, res) => {
             notes: data.notes
         });
 
-        res.json(subscription);
+        // Fetch again with include to match list format
+        const subscription = await PackageSubscription.findByPk(s.id, {
+            include: [{ model: MonthlyPackage, as: 'package' }]
+        });
+
+        res.json(formatSubscription(subscription));
     } catch (error) {
         console.error('Error creating subscription:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
-exports.updateSubscription = async (req, res) => { // Assuming update is mostly notes or status
+function formatSubscription(s) {
+    return {
+        id: s.id,
+        clientName: s.client_name,
+        address: s.client_address,
+        phone: s.client_phone,
+        email: s.client_email,
+        responsible: s.responsible_name,
+        packageId: s.package_id,
+        packageName: s.package ? s.package.name : 'Pacote Removido',
+        packagePrice: s.package ? parseFloat(s.package.price) : 0,
+        displayDuration: s.package ? s.package.duration : 0,
+        startDate: s.start_date,
+        endDate: s.end_date,
+        isActive: s.active,
+        status: s.status,
+        notes: s.notes,
+        clicks: s.clicks,
+        createdAt: s.created_at
+    };
+}
+
+exports.updateSubscription = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
         const { id } = req.params;
         const data = req.body;
 
-        const sub = await PackageSubscription.findOne({ where: { id, tenant_id: tenantId } });
+        const sub = await PackageSubscription.findOne({
+            where: { id, tenant_id: tenantId },
+            include: [{ model: MonthlyPackage, as: 'package' }]
+        });
         if (!sub) return res.status(404).json({ error: 'Assinatura não encontrada' });
 
         await sub.update({
-            // Allow updating client info if needed, but primarily status/notes
             notes: data.notes,
             status: data.status,
             active: data.status === 'active'
         });
 
-        res.json(sub);
+        res.json(formatSubscription(sub));
     } catch (error) {
         console.error('Error updating subscription:', error);
         res.status(500).json({ error: error.message });
