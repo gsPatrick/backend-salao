@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { Plan, Tenant, User, AIAgentConfig, sequelize } = require('../models');
+const { Plan, Tenant, User, Professional, Service, AIAgentConfig, sequelize } = require('../models');
 
 module.exports = {
     up: async (queryInterface, Sequelize) => {
@@ -207,6 +207,57 @@ async function seedDatabaseLogic() {
 
         // Update tenant with owner
         await tenant.update({ owner_user_id: tenantAdmin.id });
+
+        // 6. Create Professionals
+        console.log('💇 Creating professionals...');
+        const [profWagner] = await Professional.findOrCreate({
+            where: { name: 'Wagner Vicente' },
+            defaults: {
+                tenant_id: tenant.id,
+                user_id: superAdmin.id,
+                name: 'Wagner Vicente',
+                specialty: 'Corte e Barba',
+                bio: 'Especialista em visagismo masculino.',
+                is_active: true
+            }
+        });
+
+        const [profFernanda] = await Professional.findOrCreate({
+            where: { name: 'Fernanda Lima' },
+            defaults: {
+                tenant_id: tenant.id,
+                name: 'Fernanda Lima',
+                specialty: 'Colorimetria',
+                bio: 'Especialista em loiras.',
+                is_active: true
+            }
+        });
+
+        // 7. Create Services
+        console.log('✂️ Creating services...');
+        await Service.findOrCreate({
+            where: { name: 'Corte Masculino' },
+            defaults: {
+                tenant_id: tenant.id,
+                name: 'Corte Masculino',
+                description: 'Corte moderno com lavagem.',
+                price: 50.00,
+                duration: 30,
+                is_active: true
+            }
+        });
+
+        await Service.findOrCreate({
+            where: { name: 'Barba' },
+            defaults: {
+                tenant_id: tenant.id,
+                name: 'Barba',
+                description: 'Toalha quente e navalha.',
+                price: 35.00,
+                duration: 20,
+                is_active: true
+            }
+        });
 
         // Create AI Agent Config for Demo
         console.log('🤖 Creating AI Agent config...');
