@@ -106,7 +106,9 @@ const requireRoles = (...roles) => {
             return next(); // Super Admin can access everything
         }
 
+        console.log(`[RBAC Check] Role: ${req.userRole}, Required: ${roles.join(', ')}, isSuperAdmin: ${req.isSuperAdmin}`);
         if (!roles.includes(req.userRole)) {
+            console.log(`[RBAC Denied] Role ${req.userRole} not in [${roles.join(', ')}]`);
             return res.status(403).json({
                 success: false,
                 message: `Acesso negado. Requer uma das seguintes funções: ${roles.join(', ')}`,

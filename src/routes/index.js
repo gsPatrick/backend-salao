@@ -57,7 +57,7 @@ router.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         timestamp: new Date(),
-        version: '1.0.8-rbac-fix'
+        version: '1.0.9-rbac-debug'
     });
 });
 
