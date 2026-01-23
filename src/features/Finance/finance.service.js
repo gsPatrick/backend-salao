@@ -84,14 +84,21 @@ class FinanceService {
             }
         });
 
-        const receitas = transactions.filter(t => (t.type === 'receita' || t.type === 'income') && (t.status === 'pago' || t.status === 'paid'))
-            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        const despesas = transactions.filter(t => (t.type === 'despesa' || t.type === 'expense') && (t.status === 'pago' || t.status === 'paid'))
-            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const totalTransCount = transactions.length;
+        const receitasArr = transactions.filter(t => (t.type === 'receita' || t.type === 'income') && (t.status === 'pago' || t.status === 'paid'));
+        const receitas = receitasArr.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+        const despesasArr = transactions.filter(t => (t.type === 'despesa' || t.type === 'expense') && (t.status === 'pago' || t.status === 'paid'));
+        const despesas = despesasArr.reduce((sum, t) => sum + parseFloat(t.amount), 0);
         const pendentes = transactions.filter(t => t.status === 'pendente' || t.status === 'pending')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
         const vencidas = transactions.filter(t => t.status === 'vencida' || t.status === 'overdue')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+        console.log(`[Finance Summary] Tenant: ${tenantId}, Period: ${period}, DateRange: ${dateFrom} to ${dateTo}`);
+        console.log(`[Finance Summary] Collected ${totalTransCount} transactions.`);
+        console.log(`[Finance Summary] Filtered Receitas: ${receitasArr.length}, Total: ${receitas}`);
+        console.log(`[Finance Summary] Filtered Despesas: ${despesasArr.length}, Total: ${despesas}`);
 
         const atendimentos = appointments.filter(a => a.status === 'Atendido' || a.status === 'Completed').length;
         const ticket_medio = atendimentos > 0 ? receitas / atendimentos : 0;
