@@ -76,6 +76,30 @@ class AppointmentController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async getAvailability(req, res) {
+        try {
+            const { date, professionalId, serviceId } = req.query;
+
+            if (!date || !professionalId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'date e professionalId são obrigatórios'
+                });
+            }
+
+            const slots = await appointmentService.getAvailability(
+                parseInt(professionalId),
+                date,
+                serviceId ? parseInt(serviceId) : null,
+                req.tenantId
+            );
+
+            res.json({ success: true, data: slots });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new AppointmentController();

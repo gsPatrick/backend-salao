@@ -3,8 +3,9 @@ const { Op, Sequelize } = require('sequelize');
 
 exports.getFinancial = async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id;
         const { startDate, endDate } = req.query;
-        const where = {};
+        const where = { tenant_id: tenantId };
 
         if (startDate && endDate) {
             where.date = { [Op.between]: [startDate, endDate] };
@@ -32,10 +33,10 @@ exports.getFinancial = async (req, res) => {
             const amount = parseFloat(t.dataValues.total) || 0;
             const count = parseInt(t.dataValues.count) || 0;
 
-            if (t.type === 'income') {
-                result.income = amount;
+            if (t.type === 'income' || t.type === 'receita') {
+                result.income += amount;
             } else {
-                result.expense = amount;
+                result.expense += amount;
             }
             result.transactionCount += count;
         });
@@ -50,8 +51,9 @@ exports.getFinancial = async (req, res) => {
 
 exports.getOperational = async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id;
         const { startDate, endDate } = req.query;
-        const where = {};
+        const where = { tenant_id: tenantId };
         if (startDate && endDate) {
             where.date = { [Op.between]: [startDate, endDate] };
         }
@@ -66,11 +68,6 @@ exports.getOperational = async (req, res) => {
             group: ['status']
         });
 
-        // Top Services (requires association, simplistic approach if association alias matches)
-        // Assuming Appointment belongsTo Service
-        // Note: Check model associations. If alias is 'service', we use it.
-        // For simplicity, let's just count total appointments for now.
-
         const totalAppointments = await Appointment.count({ where });
 
         res.json({
@@ -83,21 +80,25 @@ exports.getOperational = async (req, res) => {
 };
 
 exports.getSales = async (req, res) => {
-    // Sales here implies Services + Products sold?
-    // Or just Products if we have a Sales module? 
-    // Currently 'FinancialTransaction' covers generic revenue. 
-    // 'StockTransaction' with type 'out' implies product usage/sale.
     try {
+        const tenantId = req.user.tenant_id;
         const { startDate, endDate } = req.query;
-        const where = { type: 'out' }; // Outgoing stock
+        const where = {
+            tenant_id: tenantId,
+            type: 'out'
+        }; // Outgoing stock
+
         if (startDate && endDate) {
             where.created_at = { [Op.between]: [startDate, endDate] };
         }
 
-        // This is strictly product movement, not necessarily $ sales unless we store price in transaction or join product
         const productSales = await StockTransaction.findAll({
             where,
-            include: [{ model: Product, attributes: ['name', 'sale_price'] }],
+            include: [{
+                model: Product,
+                as: 'product',
+                attributes: ['name', 'sale_price']
+            }],
             limit: 10,
             order: [['quantity', 'DESC']]
         });

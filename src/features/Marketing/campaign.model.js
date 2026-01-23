@@ -7,6 +7,14 @@ const Campaign = sequelize.define('campaign', {
         primaryKey: true,
         autoIncrement: true
     },
+    tenant_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    unit_name: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     name: {
         type: DataTypes.STRING,
         allowNull: false

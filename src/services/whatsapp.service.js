@@ -1,21 +1,26 @@
-/**
- * WhatsApp Service - Z-API Integration Placeholder
- * 
- * This service provides placeholder methods for WhatsApp integration via Z-API.
- * Configure ZAPI_INSTANCE_ID and ZAPI_TOKEN in .env to enable.
- */
-
 const config = require('../config');
+const axios = require('axios');
+const fs = require('fs').promises;
+const path = require('path');
 
 class WhatsAppService {
     constructor() {
         this.instanceId = config.externalServices.zapi.instanceId;
         this.token = config.externalServices.zapi.token;
+        this.clientToken = config.externalServices.zapi.clientToken;
         this.baseUrl = `https://api.z-api.io/instances/${this.instanceId}/token/${this.token}`;
     }
 
     isConfigured() {
         return !!(this.instanceId && this.token);
+    }
+
+    getHeaders() {
+        const headers = { 'Content-Type': 'application/json' };
+        if (this.clientToken) {
+            headers['Client-Token'] = this.clientToken;
+        }
+        return headers;
     }
 
     /**
@@ -24,37 +29,54 @@ class WhatsAppService {
     async sendMessage(phone, message) {
         if (!this.isConfigured()) {
             console.log('[Z-API] Not configured. Would send to:', phone, message);
-            return { success: true, simulated: true, message: 'Z-API integration pending configuration' };
+            return { success: true, simulated: true };
         }
 
         try {
-            // Placeholder for actual Z-API call
-            // const response = await fetch(`${this.baseUrl}/send-text`, {
-            //   method: 'POST',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({ phone, message }),
-            // });
-
-            console.log('[Z-API] Sending message to:', phone);
-            return { success: true, message: 'Message sent' };
+            const response = await axios.post(`${this.baseUrl}/send-text`, {
+                phone: phone,
+                message: message
+            }, { headers: this.getHeaders() });
+            return response.data;
         } catch (error) {
-            console.error('[Z-API] Error:', error);
+            console.error('[Z-API] Error sending text:', error.response?.data || error.message);
             throw new Error('Falha ao enviar mensagem WhatsApp');
         }
     }
 
     /**
-     * Send appointment reminder
+     * Send an audio message via WhatsApp
      */
-    async sendAppointmentReminder(client, appointment) {
-        const message = `Olá ${client.name}! 📅\n\n` +
-            `Lembrete: Você tem um agendamento amanhã!\n` +
-            `📍 Data: ${appointment.date}\n` +
-            `⏰ Horário: ${appointment.time}\n\n` +
-            `Confirme sua presença respondendo esta mensagem.\n\n` +
-            `Salão24h`;
+    async sendAudio(phone, audioBuffer) {
+        if (!this.isConfigured()) {
+            console.log('[Z-API] Not configured. Would send audio to:', phone);
+            return { success: true, simulated: true };
+        }
 
-        return this.sendMessage(client.phone, message);
+        try {
+            const base64Audio = audioBuffer.toString('base64');
+            const response = await axios.post(`${this.baseUrl}/send-audio`, {
+                phone: phone,
+                audio: base64Audio
+            }, { headers: this.getHeaders() });
+            return response.data;
+        } catch (error) {
+            console.error('[Z-API] Error sending audio:', error.response?.data || error.message);
+            throw new Error('Falha ao enviar áudio WhatsApp');
+        }
+    }
+
+    /**
+     * Download audio from a URL (e.g., from Z-API webhook)
+     */
+    async downloadAudio(url) {
+        try {
+            const response = await axios.get(url, { responseType: 'arraybuffer' });
+            return Buffer.from(response.data);
+        } catch (error) {
+            console.error('[WhatsApp Service] Error downloading audio:', error.message);
+            throw new Error('Falha ao baixar áudio do WhatsApp');
+        }
     }
 
     /**

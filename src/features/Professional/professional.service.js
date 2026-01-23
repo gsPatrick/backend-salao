@@ -1,6 +1,28 @@
-const { Professional, Service } = require('../../models');
+const { Professional, Service, ProfessionalReview, sequelize } = require('../../models');
 
 class ProfessionalService {
+    async getRanking(tenantId, limit = 5) {
+        // Calculate average rating for each professional
+        // This requires a group by query
+        const rankings = await ProfessionalReview.findAll({
+            attributes: [
+                'professional_id',
+                [sequelize.fn('AVG', sequelize.col('rating')), 'average_rating'],
+                [sequelize.fn('COUNT', sequelize.col('id')), 'review_count']
+            ],
+            where: { tenant_id: tenantId },
+            include: [{
+                model: Professional,
+                as: 'professional',
+                attributes: ['id', 'name', 'photo', 'occupation']
+            }],
+            group: ['professional_id', 'professional.id', 'professional.name', 'professional.photo', 'professional.occupation'],
+            order: [[sequelize.literal('average_rating'), 'DESC']],
+            limit: limit
+        });
+
+        return rankings;
+    }
     async getAll(tenantId) {
         return Professional.findAll({
             where: { tenant_id: tenantId, is_archived: false },

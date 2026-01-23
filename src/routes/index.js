@@ -20,11 +20,20 @@ const chatRoutes = require('../features/Chat/chat.routes');
 const reportRoutes = require('../features/Report/report.routes');
 const marketingRoutes = require('../features/Marketing/marketing.routes'); // New Marketing Routes
 const aiRoutes = require('../features/AI/ai.routes'); // New AI Routes
+const notificationRoutes = require('../features/Notification/notification.routes');
+const contractRoutes = require('../features/Contract/contract.routes');
+const promotionRoutes = require('../features/Promotion/promotion.routes');
+const packageRoutes = require('../features/Package/package.routes');
+const adminRoutes = require('../features/Admin/admin.routes');
+const supportRoutes = require('../features/Support/support.routes');
 
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/tenants', tenantRoutes);
+router.use('/contracts', contractRoutes);
+router.use('/promotions', promotionRoutes);
+router.use('/packages', packageRoutes);
 router.use('/plans', planRoutes);
 router.use('/super-admin', superAdminRoutes);
 router.use('/clients', clientRoutes);
@@ -39,6 +48,9 @@ router.use('/chat', chatRoutes);
 router.use('/reports', reportRoutes);
 router.use('/marketing', marketingRoutes); // Mount Marketing
 router.use('/ai', aiRoutes); // Mount AI
+router.use('/notifications', notificationRoutes);
+router.use('/admin', adminRoutes);
+router.use('/support', supportRoutes);
 
 // Health Check
 router.get('/health', (req, res) => {

@@ -7,6 +7,7 @@ const models = {
     Plan: require('./Plan'),
     Client: require('./Client'),
     Professional: require('./Professional'),
+    ProfessionalReview: require('./ProfessionalReview'),
     Service: require('./Service'),
     Appointment: require('./Appointment'),
     FinancialTransaction: require('./FinancialTransaction'),
@@ -15,7 +16,13 @@ const models = {
     TimeRecord: require('./TimeRecord'),
     CRMSettings: require('./CRMSettings'),
     TrainingVideo: require('./TrainingVideo'),
-    AdBanner: require('./AdBanner')
+    AdBanner: require('./AdBanner'),
+    Notification: require('./Notification'),
+    SupportTicket: require('./SupportTicket'),
+    Campaign: require('../features/Marketing/campaign.model'),
+    AcquisitionChannel: require('../features/Marketing/acquisition_channel.model'),
+    DirectMailCampaign: require('../features/Marketing/direct_mail_campaign.model'),
+    AIChat: require('./AIChat')
 };
 
 // Initialize models
@@ -35,8 +42,23 @@ Object.keys(models).forEach(modelName => {
 const {
     User, Tenant, Plan, Client, Professional, Service, Appointment,
     FinancialTransaction, StockTransaction, Product, TimeRecord,
-    CRMSettings, TrainingVideo, AdBanner
+    CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
+    Campaign, AcquisitionChannel, AIChat
 } = db;
+
+// Notification associations
+Tenant.hasMany(Notification, { foreignKey: 'tenant_id' });
+Notification.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+User.hasMany(Notification, { foreignKey: 'user_id' });
+Notification.belongsTo(User, { foreignKey: 'user_id' });
+
+// SupportTicket associations
+Tenant.hasMany(SupportTicket, { foreignKey: 'tenant_id' });
+SupportTicket.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+User.hasMany(SupportTicket, { foreignKey: 'user_id' });
+SupportTicket.belongsTo(User, { foreignKey: 'user_id' });
 
 // Tenant associations
 Tenant.hasMany(User, { foreignKey: 'tenant_id' });
@@ -94,6 +116,19 @@ TimeRecord.belongsTo(Professional, { foreignKey: 'professional_id', as: 'profess
 // CRM associations
 Tenant.hasOne(CRMSettings, { foreignKey: 'tenant_id', as: 'crm_settings' });
 CRMSettings.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// Marketing associations
+Tenant.hasMany(Campaign, { foreignKey: 'tenant_id' }); // Assuming Campaign has tenant_id, need to check/add it
+Campaign.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+Tenant.hasMany(AcquisitionChannel, { foreignKey: 'tenant_id' }); // Assuming AcquisitionChannel has tenant_id
+AcquisitionChannel.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+Tenant.hasMany(DirectMailCampaign, { foreignKey: 'tenant_id' });
+DirectMailCampaign.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+Tenant.hasMany(AIChat, { foreignKey: 'tenant_id', as: 'ai_chats' });
+AIChat.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 db.sequelize = sequelize;
 

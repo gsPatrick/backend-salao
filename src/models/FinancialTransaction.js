@@ -40,13 +40,13 @@ module.exports = (sequelize) => {
             allowNull: true,
         },
         type: {
-            type: DataTypes.ENUM('receita', 'despesa'),
+            type: DataTypes.ENUM('receita', 'despesa', 'income', 'expense'),
             allowNull: false,
         },
         status: {
-            type: DataTypes.ENUM('pago', 'pendente', 'vencida', 'cancelada'),
+            type: DataTypes.ENUM('pago', 'pendente', 'vencida', 'cancelada', 'paid', 'pending', 'overdue', 'canceled'),
             allowNull: false,
-            defaultValue: 'pendente',
+            defaultValue: 'pending',
         },
         payment_method: {
             type: DataTypes.STRING(50),

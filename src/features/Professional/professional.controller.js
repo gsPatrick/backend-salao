@@ -65,6 +65,15 @@ class ProfessionalController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+    async getRanking(req, res) {
+        try {
+            const limit = req.query.limit ? parseInt(req.query.limit) : 5;
+            const rankings = await professionalService.getRanking(req.tenantId, limit);
+            res.json({ success: true, data: rankings });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new ProfessionalController();

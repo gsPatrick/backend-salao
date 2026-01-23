@@ -160,6 +160,110 @@ class AppointmentService {
     async getByProfessional(professionalId, date, tenantId) {
         return this.getAll(tenantId, { professional_id: professionalId, date });
     }
+
+    /**
+     * Get available time slots for a professional on a given date
+     * @param {number} professionalId - Professional ID
+     * @param {string} date - Date (YYYY-MM-DD)
+     * @param {number} serviceId - Service ID (for duration)
+     * @param {number} tenantId - Tenant ID
+     * @returns {Promise<string[]>} Array of available time slots
+     */
+    async getAvailability(professionalId, date, serviceId, tenantId) {
+        // Get professional schedule
+        const professional = await Professional.findOne({
+            where: { id: professionalId, tenant_id: tenantId }
+        });
+
+        if (!professional) {
+            throw new Error('Profissional não encontrado');
+        }
+
+        // Get service duration (default 30 min)
+        let serviceDuration = 30;
+        if (serviceId) {
+            const service = await Service.findByPk(serviceId);
+            if (service) {
+                serviceDuration = service.duration || 30;
+            }
+        }
+
+        // Parse professional schedule times
+        const startTime = professional.start_time || '09:00';
+        const endTime = professional.end_time || '18:00';
+        const lunchStart = professional.lunch_start || '12:00';
+        const lunchEnd = professional.lunch_end || '13:00';
+
+        // Get existing appointments for this professional on this date
+        const existingAppointments = await Appointment.findAll({
+            where: {
+                tenant_id: tenantId,
+                professional_id: professionalId,
+                date: date,
+                status: { [Op.notIn]: ['cancelado', 'remarcado'] }
+            },
+            include: [{ model: Service, as: 'service' }]
+        });
+
+        // Helper to convert time string to minutes
+        const timeToMinutes = (time) => {
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        // Helper to convert minutes to time string
+        const minutesToTime = (mins) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        };
+
+        // Generate all possible slots (every 30 minutes)
+        const slotInterval = 30;
+        const dayStart = timeToMinutes(startTime);
+        const dayEnd = timeToMinutes(endTime);
+        const lunchBegin = timeToMinutes(lunchStart);
+        const lunchFinish = timeToMinutes(lunchEnd);
+
+        const allSlots = [];
+        for (let t = dayStart; t + serviceDuration <= dayEnd; t += slotInterval) {
+            // Skip lunch time
+            if (t >= lunchBegin && t < lunchFinish) continue;
+            // Skip if slot would overlap with lunch
+            if (t < lunchBegin && t + serviceDuration > lunchBegin) continue;
+
+            allSlots.push(t);
+        }
+
+        // Filter out slots that conflict with existing appointments
+        const availableSlots = allSlots.filter(slotStart => {
+            const slotEnd = slotStart + serviceDuration;
+
+            for (const appt of existingAppointments) {
+                const apptStart = timeToMinutes(appt.time);
+                const apptDuration = appt.service?.duration || 30;
+                const apptEnd = apptStart + apptDuration;
+
+                // Check for overlap
+                if (slotStart < apptEnd && slotEnd > apptStart) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        // Filter out past slots if date is today
+        const now = new Date();
+        const requestDate = new Date(date + 'T00:00:00');
+        if (requestDate.toDateString() === now.toDateString()) {
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            return availableSlots
+                .filter(slot => slot > currentMinutes)
+                .map(minutesToTime);
+        }
+
+        return availableSlots.map(minutesToTime);
+    }
 }
 
 module.exports = new AppointmentService();

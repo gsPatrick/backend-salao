@@ -7,6 +7,10 @@ const ChatMessage = sequelize.define('chat_message', {
         primaryKey: true,
         autoIncrement: true
     },
+    tenant_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
     sender_id: {
         type: DataTypes.INTEGER,
         allowNull: false
@@ -31,7 +35,7 @@ const ChatMessage = sequelize.define('chat_message', {
         type: DataTypes.BOOLEAN,
         defaultValue: false
     },
-    read: {
+    is_read: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
     }

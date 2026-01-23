@@ -5,6 +5,7 @@ const { authenticate, requireTenant } = require('../Auth/auth.middleware');
 
 router.use(authenticate, requireTenant);
 
+router.get('/availability', appointmentController.getAvailability);
 router.get('/', appointmentController.getAll);
 router.get('/date/:date', appointmentController.getByDate);
 router.get('/professional/:professionalId', appointmentController.getByProfessional);

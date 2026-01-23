@@ -24,6 +24,19 @@ const AIAgentConfig = sequelize.define('ai_agent_config', {
         type: DataTypes.STRING,
         defaultValue: 'Profissional e acolhedora'
     },
+    prompt_behavior: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'Custom instructions for the AI behavior'
+    },
+    is_voice_enabled: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    zapi_instance_id: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     voice_id: {
         type: DataTypes.STRING, // e.g., ElevenLabs ID or Google Voice name
         allowNull: true

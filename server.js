@@ -18,16 +18,8 @@ async function startServer() {
             console.log('✅ Database synchronized');
         }
 
-        // Initialize HTTP server for Socket.io
-        const http = require('http');
-        const server = http.createServer(app);
-
-        // Initialize Socket.io
-        const { initSocket } = require('./src/features/Chat/chat.socket');
-        initSocket(server);
-
         // Start server
-        server.listen(PORT, () => {
+        app.listen(PORT, () => {
             console.log(`
 🚀 Salão24h API Server Started!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

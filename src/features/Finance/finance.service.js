@@ -1,4 +1,4 @@
-const { FinancialTransaction, Appointment, sequelize } = require('../../models');
+const { FinancialTransaction, Appointment, Client, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
 class FinanceService {
@@ -27,12 +27,25 @@ class FinanceService {
     }
 
     async create(data, tenantId) {
-        return FinancialTransaction.create({ ...data, tenant_id: tenantId });
+        const mappedData = {
+            ...data,
+            tenant_id: tenantId,
+            bill_attachment: data.billAttachment || data.bill_attachment,
+            receipt_attachment: data.receiptAttachment || data.receipt_attachment
+        };
+        // Remove camelCase versions to avoid duplication if Sequelize is strict, 
+        // though normally it just ignores extra fields.
+        return FinancialTransaction.create(mappedData);
     }
 
     async update(id, data, tenantId) {
         const transaction = await this.getById(id, tenantId);
-        await transaction.update(data);
+        const mappedData = {
+            ...data,
+            bill_attachment: data.billAttachment || data.bill_attachment,
+            receipt_attachment: data.receiptAttachment || data.receipt_attachment
+        };
+        await transaction.update(mappedData);
         return transaction;
     }
 
@@ -64,15 +77,49 @@ class FinanceService {
         }
 
         const transactions = await this.getAll(tenantId, { dateFrom, dateTo });
+        const appointments = await Appointment.findAll({
+            where: {
+                tenant_id: tenantId,
+                date: { [Op.between]: [dateFrom, dateTo] }
+            }
+        });
 
-        const receitas = transactions.filter(t => t.type === 'receita' && t.status === 'pago')
+        const receitas = transactions.filter(t => (t.type === 'receita' || t.type === 'income') && (t.status === 'pago' || t.status === 'paid'))
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        const despesas = transactions.filter(t => t.type === 'despesa' && t.status === 'pago')
+        const despesas = transactions.filter(t => (t.type === 'despesa' || t.type === 'expense') && (t.status === 'pago' || t.status === 'paid'))
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        const pendentes = transactions.filter(t => t.status === 'pendente')
+        const pendentes = transactions.filter(t => t.status === 'pendente' || t.status === 'pending')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        const vencidas = transactions.filter(t => t.status === 'vencida')
+        const vencidas = transactions.filter(t => t.status === 'vencida' || t.status === 'overdue')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+        const atendimentos = appointments.filter(a => a.status === 'Atendido' || a.status === 'Completed').length;
+        const ticket_medio = atendimentos > 0 ? receitas / atendimentos : 0;
+
+        // Generate chartData grouped by date
+        const chartDataMap = {};
+        transactions.forEach(t => {
+            const dateKey = t.date;
+            if (!chartDataMap[dateKey]) {
+                chartDataMap[dateKey] = { income: 0, expenses: 0 };
+            }
+            if ((t.type === 'receita' || t.type === 'income') && (t.status === 'pago' || t.status === 'paid')) {
+                chartDataMap[dateKey].income += parseFloat(t.amount);
+            } else if ((t.type === 'despesa' || t.type === 'expense') && (t.status === 'pago' || t.status === 'paid')) {
+                chartDataMap[dateKey].expenses += parseFloat(t.amount);
+            }
+        });
+
+        // Sort dates and create arrays
+        const sortedDates = Object.keys(chartDataMap).sort();
+        const chartData = {
+            labels: sortedDates.map(d => {
+                const date = new Date(d + 'T00:00:00');
+                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            }),
+            income: sortedDates.map(d => chartDataMap[d].income),
+            expenses: sortedDates.map(d => chartDataMap[d].expenses)
+        };
 
         return {
             receitas,
@@ -81,6 +128,16 @@ class FinanceService {
             pendentes,
             vencidas,
             total_transacoes: transactions.length,
+            atendimentos,
+            agendamentos: appointments.length,
+            ticket_medio,
+            chartData,
+            clients_new: await Client.count({
+                where: {
+                    tenant_id: tenantId,
+                    created_at: { [Op.between]: [dateFrom, dateTo] }
+                }
+            })
         };
     }
 }

@@ -6,7 +6,7 @@ const seedDatabase = async () => {
         console.log('🌱 Starting database seeding...');
 
         // Sync all models (create tables)
-        await sequelize.sync({ force: true });
+        await sequelize.sync();
         console.log('✅ Database synced');
 
         // 1. Create Plans
@@ -60,7 +60,7 @@ const seedDatabase = async () => {
                 price: 599.90,
                 max_professionals: null, // unlimited
                 max_clients: null, // unlimited
-                max_units: null, // unlimited
+                max_units: 999, // unlimited
                 ai_voice_response: true,
                 priority_support: true,
                 whatsapp_integration: true,
@@ -74,7 +74,7 @@ const seedDatabase = async () => {
                 price: 0,
                 max_professionals: null,
                 max_clients: null,
-                max_units: null,
+                max_units: 999,
                 ai_voice_response: true,
                 priority_support: true,
                 whatsapp_integration: true,

@@ -47,6 +47,15 @@ const Client = sequelize.define('client', {
     is_active: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    crm_stage: {
+        type: DataTypes.STRING,
+        defaultValue: 'new', // 'new', 'contacted', 'scheduled', 'won', 'lost'
+        allowNull: true
+    },
+    how_found_us: {
+        type: DataTypes.STRING, // Acquisition Channel
+        allowNull: true
     }
 }, {
     tableName: 'clients',

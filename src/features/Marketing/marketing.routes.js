@@ -14,4 +14,10 @@ router.get('/channels', authMiddleware.authenticate, marketingController.listCha
 router.post('/channels', authMiddleware.authenticate, marketingController.createChannel);
 router.put('/channels/:id', authMiddleware.authenticate, marketingController.updateChannel);
 
+// Direct Mail Campaigns
+router.get('/direct-mail', authMiddleware.authenticate, marketingController.listDirectMail);
+router.post('/direct-mail', authMiddleware.authenticate, marketingController.createDirectMail);
+router.put('/direct-mail/:id', authMiddleware.authenticate, marketingController.updateDirectMail);
+router.delete('/direct-mail/:id', authMiddleware.authenticate, marketingController.deleteDirectMail);
+
 module.exports = router;

@@ -6,6 +6,7 @@ const { authenticate, requireTenant, requireRoles } = require('../Auth/auth.midd
 router.use(authenticate, requireTenant);
 
 router.get('/', professionalController.getAll);
+router.get('/ranking', professionalController.getRanking);
 router.get('/:id', professionalController.getById);
 router.post('/', requireRoles('admin', 'gerente'), professionalController.create);
 router.put('/:id', requireRoles('admin', 'gerente'), professionalController.update);
