@@ -21,7 +21,8 @@ class ClientController {
 
     async create(req, res) {
         try {
-            const client = await clientService.create(req.body, req.tenantId);
+            const data = { ...req.body, tenant_id: req.tenantId };
+            const client = await clientService.create(data, req.tenantId);
             res.status(201).json({ success: true, data: client });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -30,7 +31,7 @@ class ClientController {
 
     async update(req, res) {
         try {
-            const client = await clientService.update(req.params.id, req.body, req.tenantId);
+            const client = await clientService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
             res.json({ success: true, data: client });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

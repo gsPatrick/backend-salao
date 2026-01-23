@@ -12,7 +12,8 @@ exports.listCampaigns = async (req, res) => {
 
 exports.createCampaign = async (req, res) => {
     try {
-        const campaign = await marketingService.createCampaign(req.body, req.tenantId);
+        const data = { ...req.body, tenant_id: req.tenantId };
+        const campaign = await marketingService.createCampaign(data, req.tenantId);
         res.status(201).json(campaign);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -21,7 +22,7 @@ exports.createCampaign = async (req, res) => {
 
 exports.updateCampaign = async (req, res) => {
     try {
-        const updatedCampaign = await marketingService.updateCampaign(req.params.id, req.body, req.tenantId);
+        const updatedCampaign = await marketingService.updateCampaign(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
         if (updatedCampaign) {
             res.json(updatedCampaign);
         } else {
@@ -53,7 +54,8 @@ exports.listChannels = async (req, res) => {
 
 exports.createChannel = async (req, res) => {
     try {
-        const channel = await marketingService.createChannel(req.body, req.tenantId);
+        const data = { ...req.body, tenant_id: req.tenantId };
+        const channel = await marketingService.createChannel(data, req.tenantId);
         res.status(201).json(channel);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -62,7 +64,7 @@ exports.createChannel = async (req, res) => {
 
 exports.updateChannel = async (req, res) => {
     try {
-        const updatedChannel = await marketingService.updateChannel(req.params.id, req.body, req.tenantId);
+        const updatedChannel = await marketingService.updateChannel(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
         if (updatedChannel) {
             res.json(updatedChannel);
         } else {
@@ -85,7 +87,8 @@ exports.listDirectMail = async (req, res) => {
 
 exports.createDirectMail = async (req, res) => {
     try {
-        const campaign = await marketingService.createDirectMail(req.body, req.tenantId);
+        const data = { ...req.body, tenant_id: req.tenantId };
+        const campaign = await marketingService.createDirectMail(data, req.tenantId);
         res.status(201).json(campaign);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -94,7 +97,7 @@ exports.createDirectMail = async (req, res) => {
 
 exports.updateDirectMail = async (req, res) => {
     try {
-        const updatedCampaign = await marketingService.updateDirectMail(req.params.id, req.body, req.tenantId);
+        const updatedCampaign = await marketingService.updateDirectMail(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
         if (updatedCampaign) {
             res.json(updatedCampaign);
         } else {

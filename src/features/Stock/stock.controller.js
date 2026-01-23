@@ -2,7 +2,7 @@ const stockService = require('./stock.service');
 
 exports.listProducts = async (req, res) => {
     try {
-        const products = await stockService.listProducts(req.user.tenant_id);
+        const products = await stockService.listProducts(req.tenantId);
         res.json({ success: true, data: products });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -11,7 +11,7 @@ exports.listProducts = async (req, res) => {
 
 exports.getProduct = async (req, res) => {
     try {
-        const product = await stockService.getProduct(req.params.id, req.user.tenant_id);
+        const product = await stockService.getProduct(req.params.id, req.tenantId);
         res.json({ success: true, data: product });
     } catch (error) {
         res.status(404).json({ success: false, message: error.message });
@@ -20,7 +20,8 @@ exports.getProduct = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
     try {
-        const product = await stockService.createProduct(req.body, req.user.tenant_id);
+        const data = { ...req.body, tenant_id: req.tenantId };
+        const product = await stockService.createProduct(data, req.tenantId);
         res.status(201).json({ success: true, data: product });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -29,7 +30,7 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
     try {
-        const product = await stockService.updateProduct(req.params.id, req.body, req.user.tenant_id);
+        const product = await stockService.updateProduct(req.params.id, req.body, req.tenantId);
         res.json({ success: true, data: product });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -38,7 +39,7 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
     try {
-        const result = await stockService.deleteProduct(req.params.id, req.user.tenant_id);
+        const result = await stockService.deleteProduct(req.params.id, req.tenantId);
         res.json({ success: true, data: result });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -47,7 +48,7 @@ exports.deleteProduct = async (req, res) => {
 
 exports.adjustStock = async (req, res) => {
     try {
-        const result = await stockService.adjustStock(req.body, req.user.tenant_id, req.user.id);
+        const result = await stockService.adjustStock(req.body, req.tenantId, req.user.id);
         res.json({ success: true, data: result });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

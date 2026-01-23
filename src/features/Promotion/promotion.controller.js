@@ -2,7 +2,7 @@ const Promotion = require('./promotion.model');
 
 exports.list = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const promotions = await Promotion.findAll({
             where: { tenant_id: tenantId },
             order: [['created_at', 'DESC']]
@@ -39,7 +39,7 @@ exports.list = async (req, res) => {
 
 exports.create = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const data = req.body;
 
         const promotion = await Promotion.create({
@@ -67,7 +67,7 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         const data = req.body;
 
@@ -97,7 +97,7 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         await Promotion.destroy({ where: { id, tenant_id: tenantId } });
         res.json({ success: true });
@@ -109,7 +109,7 @@ exports.delete = async (req, res) => {
 
 exports.toggle = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         const promotion = await Promotion.findOne({ where: { id, tenant_id: tenantId } });
         if (!promotion) return res.status(404).json({ error: 'Promoção não encontrada' });

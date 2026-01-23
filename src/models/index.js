@@ -23,7 +23,11 @@ const models = {
     AcquisitionChannel: require('../features/Marketing/acquisition_channel.model'),
     DirectMailCampaign: require('../features/Marketing/direct_mail_campaign.model'),
     AIChat: require('./AIChat'),
-    AIAgentConfig: require('../features/AI/ai_agent_config.model')
+    AIAgentConfig: require('../features/AI/ai_agent_config.model'),
+    Promotion: require('../features/Promotion/promotion.model'),
+    ContractTemplate: require('../features/Contract/contract.model'),
+    MonthlyPackage: require('../features/Package/package.model').MonthlyPackage,
+    PackageSubscription: require('../features/Package/package.model').PackageSubscription
 };
 
 // Initialize models
@@ -44,7 +48,8 @@ const {
     User, Tenant, Plan, Client, Professional, Service, Appointment,
     FinancialTransaction, StockTransaction, Product, TimeRecord,
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
-    Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig
+    Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
+    Promotion, ContractTemplate, MonthlyPackage, PackageSubscription
 } = db;
 
 // Notification associations
@@ -144,6 +149,21 @@ DirectMailCampaign.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 Tenant.hasMany(AIChat, { foreignKey: 'tenant_id', as: 'ai_chats' });
 AIChat.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// Promotion associations
+Tenant.hasMany(Promotion, { foreignKey: 'tenant_id' });
+Promotion.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// Contract associations
+Tenant.hasMany(ContractTemplate, { foreignKey: 'tenant_id' });
+ContractTemplate.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// Package associations
+Tenant.hasMany(MonthlyPackage, { foreignKey: 'tenant_id' });
+MonthlyPackage.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+Tenant.hasMany(PackageSubscription, { foreignKey: 'tenant_id' });
+PackageSubscription.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 db.sequelize = sequelize;
 

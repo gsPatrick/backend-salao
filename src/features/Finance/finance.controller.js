@@ -21,7 +21,8 @@ class FinanceController {
 
     async create(req, res) {
         try {
-            const transaction = await financeService.create(req.body, req.tenantId);
+            const data = { ...req.body, tenant_id: req.tenantId };
+            const transaction = await financeService.create(data, req.tenantId);
             res.status(201).json({ success: true, data: transaction });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -30,7 +31,7 @@ class FinanceController {
 
     async update(req, res) {
         try {
-            const transaction = await financeService.update(req.params.id, req.body, req.tenantId);
+            const transaction = await financeService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
             res.json({ success: true, data: transaction });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

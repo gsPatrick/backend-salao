@@ -3,7 +3,7 @@ const { Op } = require('sequelize');
 
 exports.listTemplates = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const templates = await ContractTemplate.findAll({
             where: { tenant_id: tenantId, active: true },
             order: [['created_at', 'DESC']]
@@ -27,7 +27,7 @@ exports.listTemplates = async (req, res) => {
 
 exports.createTemplate = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { title, type, content } = req.body; // Expects title (name in front), type, content
 
         const template = await ContractTemplate.create({
@@ -52,7 +52,7 @@ exports.createTemplate = async (req, res) => {
 
 exports.updateTemplate = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         const { title, content } = req.body;
 
@@ -80,7 +80,7 @@ exports.updateTemplate = async (req, res) => {
 
 exports.deleteTemplate = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
 
         // Hard delete or Soft delete? Using destroy for simple CRUD as per request "Excluir"

@@ -21,7 +21,8 @@ class ProfessionalController {
 
     async create(req, res) {
         try {
-            const professional = await professionalService.create(req.body, req.tenantId);
+            const data = { ...req.body, tenant_id: req.tenantId };
+            const professional = await professionalService.create(data, req.tenantId);
             res.status(201).json({ success: true, data: professional });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -30,7 +31,7 @@ class ProfessionalController {
 
     async update(req, res) {
         try {
-            const professional = await professionalService.update(req.params.id, req.body, req.tenantId);
+            const professional = await professionalService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
             res.json({ success: true, data: professional });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

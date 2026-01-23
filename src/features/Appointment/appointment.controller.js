@@ -21,7 +21,8 @@ class AppointmentController {
 
     async create(req, res) {
         try {
-            const appointment = await appointmentService.create(req.body, req.tenantId, req.userId);
+            const data = { ...req.body, tenant_id: req.tenantId };
+            const appointment = await appointmentService.create(data, req.tenantId, req.userId);
             res.status(201).json({ success: true, data: appointment });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -30,7 +31,7 @@ class AppointmentController {
 
     async update(req, res) {
         try {
-            const appointment = await appointmentService.update(req.params.id, req.body, req.tenantId);
+            const appointment = await appointmentService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
             res.json({ success: true, data: appointment });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

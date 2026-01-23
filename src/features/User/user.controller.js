@@ -21,7 +21,8 @@ class UserController {
 
     async create(req, res) {
         try {
-            const user = await userService.create(req.body, req.tenantId, req.isSuperAdmin);
+            const data = { ...req.body, tenant_id: req.tenantId };
+            const user = await userService.create(data, req.tenantId, req.isSuperAdmin);
             res.status(201).json({ success: true, data: user });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -30,7 +31,7 @@ class UserController {
 
     async update(req, res) {
         try {
-            const user = await userService.update(req.params.id, req.body, req.tenantId, req.isSuperAdmin);
+            const user = await userService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId, req.isSuperAdmin);
             res.json({ success: true, data: user });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

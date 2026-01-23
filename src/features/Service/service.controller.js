@@ -21,7 +21,8 @@ class ServiceController {
 
     async create(req, res) {
         try {
-            const service = await serviceService.create(req.body, req.tenantId);
+            const data = { ...req.body, tenant_id: req.tenantId };
+            const service = await serviceService.create(data, req.tenantId);
             res.status(201).json({ success: true, data: service });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -30,7 +31,7 @@ class ServiceController {
 
     async update(req, res) {
         try {
-            const service = await serviceService.update(req.params.id, req.body, req.tenantId);
+            const service = await serviceService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
             res.json({ success: true, data: service });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
