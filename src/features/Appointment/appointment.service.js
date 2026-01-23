@@ -52,7 +52,7 @@ class AppointmentService {
             professional_id: professionalId,
             date: date,
             time: time,
-            status: { [Op.notIn]: ['cancelado', 'remarcado'] }, // Only check active appointments
+            status: { [Op.notIn]: ['cancelado', 'reagendado'] }, // Only check active appointments
         };
 
         if (excludeId) {
@@ -211,7 +211,7 @@ class AppointmentService {
                 tenant_id: tenantId,
                 professional_id: professionalId,
                 date: date,
-                status: { [Op.notIn]: ['cancelado', 'remarcado'] }
+                status: { [Op.notIn]: ['cancelado', 'reagendado'] }
             },
             include: [{ model: Service, as: 'service' }]
         });
