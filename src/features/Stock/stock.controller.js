@@ -5,7 +5,7 @@ exports.listProducts = async (req, res) => {
         const products = await stockService.listProducts(req.user.tenant_id);
         res.json({ success: true, data: products });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -23,7 +23,7 @@ exports.createProduct = async (req, res) => {
         const product = await stockService.createProduct(req.body, req.user.tenant_id);
         res.status(201).json({ success: true, data: product });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -32,7 +32,7 @@ exports.updateProduct = async (req, res) => {
         const product = await stockService.updateProduct(req.params.id, req.body, req.user.tenant_id);
         res.json({ success: true, data: product });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -41,7 +41,7 @@ exports.deleteProduct = async (req, res) => {
         const result = await stockService.deleteProduct(req.params.id, req.user.tenant_id);
         res.json({ success: true, data: result });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -50,6 +50,6 @@ exports.adjustStock = async (req, res) => {
         const result = await stockService.adjustStock(req.body, req.user.tenant_id, req.user.id);
         res.json({ success: true, data: result });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
