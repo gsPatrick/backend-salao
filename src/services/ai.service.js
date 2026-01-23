@@ -249,6 +249,8 @@ ${professionalsList}
         }
 
         // 1. Fetch or Create Chat in DB
+        let chat = await AIChat.findOne({ where: { tenant_id: tenantId, customer_phone: phone } });
+
         if (!chat) {
             chat = await AIChat.create({
                 tenant_id: tenantId,
