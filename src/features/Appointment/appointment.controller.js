@@ -81,15 +81,15 @@ class AppointmentController {
         try {
             const { date, professionalId, serviceId } = req.query;
 
-            if (!date || !professionalId) {
+            if (!date) {
                 return res.status(400).json({
                     success: false,
-                    message: 'date e professionalId são obrigatórios'
+                    message: 'date é obrigatório'
                 });
             }
 
             const slots = await appointmentService.getAvailability(
-                parseInt(professionalId),
+                professionalId ? parseInt(professionalId) : null,
                 date,
                 serviceId ? parseInt(serviceId) : null,
                 req.tenantId

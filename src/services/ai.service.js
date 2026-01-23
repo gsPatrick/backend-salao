@@ -74,6 +74,7 @@ class AIService {
         const customBehavior = config?.prompt_behavior || config?.personality || "Seja cordial, profissional e prestativa.";
 
         return `
+Data de hoje: ${new Date().toISOString().split('T')[0]}
 Você é a recepcionista virtual do ${tenant.name}.
 Localização: ${JSON.stringify(tenant.address)}
 Horário de Funcionamento: ${businessHours}

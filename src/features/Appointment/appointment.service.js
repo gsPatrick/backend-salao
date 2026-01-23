@@ -170,10 +170,21 @@ class AppointmentService {
      * @returns {Promise<string[]>} Array of available time slots
      */
     async getAvailability(professionalId, date, serviceId, tenantId) {
-        // Get professional schedule
-        const professional = await Professional.findOne({
-            where: { id: professionalId, tenant_id: tenantId }
-        });
+        let professional;
+
+        if (professionalId) {
+            professional = await Professional.findOne({
+                where: { id: professionalId, tenant_id: tenantId }
+            });
+        } else {
+            // Pick first professional if none specified
+            professional = await Professional.findOne({
+                where: { tenant_id: tenantId, is_suspended: false, is_archived: false }
+            });
+            if (professional) {
+                professionalId = professional.id;
+            }
+        }
 
         if (!professional) {
             throw new Error('Profissional não encontrado');
