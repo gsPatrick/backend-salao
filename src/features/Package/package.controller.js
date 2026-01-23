@@ -7,7 +7,12 @@ exports.listPackages = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
         const packages = await MonthlyPackage.findAll({
-            where: { tenant_id: tenantId },
+            where: {
+                [Op.or]: [
+                    { tenant_id: tenantId },
+                    { tenant_id: null }
+                ]
+            },
             order: [['created_at', 'DESC']]
         });
 
@@ -56,28 +61,40 @@ exports.updatePackage = async (req, res) => {
         const data = req.body;
 
         const pkg = await MonthlyPackage.findOne({ where: { id, tenant_id: tenantId } });
+        if (!pkg && req.isSuperAdmin) {
+            // SuperAdmin can update global packages
+            const globalPkg = await MonthlyPackage.findOne({ where: { id, tenant_id: null } });
+            if (globalPkg) return await updateAndSend(globalPkg, data, res);
+        }
         if (!pkg) return res.status(404).json({ error: 'Pacote não encontrado' });
 
-        await pkg.update({
-            name: data.name,
-            price: data.price,
-            description: data.description,
-            duration: data.duration,
-            active: data.isActive
-        });
-
-        res.json(pkg);
+        return await updateAndSend(pkg, data, res);
     } catch (error) {
         console.error('Error updating package:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
+async function updateAndSend(pkg, data, res) {
+    await pkg.update({
+        name: data.name,
+        price: data.price,
+        description: data.description,
+        duration: data.duration,
+        active: data.isActive
+    });
+    return res.json(pkg);
+}
+
 exports.deletePackage = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
         const { id } = req.params;
-        await MonthlyPackage.destroy({ where: { id, tenant_id: tenantId } });
+        const where = { id };
+        if (!req.isSuperAdmin) {
+            where.tenant_id = tenantId;
+        }
+        await MonthlyPackage.destroy({ where });
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting package:', error);
@@ -89,7 +106,11 @@ exports.togglePackage = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
         const { id } = req.params;
-        const pkg = await MonthlyPackage.findOne({ where: { id, tenant_id: tenantId } });
+        const where = { id };
+        if (!req.isSuperAdmin) {
+            where.tenant_id = tenantId;
+        }
+        const pkg = await MonthlyPackage.findOne({ where });
         if (!pkg) return res.status(404).json({ error: 'Pacote não encontrado' });
 
         await pkg.update({ active: !pkg.active });

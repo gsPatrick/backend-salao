@@ -9,7 +9,7 @@ const CRMSettings = sequelize.define('crm_settings', {
     },
     tenant_id: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
     },
     funnel_stages: {
         type: DataTypes.JSONB,

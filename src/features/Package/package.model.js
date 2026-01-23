@@ -9,7 +9,7 @@ const MonthlyPackage = sequelize.define('MonthlyPackage', {
     },
     tenant_id: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
     },
     name: {
         type: DataTypes.STRING,
@@ -45,7 +45,7 @@ const PackageSubscription = sequelize.define('PackageSubscription', {
     },
     tenant_id: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
     },
     package_id: {
         type: DataTypes.BIGINT,
