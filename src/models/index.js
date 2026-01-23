@@ -43,7 +43,7 @@ const {
     User, Tenant, Plan, Client, Professional, Service, Appointment,
     FinancialTransaction, StockTransaction, Product, TimeRecord,
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
-    Campaign, AcquisitionChannel, AIChat
+    Campaign, AcquisitionChannel, DirectMailCampaign, AIChat
 } = db;
 
 // Notification associations
