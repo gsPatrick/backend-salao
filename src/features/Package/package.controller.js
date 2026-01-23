@@ -5,7 +5,7 @@ const { Op } = require('sequelize');
 
 exports.listPackages = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const packages = await MonthlyPackage.findAll({
             where: {
                 [Op.or]: [
@@ -35,7 +35,7 @@ exports.listPackages = async (req, res) => {
 
 exports.createPackage = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const data = req.body;
 
         const pkg = await MonthlyPackage.create({
@@ -69,7 +69,7 @@ function formatPackage(p) {
 
 exports.updatePackage = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         const data = req.body;
 
@@ -101,7 +101,7 @@ async function updateAndSend(pkg, data, res) {
 
 exports.deletePackage = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         const where = { id };
         if (!req.isSuperAdmin) {
@@ -117,7 +117,7 @@ exports.deletePackage = async (req, res) => {
 
 exports.togglePackage = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         const where = { id };
         if (!req.isSuperAdmin) {
@@ -139,7 +139,7 @@ exports.togglePackage = async (req, res) => {
 
 exports.listSubscriptions = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const subscriptions = await PackageSubscription.findAll({
             where: { tenant_id: tenantId },
             include: [{ model: MonthlyPackage, as: 'package' }],
@@ -175,7 +175,7 @@ exports.listSubscriptions = async (req, res) => {
 
 exports.createSubscription = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const data = req.body;
 
         const s = await PackageSubscription.create({
@@ -229,7 +229,7 @@ function formatSubscription(s) {
 
 exports.updateSubscription = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         const data = req.body;
 
@@ -254,7 +254,7 @@ exports.updateSubscription = async (req, res) => {
 
 exports.deleteSubscription = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         await PackageSubscription.destroy({ where: { id, tenant_id: tenantId } });
         res.json({ success: true });
@@ -266,7 +266,7 @@ exports.deleteSubscription = async (req, res) => {
 
 exports.archiveSubscription = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.tenantId;
         const { id } = req.params;
         const sub = await PackageSubscription.findOne({ where: { id, tenant_id: tenantId } });
         if (!sub) return res.status(404).json({ error: 'Assinatura não encontrada' });
