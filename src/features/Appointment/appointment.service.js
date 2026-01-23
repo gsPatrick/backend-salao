@@ -1,5 +1,5 @@
-const { Appointment, Client, Professional, Service } = require('../../models');
-const { Op } = require('sequelize');
+const { Appointment, Client, Professional, Service, sequelize } = require('../../models');
+const { Op, Transaction } = require('sequelize');
 
 class AppointmentService {
     async getAll(tenantId, filters = {}) {
@@ -63,43 +63,51 @@ class AppointmentService {
     }
 
     async create(data, tenantId, userId) {
-        // Check for conflicting appointment
-        if (data.professional_id && data.date && data.time) {
-            const conflict = await this.checkConflict(
-                data.professional_id,
-                data.date,
-                data.time,
-                tenantId
-            );
+        // Use a SERIALIZABLE transaction to prevent race conditions
+        return sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE }, async (t) => {
+            // Check for conflicting appointment within transaction
+            if (data.professional_id && data.date && data.time) {
+                const conflict = await Appointment.findOne({
+                    where: {
+                        tenant_id: tenantId,
+                        professional_id: data.professional_id,
+                        date: data.date,
+                        time: data.time,
+                        status: { [Op.notIn]: ['cancelado', 'reagendado'] },
+                    },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE, // Lock the row to prevent concurrent modifications
+                });
 
-            if (conflict) {
-                const error = new Error('Já existe um agendamento para este profissional neste horário');
-                error.status = 409; // HTTP 409 Conflict
-                error.conflictingAppointment = {
-                    id: conflict.id,
-                    date: conflict.date,
-                    time: conflict.time,
-                };
-                throw error;
+                if (conflict) {
+                    const error = new Error('Já existe um agendamento para este profissional neste horário');
+                    error.status = 409; // HTTP 409 Conflict
+                    error.conflictingAppointment = {
+                        id: conflict.id,
+                        date: conflict.date,
+                        time: conflict.time,
+                    };
+                    throw error;
+                }
             }
-        }
 
-        // Calculate end time based on service duration
-        if (data.service_id) {
-            const service = await Service.findByPk(data.service_id);
-            if (service) {
-                const [hours, minutes] = data.time.split(':').map(Number);
-                const endDate = new Date();
-                endDate.setHours(hours, minutes + service.duration);
-                data.end_time = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
-                data.price = data.price || service.price;
+            // Calculate end time based on service duration
+            if (data.service_id) {
+                const service = await Service.findByPk(data.service_id, { transaction: t });
+                if (service) {
+                    const [hours, minutes] = data.time.split(':').map(Number);
+                    const endDate = new Date();
+                    endDate.setHours(hours, minutes + service.duration);
+                    data.end_time = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+                    data.price = data.price || service.price;
+                }
             }
-        }
 
-        return Appointment.create({
-            ...data,
-            tenant_id: tenantId,
-            created_by_user_id: userId,
+            return Appointment.create({
+                ...data,
+                tenant_id: tenantId,
+                created_by_user_id: userId,
+            }, { transaction: t });
         });
     }
 
