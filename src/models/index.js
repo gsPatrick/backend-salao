@@ -69,14 +69,14 @@ Tenant.belongsTo(Plan, { foreignKey: 'plan_id', as: 'plan' });
 Plan.hasMany(Tenant, { foreignKey: 'plan_id' });
 
 // Professional associations
-Tenant.hasMany(Professional, { foreignKey: 'tenant_id' });
+Tenant.hasMany(Professional, { foreignKey: 'tenant_id', as: 'professionals' });
 Professional.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 Professional.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 User.hasOne(Professional, { foreignKey: 'user_id' });
 
 // Service associations
-Tenant.hasMany(Service, { foreignKey: 'tenant_id' });
+Tenant.hasMany(Service, { foreignKey: 'tenant_id', as: 'services' });
 Service.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 // Client associations
