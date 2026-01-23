@@ -105,7 +105,11 @@ exports.handleZapiWebhook = async (req, res) => {
             }
         }
 
-        res.json({ success: true });
+        res.json({
+            success: true,
+            message: aiResponse,
+            transcription: isAudioIncoming ? messageText : undefined
+        });
     } catch (error) {
         console.error('[Z-API Webhook Error]:', error);
         res.status(200).json({ success: false, error: error.message });

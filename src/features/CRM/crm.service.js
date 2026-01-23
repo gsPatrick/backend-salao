@@ -27,6 +27,16 @@ class CRMService {
 
         return Client.findAll({ where });
     }
+
+    async updateLeadStage(leadId, stageId, tenantId) {
+        const lead = await Client.findOne({ where: { id: leadId, tenant_id: tenantId } });
+        if (!lead) {
+            throw new Error('Lead não encontrado');
+        }
+
+        await lead.update({ crm_stage: stageId });
+        return lead;
+    }
 }
 
 module.exports = new CRMService();

@@ -1,11 +1,25 @@
 const bcrypt = require('bcryptjs');
 const { Plan, Tenant, User, sequelize } = require('../models');
 
-const seedDatabase = async () => {
+module.exports = {
+    up: async (queryInterface, Sequelize) => {
+        // We call our internal function. Note: seedDatabase handles its own process.exit, 
+        // but when called via up() we want to let Sequelize handle it.
+        // However, seedDatabase is async. Let's refactor slightly to separate logic.
+        return seedDatabaseLogic();
+    },
+
+    down: async (queryInterface, Sequelize) => {
+        // Implementation for rollback if needed
+    }
+};
+
+async function seedDatabaseLogic() {
     try {
         console.log('🌱 Starting database seeding...');
 
         // Sync all models (create tables)
+        // Note: Using sync() in seeds can be risky in production, but here we want to ensure tables exist.
         await sequelize.sync();
         console.log('✅ Database synced');
 
@@ -82,67 +96,75 @@ const seedDatabase = async () => {
                 marketing_campaigns: true,
                 is_active: true,
             },
-        ]);
+        ], { ignoreDuplicates: true });
         console.log(`✅ Created ${plans.length} plans`);
 
         // Get the Vitalício plan for Super Admin
         const vitalicioPlan = plans.find(p => p.name === 'vitalicio');
         const proPlan = plans.find(p => p.name === 'pro');
 
+        if (!proPlan) throw new Error('Pro plan not found after creation');
+
         // 2. Create first Tenant (Salão 24h Demo)
         console.log('🏢 Creating default tenant...');
-        const tenant = await Tenant.create({
-            name: 'Salão 24h Demo',
-            slug: 'salao24h-demo',
-            plan_id: proPlan.id,
-            phone: '(81) 3333-4444',
-            email: 'contato@salao24h.com',
-            address: {
-                street: 'Rua das Flores',
-                number: '123',
-                neighborhood: 'Boa Viagem',
-                city: 'Recife',
-                state: 'PE',
-                cep: '51020-000',
-            },
-            is_active: true,
-            subscription_status: 'active',
+        const [tenant] = await Tenant.findOrCreate({
+            where: { slug: 'salao24h-demo' },
+            defaults: {
+                name: 'Salão 24h Demo',
+                plan_id: proPlan.id,
+                phone: '(81) 3333-4444',
+                email: 'contato@salao24h.com',
+                address: {
+                    street: 'Rua das Flores',
+                    number: '123',
+                    neighborhood: 'Boa Viagem',
+                    city: 'Recife',
+                    state: 'PE',
+                    cep: '51020-000',
+                },
+                is_active: true,
+                subscription_status: 'active',
+            }
         });
-        console.log(`✅ Created tenant: ${tenant.name}`);
+        console.log(`✅ Created/Found tenant: ${tenant.name}`);
 
         // 3. Create Super Admin user (Wagner)
         console.log('👤 Creating Super Admin user...');
-        const superAdmin = await User.create({
-            tenant_id: null, // Super Admin doesn't belong to a tenant
-            name: 'Wagner Vicente',
-            email: 'admin@salao24h.com',
-            password: 'admin', // Will be hashed by hook
-            avatar_url: 'https://i.pravatar.cc/150?u=whagnervicente',
-            role: 'admin',
-            is_super_admin: true,
-            is_active: true,
-            permissions: {},
+        const [superAdmin] = await User.findOrCreate({
+            where: { email: 'admin@salao24h.com' },
+            defaults: {
+                tenant_id: null,
+                name: 'Wagner Vicente',
+                password: 'admin',
+                avatar_url: 'https://i.pravatar.cc/150?u=whagnervicente',
+                role: 'admin',
+                is_super_admin: true,
+                is_active: true,
+                permissions: {},
+            }
         });
-        console.log(`✅ Created Super Admin: ${superAdmin.email}`);
+        console.log(`✅ Created/Found Super Admin: ${superAdmin.email}`);
 
         // 4. Create tenant admin user
         console.log('👤 Creating tenant admin user...');
-        const tenantAdmin = await User.create({
-            tenant_id: tenant.id,
-            name: 'Carlos Gerente',
-            email: 'gerente@salao24h.com',
-            password: '123', // Will be hashed by hook
-            avatar_url: 'https://i.pravatar.cc/150?u=gerente',
-            role: 'gerente',
-            is_super_admin: false,
-            is_active: true,
-            permissions: {},
+        const [tenantAdmin] = await User.findOrCreate({
+            where: { email: 'gerente@salao24h.com' },
+            defaults: {
+                tenant_id: tenant.id,
+                name: 'Carlos Gerente',
+                password: '123',
+                avatar_url: 'https://i.pravatar.cc/150?u=gerente',
+                role: 'gerente',
+                is_super_admin: false,
+                is_active: true,
+                permissions: {},
+            }
         });
-        console.log(`✅ Created tenant admin: ${tenantAdmin.email}`);
+        console.log(`✅ Created/Found tenant admin: ${tenantAdmin.email}`);
 
         // 5. Create other users for testing
         console.log('👤 Creating additional users...');
-        const additionalUsers = await User.bulkCreate([
+        const userDatas = [
             {
                 tenant_id: tenant.id,
                 name: 'Ana Concierge',
@@ -173,29 +195,27 @@ const seedDatabase = async () => {
                 is_super_admin: false,
                 is_active: true,
             },
-        ], { individualHooks: true }); // individualHooks to trigger password hashing
-        console.log(`✅ Created ${additionalUsers.length} additional users`);
+        ];
+
+        for (const u of userDatas) {
+            await User.findOrCreate({
+                where: { email: u.email },
+                defaults: u
+            });
+        }
+        console.log(`✅ Processed additional users`);
 
         // Update tenant with owner
         await tenant.update({ owner_user_id: tenantAdmin.id });
 
         console.log('\n🎉 Database seeding completed successfully!');
-        console.log('\n📝 Login credentials:');
-        console.log('   Super Admin: admin@salao24h.com / admin');
-        console.log('   Gerente: gerente@salao24h.com / 123');
-        console.log('   Concierge: concierge@salao24h.com / 123');
-        console.log('   Profissional: fernanda@salao24h.com / 123');
-
-        process.exit(0);
     } catch (error) {
         console.error('❌ Error seeding database:', error);
-        process.exit(1);
+        throw error;
     }
-};
+}
 
 // Run if called directly
 if (require.main === module) {
-    seedDatabase();
+    seedDatabaseLogic().then(() => process.exit(0)).catch(() => process.exit(1));
 }
-
-module.exports = seedDatabase;
