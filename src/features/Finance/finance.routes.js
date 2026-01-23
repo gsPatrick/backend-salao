@@ -13,7 +13,7 @@ router.patch('/transactions/:id/pay', requireRoles('admin', 'gerente'), financeC
 
 // Legacy/Alternative routes
 router.get('/', financeController.getAll);
-router.get('/summary', requirePlanFeature('financial_reports'), financeController.getSummary);
+router.get('/summary', requireRoles('admin', 'gerente'), requirePlanFeature('financial_reports'), financeController.getSummary);
 router.get('/:id', financeController.getById);
 router.post('/', requireRoles('admin', 'gerente'), financeController.create);
 router.put('/:id', requireRoles('admin', 'gerente'), financeController.update);
