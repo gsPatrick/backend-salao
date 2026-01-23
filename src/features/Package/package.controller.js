@@ -175,7 +175,12 @@ exports.listSubscriptions = async (req, res) => {
 
 exports.createSubscription = async (req, res) => {
     try {
-        const tenantId = req.tenantId;
+        // Use token tenantId (secure) or fallback to body (for Super Admin or if allowed)
+        const tenantId = req.tenantId || req.body.tenantId;
+
+        if (!tenantId) {
+            return res.status(400).json({ error: 'Tenant ID é obrigatório.' });
+        }
         const data = req.body;
 
         const s = await PackageSubscription.create({

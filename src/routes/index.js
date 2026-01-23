@@ -26,6 +26,7 @@ const promotionRoutes = require('../features/Promotion/promotion.routes');
 const packageRoutes = require('../features/Package/package.routes');
 const adminRoutes = require('../features/Admin/admin.routes');
 const supportRoutes = require('../features/Support/support.routes');
+const unitRoutes = require('../features/Unit/unit.routes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -51,6 +52,7 @@ router.use('/ai', aiRoutes); // Mount AI
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
 router.use('/support', supportRoutes);
+router.use('/units', unitRoutes);
 
 // Health Check
 router.get('/health', (req, res) => {

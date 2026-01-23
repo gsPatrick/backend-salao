@@ -10,7 +10,7 @@ class ProfessionalService {
                 [sequelize.fn('AVG', sequelize.col('rating')), 'average_rating'],
                 [sequelize.fn('COUNT', sequelize.col('id')), 'review_count']
             ],
-            where: { tenant_id: tenantId },
+            where: tenantId ? { tenant_id: tenantId } : {},
             include: [{
                 model: Professional,
                 as: 'professional',
