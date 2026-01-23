@@ -62,7 +62,7 @@ class AIService {
             .join('\n');
 
         const professionalsList = tenant.professionals
-            .filter(p => p.is_active)
+            .filter(p => !p.is_suspended && !p.is_archived)
             .map(p => `- ${p.name} (ID: ${p.id})`)
             .join('\n');
 

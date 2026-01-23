@@ -216,9 +216,8 @@ async function seedDatabaseLogic() {
                 tenant_id: tenant.id,
                 user_id: superAdmin.id,
                 name: 'Wagner Vicente',
-                specialty: 'Corte e Barba',
-                bio: 'Especialista em visagismo masculino.',
-                is_active: true
+                occupation: 'Corte e Barba',
+                is_suspended: false
             }
         });
 
@@ -227,9 +226,8 @@ async function seedDatabaseLogic() {
             defaults: {
                 tenant_id: tenant.id,
                 name: 'Fernanda Lima',
-                specialty: 'Colorimetria',
-                bio: 'Especialista em loiras.',
-                is_active: true
+                occupation: 'Colorimetria',
+                is_suspended: false
             }
         });
 
@@ -243,7 +241,7 @@ async function seedDatabaseLogic() {
                 description: 'Corte moderno com lavagem.',
                 price: 50.00,
                 duration: 30,
-                is_active: true
+                is_suspended: false
             }
         });
 
@@ -255,7 +253,7 @@ async function seedDatabaseLogic() {
                 description: 'Toalha quente e navalha.',
                 price: 35.00,
                 duration: 20,
-                is_active: true
+                is_suspended: false
             }
         });
 
