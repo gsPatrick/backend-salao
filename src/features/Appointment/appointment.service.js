@@ -141,10 +141,13 @@ class AppointmentService {
         await appointment.update({ status });
 
         // Update client last visit if completed
+        // Note: Disabling this as these columns do not exist in the current database schema
+        /*
         if (status === 'concluido') {
             await Client.increment('total_visits', { where: { id: appointment.client_id } });
             await Client.update({ last_visit_at: new Date() }, { where: { id: appointment.client_id } });
         }
+        */
 
         return this.getById(id, tenantId);
     }
