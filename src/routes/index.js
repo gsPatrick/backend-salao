@@ -57,7 +57,7 @@ router.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         timestamp: new Date(),
-        version: '1.2.0-final-fix'
+        version: '1.2.1-fix-cols'
     });
 });
 
