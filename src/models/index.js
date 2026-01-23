@@ -22,7 +22,8 @@ const models = {
     Campaign: require('../features/Marketing/campaign.model'),
     AcquisitionChannel: require('../features/Marketing/acquisition_channel.model'),
     DirectMailCampaign: require('../features/Marketing/direct_mail_campaign.model'),
-    AIChat: require('./AIChat')
+    AIChat: require('./AIChat'),
+    AIAgentConfig: require('../features/AI/ai_agent_config.model')
 };
 
 // Initialize models
@@ -43,7 +44,7 @@ const {
     User, Tenant, Plan, Client, Professional, Service, Appointment,
     FinancialTransaction, StockTransaction, Product, TimeRecord,
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
-    Campaign, AcquisitionChannel, DirectMailCampaign, AIChat
+    Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig
 } = db;
 
 // Notification associations

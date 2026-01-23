@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { Plan, Tenant, User, sequelize } = require('../models');
+const { Plan, Tenant, User, AIAgentConfig, sequelize } = require('../models');
 
 module.exports = {
     up: async (queryInterface, Sequelize) => {
@@ -207,6 +207,19 @@ async function seedDatabaseLogic() {
 
         // Update tenant with owner
         await tenant.update({ owner_user_id: tenantAdmin.id });
+
+        // Create AI Agent Config for Demo
+        console.log('🤖 Creating AI Agent config...');
+        await AIAgentConfig.findOrCreate({
+            where: { tenant_id: tenant.id },
+            defaults: {
+                zapi_instance_id: '3EDA29EB314652490154DA5DEAAACE51',
+                active_plan: 'Avançada',
+                is_voice_enabled: true,
+                personality: 'Wagner Vicente (Idealizador)',
+                prompt_behavior: 'Seja o Wagner, o criador do Salão24h. Seja carismático, proativo e ajude os clientes com agendamentos e dúvidas sobre a plataforma.'
+            }
+        });
 
         console.log('\n🎉 Database seeding completed successfully!');
     } catch (error) {
