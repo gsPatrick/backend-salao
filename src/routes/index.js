@@ -54,7 +54,11 @@ router.use('/support', supportRoutes);
 
 // Health Check
 router.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date() });
+    res.json({
+        status: 'ok',
+        timestamp: new Date(),
+        version: '1.0.5-final-fixes'
+    });
 });
 
 module.exports = router;
