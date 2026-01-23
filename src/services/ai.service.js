@@ -1,8 +1,9 @@
+const fs = require('fs');
+const fsp = fs.promises;
 const OpenAI = require('openai');
 const config = require('../config');
 const { Tenant, Plan, Service, Professional, Appointment, Client, AIChat } = require('../models');
 const appointmentService = require('../features/Appointment/appointment.service');
-const fs = require('fs').promises;
 const path = require('path');
 const FormData = require('form-data');
 const axios = require('axios');
@@ -45,6 +46,7 @@ class AIService {
      * Generate dynamic prompt for the tenant
      */
     async generateSystemPrompt(tenantId) {
+        const { AIAgentConfig } = require('../models');
         const tenant = await Tenant.findByPk(tenantId, {
             include: [
                 { model: Service, as: 'services' },
@@ -52,7 +54,7 @@ class AIService {
             ]
         });
 
-        const config = await require('../features/AI/ai_agent_config.model').findOne({
+        const config = await AIAgentConfig.findOne({
             where: { tenant_id: tenantId }
         });
 
@@ -210,18 +212,18 @@ ${professionalsList}
         if (!this.isConfigured()) throw new Error('OpenAI não configurada');
 
         const tempFilePath = path.join(__dirname, `../../temp/audio_${Date.now()}.ogg`);
-        await fs.mkdir(path.dirname(tempFilePath), { recursive: true });
-        await fs.writeFile(tempFilePath, audioBuffer);
+        await fsp.mkdir(path.dirname(tempFilePath), { recursive: true });
+        await fsp.writeFile(tempFilePath, audioBuffer);
 
         try {
             const response = await this.openai.audio.transcriptions.create({
-                file: await fs.open(tempFilePath, 'r'),
+                file: fs.createReadStream(tempFilePath),
                 model: "whisper-1",
                 language: "pt"
             });
             return response.text;
         } finally {
-            await fs.unlink(tempFilePath).catch(() => { });
+            await fsp.unlink(tempFilePath).catch(() => { });
         }
     }
 

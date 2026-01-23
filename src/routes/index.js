@@ -57,7 +57,7 @@ router.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         timestamp: new Date(),
-        version: '1.0.6-alias-fix'
+        version: '1.0.7-transcription-fix'
     });
 });
 

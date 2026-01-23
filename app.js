@@ -31,7 +31,7 @@ app.use('/api', routes);
 app.get('/', (req, res) => {
     res.json({
         success: true,
-        message: 'Salão24h API v1.0.6-alias-fix',
+        message: 'Salão24h API v1.0.7-transcription-fix',
         documentation: '/api',
     });
 });
