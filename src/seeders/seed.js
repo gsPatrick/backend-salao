@@ -19,8 +19,8 @@ async function seedDatabaseLogic() {
         console.log('🌱 Starting database seeding...');
 
         // Sync all models (create tables)
-        // Note: Using sync() in seeds can be risky in production, but here we want to ensure tables exist.
-        await sequelize.sync();
+        // Note: Using sync() in seeds can be risky in production, but here we want to ensure tables exist and are up to date.
+        await sequelize.sync({ alter: true });
         console.log('✅ Database synced');
 
         // 1. Create Plans
