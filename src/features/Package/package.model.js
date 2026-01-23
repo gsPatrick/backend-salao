@@ -3,7 +3,7 @@ const sequelize = require('../../config/db');
 
 const MonthlyPackage = sequelize.define('MonthlyPackage', {
     id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.BIGINT,
         primaryKey: true,
         autoIncrement: true
     },
@@ -39,7 +39,7 @@ const MonthlyPackage = sequelize.define('MonthlyPackage', {
 
 const PackageSubscription = sequelize.define('PackageSubscription', {
     id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.BIGINT,
         primaryKey: true,
         autoIncrement: true
     },
@@ -48,7 +48,7 @@ const PackageSubscription = sequelize.define('PackageSubscription', {
         allowNull: false
     },
     package_id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.BIGINT,
         allowNull: false
     },
     client_name: {
