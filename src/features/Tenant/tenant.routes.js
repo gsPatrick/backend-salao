@@ -6,6 +6,7 @@ const { authenticate, requireSuperAdmin } = require('../Auth/auth.middleware');
 router.use(authenticate);
 
 router.get('/', requireSuperAdmin, tenantController.getAll);
+router.get('/current', tenantController.getCurrent);
 router.get('/:id', tenantController.getById);
 router.post('/', requireSuperAdmin, tenantController.create);
 router.put('/:id', requireSuperAdmin, tenantController.update);

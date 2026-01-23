@@ -1,6 +1,18 @@
 const tenantService = require('./tenant.service');
 
 class TenantController {
+    async getCurrent(req, res) {
+        try {
+            if (!req.tenantId) {
+                return res.status(404).json({ success: false, message: 'Tenant não associado ao usuário atual' });
+            }
+            const tenant = await tenantService.getById(req.tenantId, req.tenantId, req.isSuperAdmin);
+            res.json({ success: true, data: tenant });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
     async getAll(req, res) {
         try {
             const tenants = await tenantService.getAll();

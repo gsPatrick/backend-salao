@@ -2,6 +2,9 @@ const crmService = require('./crm.service');
 
 exports.getSettings = async (req, res) => {
     try {
+        if (!req.user.tenant_id) {
+            return res.status(400).json({ error: 'Tenant context required for CRM settings' });
+        }
         const settings = await crmService.getSettings(req.user.tenant_id);
         res.json(settings);
     } catch (error) {
@@ -11,6 +14,9 @@ exports.getSettings = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
     try {
+        if (!req.user.tenant_id) {
+            return res.status(400).json({ error: 'Tenant context required for CRM settings' });
+        }
         const settings = await crmService.updateSettings(req.body, req.user.tenant_id);
         res.json(settings);
     } catch (error) {
