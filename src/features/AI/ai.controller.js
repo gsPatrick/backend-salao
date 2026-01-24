@@ -177,3 +177,27 @@ exports.improveText = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+exports.sendManualMessage = async (req, res) => {
+    try {
+        const tenantId = req.user.tenant_id;
+        const { chatId } = req.params;
+        const { text } = req.body;
+
+        const chat = await AIChat.findOne({ where: { id: chatId, tenant_id: tenantId } });
+        if (!chat) {
+            return res.status(404).json({ error: 'Chat not found' });
+        }
+
+        // Send via WhatsApp Service (Z-API)
+        await whatsappService.sendMessage(chat.customer_phone, text);
+
+        // Synchronize to history
+        await aiService.synchronizeMessage(tenantId, chat.customer_phone, text);
+
+        res.json({ success: true, message: text });
+    } catch (error) {
+        console.error('Error sending manual message:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
