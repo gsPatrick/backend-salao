@@ -221,15 +221,17 @@ class AppointmentService {
             : defaultHours;
 
         const availabilityDate = new Date(date + 'T00:00:00');
-        const dayOfWeekLabel = availabilityDate.toLocaleDateString('pt-BR', { weekday: 'long' });
+        const dayOfWeekIndex = availabilityDate.getDay();
+        const daysMap = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+        const dayOfWeekLabel = daysMap[dayOfWeekIndex];
 
-        // Find salon hours for this day (fuzzy match normalized)
+        // Find salon hours for this day
         const salonDay = businessHours.find(bh =>
-            bh.day.toLowerCase().trim() === dayOfWeekLabel.toLowerCase().trim()
-        ) || defaultHours.find(bh => bh.day.toLowerCase().trim() === dayOfWeekLabel.toLowerCase().trim());
+            bh && bh.day && bh.day.toLowerCase().trim() === dayOfWeekLabel
+        );
 
-        if (salonDay && !salonDay.open) {
-            return []; // Salon is closed
+        if (!salonDay || !salonDay.open) {
+            return []; // Salon is closed or day not found
         }
 
         // Get service duration (default 30 min)
