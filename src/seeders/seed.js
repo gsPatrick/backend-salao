@@ -31,7 +31,7 @@ async function seedDatabaseLogic() {
                 display_name: 'Individual',
                 price: 79.87,
                 max_professionals: 1,
-                max_clients: 100,
+                max_clients: null,
                 max_units: 1,
                 ai_voice_response: false,
                 priority_support: false,
@@ -42,10 +42,10 @@ async function seedDatabaseLogic() {
             },
             {
                 name: 'essencial',
-                display_name: 'Empresa Essencial',
+                display_name: 'Essencial',
                 price: 199.90,
-                max_professionals: 5,
-                max_clients: 500,
+                max_professionals: 3,
+                max_clients: null,
                 max_units: 1,
                 ai_voice_response: false,
                 priority_support: false,
@@ -56,11 +56,11 @@ async function seedDatabaseLogic() {
             },
             {
                 name: 'pro',
-                display_name: 'Empresa Pro',
+                display_name: 'Pro',
                 price: 349.90,
-                max_professionals: 15,
-                max_clients: null, // unlimited
-                max_units: 3,
+                max_professionals: 10,
+                max_clients: null,
+                max_units: 5,
                 ai_voice_response: true,
                 priority_support: false,
                 whatsapp_integration: true,
@@ -70,11 +70,11 @@ async function seedDatabaseLogic() {
             },
             {
                 name: 'premium',
-                display_name: 'Empresa Premium',
+                display_name: 'Premium',
                 price: 599.90,
-                max_professionals: null, // unlimited
-                max_clients: null, // unlimited
-                max_units: 999, // unlimited
+                max_professionals: null, // Unlimited
+                max_clients: null,
+                max_units: 999,
                 ai_voice_response: true,
                 priority_support: true,
                 whatsapp_integration: true,

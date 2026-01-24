@@ -1,17 +1,22 @@
-/**
- * Payment Service - Asaas Integration Placeholder
- * 
- * This service provides payment processing and subscription management.
- * Configure ASAAS_API_KEY and ASAAS_WEBHOOK_TOKEN in .env to enable.
- */
-
+const axios = require('axios');
 const config = require('../config');
 
 class PaymentService {
     constructor() {
         this.apiKey = config.externalServices.asaas.apiKey;
         this.webhookToken = config.externalServices.asaas.webhookToken;
-        this.baseUrl = 'https://www.asaas.com/api/v3';
+        // Using sandbox for development/test unless explicitly production
+        this.baseUrl = config.nodeEnv === 'production'
+            ? 'https://api.asaas.com/v3'
+            : 'https://sandbox.asaas.com/api/v3';
+
+        this.client = axios.create({
+            baseURL: this.baseUrl,
+            headers: {
+                'access_token': this.apiKey,
+                'Content-Type': 'application/json'
+            }
+        });
     }
 
     isConfigured() {
@@ -21,18 +26,25 @@ class PaymentService {
     /**
      * Create a new customer in Asaas
      */
-    async createCustomer(data) {
+    async createCustomer(tenantData) {
         if (!this.isConfigured()) {
-            console.log('[Asaas] Not configured. Would create customer:', data);
-            return { success: true, simulated: true, customerId: 'simulated_' + Date.now() };
+            console.log('[Asaas] Not configured. Simulating customer creation.');
+            return { id: 'simulated_cus_' + Date.now() };
         }
 
         try {
-            // Placeholder for actual Asaas call
-            console.log('[Asaas] Creating customer:', data.name);
-            return { success: true, customerId: 'cus_' + Date.now() };
+            const response = await this.client.post('/customers', {
+                name: tenantData.name,
+                email: tenantData.email,
+                phone: tenantData.phone,
+                mobilePhone: tenantData.phone,
+                cpfCnpj: tenantData.cnpj_cpf,
+                externalReference: tenantData.id?.toString(),
+                notificationDisabled: false
+            });
+            return response.data;
         } catch (error) {
-            console.error('[Asaas] Error:', error);
+            console.error('[Asaas] Create Customer Error:', error.response?.data || error.message);
             throw new Error('Falha ao criar cliente no gateway de pagamento');
         }
     }
@@ -40,83 +52,45 @@ class PaymentService {
     /**
      * Create a subscription for a plan
      */
-    async createSubscription(customerId, planId, paymentMethod) {
+    async createSubscription(tenant, plan, paymentMethod = 'UNDEFINED') {
         if (!this.isConfigured()) {
-            console.log('[Asaas] Not configured. Would create subscription:', { customerId, planId });
-            return { success: true, simulated: true, subscriptionId: 'simulated_sub_' + Date.now() };
+            console.log('[Asaas] Not configured. Simulating subscription creation.');
+            return { id: 'simulated_sub_' + Date.now() };
         }
 
         try {
-            console.log('[Asaas] Creating subscription for customer:', customerId);
-            return { success: true, subscriptionId: 'sub_' + Date.now() };
+            // First due date: next month
+            const nextDueDate = new Date();
+            nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+            const formattedDate = nextDueDate.toISOString().split('T')[0];
+
+            const response = await this.client.post('/subscriptions', {
+                customer: tenant.asaas_customer_id,
+                billingType: paymentMethod, // BOLETO, CREDIT_CARD, PIX, UNDEFINED
+                nextDueDate: formattedDate,
+                value: plan.price,
+                cycle: 'MONTHLY',
+                description: `Plano ${plan.display_name} - Salão24h`,
+                externalReference: tenant.id.toString()
+            });
+            return response.data;
         } catch (error) {
-            console.error('[Asaas] Error:', error);
+            console.error('[Asaas] Create Subscription Error:', error.response?.data || error.message);
             throw new Error('Falha ao criar assinatura');
         }
     }
 
     /**
-     * Create a one-time charge
+     * Get a specific subscription
      */
-    async createCharge(customerId, amount, description) {
-        if (!this.isConfigured()) {
-            console.log('[Asaas] Not configured. Would create charge:', { customerId, amount, description });
-            return {
-                success: true,
-                simulated: true,
-                chargeId: 'simulated_charge_' + Date.now(),
-                paymentUrl: 'https://example.com/payment',
-            };
-        }
-
+    async getSubscription(subscriptionId) {
+        if (!this.isConfigured()) return { status: 'ACTIVE' };
         try {
-            console.log('[Asaas] Creating charge:', amount, 'for customer:', customerId);
-            return {
-                success: true,
-                chargeId: 'charge_' + Date.now(),
-                paymentUrl: 'https://www.asaas.com/c/example',
-            };
+            const response = await this.client.get(`/subscriptions/${subscriptionId}`);
+            return response.data;
         } catch (error) {
-            console.error('[Asaas] Error:', error);
-            throw new Error('Falha ao criar cobrança');
-        }
-    }
-
-    /**
-     * Process webhook from Asaas
-     */
-    async processWebhook(event, data) {
-        console.log('[Asaas Webhook] Event:', event, 'Data:', data);
-
-        switch (event) {
-            case 'PAYMENT_CONFIRMED':
-                // Handle payment confirmation
-                return { action: 'activate_subscription' };
-            case 'PAYMENT_OVERDUE':
-                // Handle overdue payment
-                return { action: 'notify_overdue' };
-            case 'PAYMENT_REFUNDED':
-                // Handle refund
-                return { action: 'deactivate_subscription' };
-            default:
-                return { action: 'unknown_event' };
-        }
-    }
-
-    /**
-     * Get payment status
-     */
-    async getPaymentStatus(chargeId) {
-        if (!this.isConfigured()) {
-            return { success: true, simulated: true, status: 'PENDING' };
-        }
-
-        try {
-            console.log('[Asaas] Getting payment status:', chargeId);
-            return { success: true, status: 'CONFIRMED' };
-        } catch (error) {
-            console.error('[Asaas] Error:', error);
-            throw new Error('Falha ao consultar status do pagamento');
+            console.error('[Asaas] Get Subscription Error:', error.response?.data || error.message);
+            throw new Error('Falha ao buscar assinatura');
         }
     }
 
@@ -124,16 +98,12 @@ class PaymentService {
      * Cancel subscription
      */
     async cancelSubscription(subscriptionId) {
-        if (!this.isConfigured()) {
-            console.log('[Asaas] Not configured. Would cancel subscription:', subscriptionId);
-            return { success: true, simulated: true };
-        }
-
+        if (!this.isConfigured()) return { deleted: true };
         try {
-            console.log('[Asaas] Canceling subscription:', subscriptionId);
-            return { success: true };
+            const response = await this.client.delete(`/subscriptions/${subscriptionId}`);
+            return response.data;
         } catch (error) {
-            console.error('[Asaas] Error:', error);
+            console.error('[Asaas] Cancel Subscription Error:', error.response?.data || error.message);
             throw new Error('Falha ao cancelar assinatura');
         }
     }

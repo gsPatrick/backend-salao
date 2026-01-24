@@ -125,9 +125,11 @@ exports.handleZapiWebhook = async (req, res) => {
 
                 // 5. Send Response back
                 const planAllowsAI = await aiService.checkPlanAllowsAI(tenant.id);
+                // Extra check for specific voice flag
+                const voiceAllowed = req.user?.is_super_admin || (tenant.plan && tenant.plan.ai_voice_response);
 
                 if (aiResponse) {
-                    if (isAudioIncoming && planAllowsAI && aiConfig.is_voice_enabled) {
+                    if (isAudioIncoming && voiceAllowed && aiConfig.is_voice_enabled) {
                         // Respond with Audio if input was audio and plan/settings allow it
                         console.log('[Z-API] Generating audio response...');
                         const audioBuffer = await aiService.generateSpeech(aiResponse);
@@ -260,9 +262,12 @@ exports.testChat = async (req, res) => {
         // 3. Process with AI
         const aiResponse = await aiService.processTestMessage(tenantId, message, history || []);
 
-        // 4. Handle Voice Output (TTS)
+        // 4. Handle Voice Output (TTS) - Plan Restriction
+        const tenant = await Tenant.findByPk(tenantId, { include: [{ model: Plan, as: 'plan' }] });
+        const voiceAllowed = req.user?.is_super_admin || (tenant?.plan && tenant.plan.ai_voice_response);
+
         let audioBase64 = null;
-        if (aiConfig?.is_voice_enabled && aiResponse) {
+        if (voiceAllowed && aiConfig?.is_voice_enabled && aiResponse) {
             console.log('[AI Test Chat] Generating audio response...');
             const audioBuffer = await aiService.generateSpeech(aiResponse);
             audioBase64 = audioBuffer.toString('base64');

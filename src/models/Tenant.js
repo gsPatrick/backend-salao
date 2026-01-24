@@ -70,9 +70,17 @@ module.exports = (sequelize) => {
             allowNull: true,
         },
         subscription_status: {
-            type: DataTypes.ENUM('trial', 'active', 'past_due', 'canceled'),
+            type: DataTypes.ENUM('trial', 'active', 'past_due', 'canceled', 'ACTIVE', 'OVERDUE', 'CANCELED'),
             allowNull: false,
             defaultValue: 'trial',
+        },
+        asaas_customer_id: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
+        },
+        asaas_subscription_id: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
         },
     }, {
         tableName: 'tenants',

@@ -27,9 +27,12 @@ const packageRoutes = require('../features/Package/package.routes');
 const adminRoutes = require('../features/Admin/admin.routes');
 const supportRoutes = require('../features/Support/support.routes');
 const unitRoutes = require('../features/Unit/unit.routes');
+const paymentRoutes = require('../features/Payment/payment.routes');
 
 // Mount routes
 router.use('/auth', authRoutes);
+// ...
+router.use('/payments', paymentRoutes);
 router.use('/users', userRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/contracts', contractRoutes);
