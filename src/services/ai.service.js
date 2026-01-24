@@ -293,31 +293,51 @@ ${professionalsList}
         const systemPrompt = await this.generateSystemPrompt(tenantId);
         const tools = this.getTools();
 
-        // Sanitization: Ensure history doesn't start with a 'tool' message 
-        // and every 'tool' message is preceded by an 'assistant' message with 'tool_calls'.
-        const sanitizedHistory = [];
-        for (let i = 0; i < history.length; i++) {
-            const msg = history[i];
-            if (msg.role === 'tool') {
-                const prev = sanitizedHistory[sanitizedHistory.length - 1];
-                if (prev && prev.role === 'assistant' && prev.tool_calls) {
+        // Robust Sanitization:
+        // 1. Every 'tool' response must clearly correspond to a previous 'assistant' call.
+        // 2. We keep sequences intact or drop them entirely if broken by a history slice.
+        let sanitizedHistory = [];
+        let callSequence = [];
+        let openCallIds = new Set();
+
+        for (const msg of history) {
+            if (msg.role === 'assistant' && msg.tool_calls) {
+                // If there's an unfinished sequence before this, it's malformed history. Drop it.
+                if (openCallIds.size > 0) {
+                    console.warn('[AI History] Dropping incomplete previous sequence');
+                    sanitizedHistory = sanitizedHistory.slice(0, -callSequence.length);
+                }
+                callSequence = [msg];
+                openCallIds = new Set(msg.tool_calls.map(tc => tc.id));
+                sanitizedHistory.push(msg);
+            } else if (msg.role === 'tool') {
+                if (openCallIds.has(msg.tool_call_id)) {
                     sanitizedHistory.push(msg);
+                    callSequence.push(msg);
+                    openCallIds.delete(msg.tool_call_id);
                 } else {
-                    console.warn('[AI History] Dropping orphaned tool message');
+                    console.warn(`[AI History] Dropping orphaned tool message: ${msg.tool_call_id}`);
                 }
             } else {
+                // If sequence was interrupted by another role while waiting for tools, drop the sequence
+                if (openCallIds.size > 0) {
+                    console.warn('[AI History] Sequence interrupted. Dropping incomplete sequence.');
+                    sanitizedHistory = sanitizedHistory.slice(0, -callSequence.length);
+                    openCallIds.clear();
+                    callSequence = [];
+                }
                 sanitizedHistory.push(msg);
             }
         }
 
-        // Final safety: Remove any trailing assistant message with tool_calls but no tool response
-        while (sanitizedHistory.length > 0) {
-            const last = sanitizedHistory[sanitizedHistory.length - 1];
-            if (last.role === 'assistant' && last.tool_calls) {
-                sanitizedHistory.pop();
-            } else {
-                break;
-            }
+        // Final safety: Remove unfinished sequence at the end if any
+        if (openCallIds.size > 0) {
+            sanitizedHistory = sanitizedHistory.slice(0, -callSequence.length);
+        }
+
+        // Ensure we don't start with a 'tool' role after all cleaning
+        while (sanitizedHistory.length > 0 && sanitizedHistory[0].role === 'tool') {
+            sanitizedHistory.shift();
         }
 
         try {
