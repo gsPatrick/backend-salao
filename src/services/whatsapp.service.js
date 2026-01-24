@@ -54,7 +54,8 @@ class WhatsAppService {
         }
 
         try {
-            const base64Audio = audioBuffer.toString('base64');
+            // Z-API often requires the data URI prefix for Base64 media
+            const base64Audio = `data:audio/ogg;base64,${audioBuffer.toString('base64')}`;
             const response = await axios.post(`${this.baseUrl}/send-audio`, {
                 phone: phone,
                 audio: base64Audio

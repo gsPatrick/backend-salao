@@ -241,7 +241,7 @@ ${professionalsList}
             model: "tts-1",
             voice: voice,
             input: text,
-            response_format: "mp3"
+            response_format: "opus"
         });
 
         const buffer = Buffer.from(await response.arrayBuffer());
