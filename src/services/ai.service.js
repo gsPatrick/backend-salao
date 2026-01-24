@@ -69,7 +69,9 @@ class AIService {
             .map(s => `- ${s.name} (ID: ${s.id}, R$ ${s.price}, ${s.duration}min)`).join('\n');
         const professionalsList = tenant.professionals.filter(p => !p.is_suspended && !p.is_archived)
             .map(p => `- ${p.name} (ID: ${p.id})`).join('\n');
-        const businessHours = JSON.stringify(tenant.business_hours || {});
+        const businessHours = tenant.business_hours && Object.keys(tenant.business_hours).length > 0
+            ? JSON.stringify(tenant.business_hours)
+            : "Segunda a Sexta das 08:00 às 18:00 (Sábado e Domingo fechado)";
         const customBehavior = config?.prompt_behavior || config?.personality || "Seja cordial, profissional e prestativa.";
 
         return `

@@ -318,6 +318,9 @@ class AppointmentService {
             return true;
         });
 
+        const now = new Date();
+        const requestDate = new Date(date + 'T00:00:00');
+
         if (requestDate.toDateString() === now.toDateString()) {
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
             const slots = availableSlots
