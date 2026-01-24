@@ -3,29 +3,22 @@ const { Plan, Tenant, User, Professional, Service, AIAgentConfig, sequelize } = 
 
 module.exports = {
     up: async (queryInterface, Sequelize) => {
-        // We call our internal function. Note: seedDatabase handles its own process.exit, 
-        // but when called via up() we want to let Sequelize handle it.
-        // However, seedDatabase is async. Let's refactor slightly to separate logic.
         return seedDatabaseLogic();
     },
 
     down: async (queryInterface, Sequelize) => {
-        // Implementation for rollback if needed
     }
 };
 
 async function seedDatabaseLogic() {
     try {
         console.log('🌱 Starting database seeding...');
-
-        // Sync all models (create tables)
-        // Note: Using sync() in seeds can be risky in production, but here we want to ensure tables exist and are up to date.
         await sequelize.sync({ alter: true });
         console.log('✅ Database synced');
 
         // 1. Create Plans
         console.log('📋 Creating plans...');
-        const plans = await Plan.bulkCreate([
+        await Plan.bulkCreate([
             {
                 name: 'individual',
                 display_name: 'Individual',
@@ -97,53 +90,59 @@ async function seedDatabaseLogic() {
                 is_active: true,
             },
         ], { ignoreDuplicates: true });
-        console.log(`✅ Created ${plans.length} plans`);
 
-        // Get the Vitalício plan for Super Admin
-        const vitalicioPlan = plans.find(p => p.name === 'vitalicio');
-        const proPlan = plans.find(p => p.name === 'pro');
+        const allPlans = await Plan.findAll();
+        console.log(`✅ Processed ${allPlans.length} plans`);
 
+        // Get the requested plans
+        const vitalicioPlan = allPlans.find(p => p.name === 'vitalicio');
+        const proPlan = allPlans.find(p => p.name === 'pro');
+
+        if (!vitalicioPlan) throw new Error('Vitalicio plan not found after creation');
         if (!proPlan) throw new Error('Pro plan not found after creation');
 
-        // 2. Create first Tenant (Salão 24h Demo)
-        console.log('🏢 Creating default tenant...');
-        const [tenant] = await Tenant.findOrCreate({
-            where: { slug: 'salao24h-demo' },
-            defaults: {
-                name: 'Salão 24h Demo',
-                plan_id: proPlan.id,
-                phone: '(81) 3333-4444',
-                email: 'contato@salao24h.com',
-                address: {
-                    street: 'Rua das Flores',
-                    number: '123',
-                    neighborhood: 'Boa Viagem',
-                    city: 'Recife',
-                    state: 'PE',
-                    cep: '51020-000',
-                },
-                is_active: true,
-                subscription_status: 'active',
-            }
-        });
-        console.log(`✅ Created/Found tenant: ${tenant.name}`);
+        // 2. Create/Update main Tenant (ID 1 preference)
+        console.log('🏢 Processing main tenant...');
+        let tenant = await Tenant.findByPk(1);
+        if (tenant) {
+            await tenant.update({
+                name: 'Salão24h Matriz',
+                slug: 'salao24h-matriz',
+                plan_id: vitalicioPlan.id,
+                subscription_status: 'active'
+            });
+        } else {
+            [tenant] = await Tenant.findOrCreate({
+                where: { slug: 'salao24h-matriz' },
+                defaults: {
+                    name: 'Salão24h Matriz',
+                    plan_id: vitalicioPlan.id,
+                    is_active: true,
+                    subscription_status: 'active'
+                }
+            });
+        }
+        console.log(`✅ Main tenant ready: ${tenant.name} (ID: ${tenant.id})`);
 
-        // 3. Create Super Admin user (Wagner)
-        console.log('👤 Creating Super Admin user...');
+        // 3. Create/Update Super Admin user (Wagner)
+        console.log('👤 Processing Super Admin user...');
         const [superAdmin] = await User.findOrCreate({
             where: { email: 'admin@salao24h.com' },
             defaults: {
-                tenant_id: null,
+                tenant_id: tenant.id,
                 name: 'Wagner Vicente',
                 password: 'admin',
-                avatar_url: 'https://i.pravatar.cc/150?u=whagnervicente',
                 role: 'admin',
                 is_super_admin: true,
                 is_active: true,
-                permissions: {},
             }
         });
-        console.log(`✅ Created/Found Super Admin: ${superAdmin.email}`);
+
+        await superAdmin.update({
+            tenant_id: tenant.id,
+            is_super_admin: true
+        });
+        console.log(`✅ Super Admin ready: ${superAdmin.email} linked to Tenant ${tenant.id}`);
 
         // 4. Create tenant admin user
         console.log('👤 Creating tenant admin user...');
@@ -210,8 +209,8 @@ async function seedDatabaseLogic() {
 
         // 6. Create Professionals
         console.log('💇 Creating professionals...');
-        const [profWagner] = await Professional.findOrCreate({
-            where: { name: 'Wagner Vicente' },
+        await Professional.findOrCreate({
+            where: { name: 'Wagner Vicente', tenant_id: tenant.id },
             defaults: {
                 tenant_id: tenant.id,
                 user_id: superAdmin.id,
@@ -221,8 +220,8 @@ async function seedDatabaseLogic() {
             }
         });
 
-        const [profFernanda] = await Professional.findOrCreate({
-            where: { name: 'Fernanda Lima' },
+        await Professional.findOrCreate({
+            where: { name: 'Fernanda Lima', tenant_id: tenant.id },
             defaults: {
                 tenant_id: tenant.id,
                 name: 'Fernanda Lima',
@@ -234,7 +233,7 @@ async function seedDatabaseLogic() {
         // 7. Create Services
         console.log('✂️ Creating services...');
         await Service.findOrCreate({
-            where: { name: 'Corte Masculino' },
+            where: { name: 'Corte Masculino', tenant_id: tenant.id },
             defaults: {
                 tenant_id: tenant.id,
                 name: 'Corte Masculino',
@@ -246,7 +245,7 @@ async function seedDatabaseLogic() {
         });
 
         await Service.findOrCreate({
-            where: { name: 'Barba' },
+            where: { name: 'Barba', tenant_id: tenant.id },
             defaults: {
                 tenant_id: tenant.id,
                 name: 'Barba',
@@ -257,13 +256,13 @@ async function seedDatabaseLogic() {
             }
         });
 
-        // Create AI Agent Config for Demo
+        // Create AI Agent Config for Matriz
         console.log('🤖 Creating AI Agent config...');
         await AIAgentConfig.findOrCreate({
             where: { tenant_id: tenant.id },
             defaults: {
                 zapi_instance_id: '3EDA29EB314652490154DA5DEAAACE51',
-                active_plan: 'Avançada',
+                active_plan: 'Vitalício',
                 is_voice_enabled: true,
                 personality: 'Wagner Vicente (Idealizador)',
                 prompt_behavior: 'Seja o Wagner, o criador do Salão24h. Seja carismático, proativo e ajude os clientes com agendamentos e dúvidas sobre a plataforma.'
@@ -277,7 +276,6 @@ async function seedDatabaseLogic() {
     }
 }
 
-// Run if called directly
 if (require.main === module) {
     seedDatabaseLogic().then(() => process.exit(0)).catch(() => process.exit(1));
 }
