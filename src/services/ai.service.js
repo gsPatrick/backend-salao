@@ -236,9 +236,9 @@ ${professionalsList}
     /**
      * Generate Audio response using TTS
      */
-    async generateSpeech(text, voice = 'coral') {
+    async generateSpeech(text, voice = 'alloy') {
         const response = await this.openai.audio.speech.create({
-            model: "gpt-4o-mini-tts",
+            model: "tts-1",
             voice: voice,
             input: text,
             response_format: "mp3"
@@ -291,10 +291,37 @@ ${professionalsList}
         const systemPrompt = await this.generateSystemPrompt(tenantId);
         const tools = this.getTools();
 
+        // Sanitization: Ensure history doesn't start with a 'tool' message 
+        // and every 'tool' message is preceded by an 'assistant' message with 'tool_calls'.
+        const sanitizedHistory = [];
+        for (let i = 0; i < history.length; i++) {
+            const msg = history[i];
+            if (msg.role === 'tool') {
+                const prev = sanitizedHistory[sanitizedHistory.length - 1];
+                if (prev && prev.role === 'assistant' && prev.tool_calls) {
+                    sanitizedHistory.push(msg);
+                } else {
+                    console.warn('[AI History] Dropping orphaned tool message');
+                }
+            } else {
+                sanitizedHistory.push(msg);
+            }
+        }
+
+        // Final safety: Remove any trailing assistant message with tool_calls but no tool response
+        while (sanitizedHistory.length > 0) {
+            const last = sanitizedHistory[sanitizedHistory.length - 1];
+            if (last.role === 'assistant' && last.tool_calls) {
+                sanitizedHistory.pop();
+            } else {
+                break;
+            }
+        }
+
         try {
             let response = await this.openai.chat.completions.create({
                 model: "gpt-4o",
-                messages: [{ role: "system", content: systemPrompt }, ...history],
+                messages: [{ role: "system", content: systemPrompt }, ...sanitizedHistory],
                 tools: tools,
                 tool_choice: "auto",
             });
