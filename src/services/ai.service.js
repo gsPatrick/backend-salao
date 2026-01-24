@@ -101,8 +101,10 @@ ${professionalsList}
    - ID do Serviço (Service ID)
    - ID do Profissional (Professional ID) - NÃO PODE SER NULL NESTA ETAPA
    - Nome do Cliente
-5. SEMPRE use 'checkAvailability' para sugerir horários. NUNCA invente horários.
-6. Nunca responda com mais de 50 palavras.
+5. PROATIVIDADE EM CONSULTAS: Se o cliente perguntar apenas "Quais horários vocês têm?", "Quais os dias?" ou algo genérico, chame 'checkAvailability' para hoje e/ou amanhã e APRESENTE as opções disponíveis imediatamente. Não espere ele perguntar data e hora específicas.
+6. Se no passo 5 os horários de hoje já passaram, consulte para amanhã.
+7. SEMPRE use 'checkAvailability' para sugerir horários. NUNCA invente horários.
+8. Nunca responda com mais de 50 palavras.
  `;
     }
 
@@ -115,7 +117,7 @@ ${professionalsList}
                 type: "function",
                 function: {
                     name: "checkAvailability",
-                    description: "Consulta horários disponíveis para um serviço e profissional em uma data específica.",
+                    description: "Consulta horários disponíveis. Chame esta função SEMPRE que o cliente perguntar sobre disponibilidade, horários, ou quando houver interesse em agendar mas ele não especificou hora. Apresente os horários encontrados de forma amigável.",
                     parameters: {
                         type: "object",
                         properties: {

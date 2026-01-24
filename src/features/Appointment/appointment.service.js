@@ -206,14 +206,27 @@ class AppointmentService {
         const tenant = await TenantModel.findByPk(tenantId);
         if (!tenant) throw new Error('Tenant não encontrado');
 
-        const businessHours = tenant.business_hours || [];
+        const defaultHours = [
+            { day: 'segunda-feira', open: true, start: '09:00', end: '18:00' },
+            { day: 'terça-feira', open: true, start: '09:00', end: '18:00' },
+            { day: 'quarta-feira', open: true, start: '09:00', end: '18:00' },
+            { day: 'quinta-feira', open: true, start: '09:00', end: '18:00' },
+            { day: 'sexta-feira', open: true, start: '09:00', end: '18:00' },
+            { day: 'sábado', open: false, start: '09:00', end: '13:00' },
+            { day: 'domingo', open: false, start: '09:00', end: '12:00' }
+        ];
+
+        const businessHours = (tenant.business_hours && tenant.business_hours.length > 0)
+            ? tenant.business_hours
+            : defaultHours;
+
         const availabilityDate = new Date(date + 'T00:00:00');
         const dayOfWeekLabel = availabilityDate.toLocaleDateString('pt-BR', { weekday: 'long' });
 
         // Find salon hours for this day (fuzzy match normalized)
         const salonDay = businessHours.find(bh =>
             bh.day.toLowerCase().trim() === dayOfWeekLabel.toLowerCase().trim()
-        );
+        ) || defaultHours.find(bh => bh.day.toLowerCase().trim() === dayOfWeekLabel.toLowerCase().trim());
 
         if (salonDay && !salonDay.open) {
             return []; // Salon is closed
