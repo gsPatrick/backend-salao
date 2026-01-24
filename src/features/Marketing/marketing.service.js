@@ -1,4 +1,4 @@
-const { Campaign, AcquisitionChannel, DirectMailCampaign } = require('../../models');
+const { Campaign, AcquisitionChannel, MarketingCampaign } = require('../../models');
 
 class MarketingService {
     // --- Campaigns ---
@@ -57,33 +57,33 @@ class MarketingService {
         return null;
     }
 
-    // --- Direct Mail Campaigns ---
+    // --- Direct Mail Campaigns (MarketingCampaign) ---
     async listDirectMail(tenantId) {
-        return DirectMailCampaign.findAll({
+        return MarketingCampaign.findAll({
             where: { tenant_id: tenantId },
             order: [['created_at', 'DESC']]
         });
     }
 
     async createDirectMail(data, tenantId) {
-        return DirectMailCampaign.create({
+        return MarketingCampaign.create({
             ...data,
             tenant_id: tenantId
         });
     }
 
     async updateDirectMail(id, data, tenantId) {
-        const [updated] = await DirectMailCampaign.update(data, {
+        const [updated] = await MarketingCampaign.update(data, {
             where: { id, tenant_id: tenantId }
         });
         if (updated) {
-            return DirectMailCampaign.findOne({ where: { id, tenant_id: tenantId } });
+            return MarketingCampaign.findOne({ where: { id, tenant_id: tenantId } });
         }
         return null;
     }
 
     async deleteDirectMail(id, tenantId) {
-        return DirectMailCampaign.destroy({
+        return MarketingCampaign.destroy({
             where: { id, tenant_id: tenantId }
         });
     }

@@ -6,6 +6,7 @@ const authMiddleware = require('../../features/Auth/auth.middleware');
 router.get('/settings', authMiddleware.authenticate, crmController.getSettings);
 router.put('/settings', authMiddleware.authenticate, crmController.updateSettings);
 router.get('/leads', authMiddleware.authenticate, crmController.listLeads);
-router.patch('/leads/:id/stage', authMiddleware.authenticate, crmController.updateLeadStage);
+router.post('/leads', authMiddleware.authenticate, crmController.createLead);
+router.patch('/leads/:id/status', authMiddleware.authenticate, crmController.updateLeadStatus);
 
 module.exports = router;

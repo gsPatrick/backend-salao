@@ -27,7 +27,9 @@ const models = {
     Promotion: require('../features/Promotion/promotion.model'),
     ContractTemplate: require('../features/Contract/contract.model'),
     MonthlyPackage: require('../features/Package/package.model').MonthlyPackage,
-    PackageSubscription: require('../features/Package/package.model').PackageSubscription
+    PackageSubscription: require('../features/Package/package.model').PackageSubscription,
+    Lead: require('../features/CRM/lead.model'),
+    MarketingCampaign: require('../features/Marketing/marketing_campaign.model')
 };
 
 // Initialize models
@@ -49,7 +51,8 @@ const {
     FinancialTransaction, StockTransaction, Product, TimeRecord,
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
-    Promotion, ContractTemplate, MonthlyPackage, PackageSubscription
+    Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
+    Lead, MarketingCampaign
 } = db;
 
 // Notification associations
@@ -164,6 +167,14 @@ MonthlyPackage.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 Tenant.hasMany(PackageSubscription, { foreignKey: 'tenant_id' });
 PackageSubscription.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// Lead associations
+Tenant.hasMany(Lead, { foreignKey: 'tenant_id' });
+Lead.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// MarketingCampaign associations
+Tenant.hasMany(MarketingCampaign, { foreignKey: 'tenant_id' });
+MarketingCampaign.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 db.sequelize = sequelize;
 

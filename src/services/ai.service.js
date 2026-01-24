@@ -356,6 +356,28 @@ ${professionalsList}
             last_message: messageText
         });
     }
+
+    /**
+     * Improve text for marketing campaigns
+     */
+    async improveText(text) {
+        if (!this.isConfigured()) throw new Error('OpenAI não configurada');
+
+        const prompt = `Você é um especialista em marketing para salões de beleza. Melhore a seguinte mensagem para ser mais engajadora, persuasiva e profissional. Mantenha a mensagem central, mas aprimore a redação. Retorne apenas o texto melhorado em português do Brasil.\n\nMensagem: "${text}"`;
+
+        try {
+            const response = await this.openai.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [{ role: "user", content: prompt }],
+                max_tokens: 500
+            });
+
+            return response.choices[0].message.content.trim();
+        } catch (error) {
+            console.error('[AI Improve Text Error]:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new AIService();

@@ -11,9 +11,10 @@ const DirectMailCampaign = sequelize.define('direct_mail_campaign', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    unit_name: {
+    unitName: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        field: 'unit_name'
     },
     name: {
         type: DataTypes.STRING,
@@ -23,49 +24,59 @@ const DirectMailCampaign = sequelize.define('direct_mail_campaign', {
         type: DataTypes.TEXT,
         allowNull: true
     },
-    send_type: {
+    sendType: {
         type: DataTypes.ENUM('Email', 'SMS', 'WhatsApp'),
-        defaultValue: 'Email'
+        defaultValue: 'Email',
+        field: 'send_type'
     },
-    email_subject: {
+    emailSubject: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        field: 'email_subject'
     },
-    email_body: {
+    emailBody: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        field: 'email_body'
     },
-    email_attachment_name: {
+    emailAttachmentName: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        field: 'email_attachment_name'
     },
-    phone_number: { // Sender ID or number
+    phoneNumber: { // Sender ID or number
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        field: 'phone_number'
     },
-    sms_body: {
+    smsBody: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        field: 'sms_body'
     },
-    whatsapp_body: {
+    whatsappBody: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        field: 'whatsapp_body'
     },
-    whatsapp_media_name: {
+    whatsappMediaName: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        field: 'whatsapp_media_name'
     },
-    schedule_date: {
+    scheduleDate: {
         type: DataTypes.DATEONLY,
-        allowNull: true
+        allowNull: true,
+        field: 'schedule_date'
     },
     status: {
         type: DataTypes.ENUM('Not Sent', 'Sent'),
         defaultValue: 'Not Sent'
     },
-    schedule_settings: {
+    scheduleSettings: {
         type: DataTypes.JSONB,
-        defaultValue: []
+        defaultValue: [],
+        field: 'schedule_settings'
     },
     history: {
         type: DataTypes.JSONB,

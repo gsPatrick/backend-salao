@@ -1,4 +1,4 @@
-const { CRMSettings, Client } = require('../../models');
+const { CRMSettings, Lead } = require('../../models');
 
 class CRMService {
     async getSettings(tenantId) {
@@ -23,18 +23,25 @@ class CRMService {
 
     async listLeads(tenantId, filters = {}) {
         const where = { tenant_id: tenantId };
-        if (filters.stage) where.crm_stage = filters.stage;
+        if (filters.status) where.status = filters.status;
 
-        return Client.findAll({ where });
+        return Lead.findAll({ where });
     }
 
-    async updateLeadStage(leadId, stageId, tenantId) {
-        const lead = await Client.findOne({ where: { id: leadId, tenant_id: tenantId } });
+    async createLead(data, tenantId) {
+        return Lead.create({
+            ...data,
+            tenant_id: tenantId
+        });
+    }
+
+    async updateLeadStatus(leadId, status, tenantId) {
+        const lead = await Lead.findOne({ where: { id: leadId, tenant_id: tenantId } });
         if (!lead) {
             throw new Error('Lead não encontrado');
         }
 
-        await lead.update({ crm_stage: stageId });
+        await lead.update({ status });
         return lead;
     }
 }

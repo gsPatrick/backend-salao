@@ -152,3 +152,17 @@ exports.toggleChatStatus = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+exports.improveText = async (req, res) => {
+    try {
+        const { text } = req.body;
+        if (!text) {
+            return res.status(400).json({ error: 'Texto é obrigatório' });
+        }
+
+        const improvedText = await aiService.improveText(text);
+        res.json({ text: improvedText });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

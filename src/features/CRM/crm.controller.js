@@ -33,11 +33,20 @@ exports.listLeads = async (req, res) => {
     }
 };
 
-exports.updateLeadStage = async (req, res) => {
+exports.createLead = async (req, res) => {
+    try {
+        const lead = await crmService.createLead(req.body, req.user.tenant_id);
+        res.status(201).json(lead);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.updateLeadStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { stageId } = req.body;
-        const lead = await crmService.updateLeadStage(id, stageId, req.user.tenant_id);
+        const { status } = req.body;
+        const lead = await crmService.updateLeadStatus(id, status, req.user.tenant_id);
         res.json({ success: true, data: lead });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

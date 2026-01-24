@@ -11,49 +11,58 @@ const Campaign = sequelize.define('campaign', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    unit_name: {
+    unitName: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        field: 'unit_name'
     },
     name: {
         type: DataTypes.STRING,
         allowNull: false
     },
-    target_audience: {
-        type: DataTypes.JSONB, // Array of strings/identifiers
-        defaultValue: []
+    targetAudience: {
+        type: DataTypes.JSONB,
+        defaultValue: [],
+        field: 'target_audience'
     },
-    audience_count: {
+    audienceCount: {
         type: DataTypes.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
+        field: 'audience_count'
     },
-    message_type: {
+    messageType: {
         type: DataTypes.ENUM('texto', 'imagem', 'audio', 'arquivo'),
-        defaultValue: 'texto'
+        defaultValue: 'texto',
+        field: 'message_type'
     },
-    message_text: {
+    messageText: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        field: 'message_text'
     },
-    schedule_date: {
+    scheduleDate: {
         type: DataTypes.DATEONLY,
-        allowNull: true
+        allowNull: true,
+        field: 'schedule_date'
     },
     status: {
         type: DataTypes.ENUM('Agendada', 'Em Andamento', 'Concluída'),
         defaultValue: 'Agendada'
     },
-    stats_reach: {
+    statsReach: {
         type: DataTypes.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
+        field: 'stats_reach'
     },
-    stats_conversions: {
+    statsConversions: {
         type: DataTypes.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
+        field: 'stats_conversions'
     },
-    stats_revenue: {
+    statsRevenue: {
         type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0
+        defaultValue: 0,
+        field: 'stats_revenue'
     },
     archived: {
         type: DataTypes.BOOLEAN,
@@ -61,7 +70,23 @@ const Campaign = sequelize.define('campaign', {
     }
 }, {
     tableName: 'campaigns',
-    underscored: true
+    underscored: true,
+    getterMethods: {
+        stats() {
+            return {
+                alcance: this.statsReach,
+                conversoes: this.statsConversions,
+                receita: parseFloat(this.statsRevenue)
+            };
+        }
+    }
 });
+
+// To ensure stats shows up in JSON
+Campaign.prototype.toJSON = function () {
+    const values = { ...this.get() };
+    values.stats = this.stats;
+    return values;
+};
 
 module.exports = Campaign;
