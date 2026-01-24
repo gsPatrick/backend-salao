@@ -35,8 +35,10 @@ exports.updateConfig = async (req, res) => {
     }
 };
 
+const messageBuffer = new Map();
+
 /**
- * Handle Webhook from Z-API
+ * Handle Webhook from Z-API with Message Buffering
  */
 exports.handleZapiWebhook = async (req, res) => {
     try {
@@ -88,7 +90,6 @@ exports.handleZapiWebhook = async (req, res) => {
         }
 
         // --- NEW: Restrict to test number during testing phase ---
-        // --- NEW: Restrict to test number during testing phase ---
         // Allowing both with and without 9th digit just in case
         const ALLOWED_NUMBERS = ['5571982862912', '557182862912'];
         const isTestUser = ALLOWED_NUMBERS.some(num => phone.includes(num));
@@ -100,29 +101,52 @@ exports.handleZapiWebhook = async (req, res) => {
             return res.json({ success: true, message: 'AI ignored per filter' });
         }
 
-        // 3. Process with AI (Includes internal check for Manual status)
-        const aiResponse = await aiService.processMessage(tenant.id, phone, messageText, isAudioIncoming);
+        // --- Message Buffering Logic ---
+        const bufferKey = `${aiConfig.tenant_id}:${phone}`;
 
-        // 4. Send Response back
-        const planAllowsAI = await aiService.checkPlanAllowsAI(tenant.id);
+        // 1. Always sync user message to history immediately for UI feedback
+        await aiService.synchronizeUserMessage(aiConfig.tenant_id, phone, messageText);
 
-        if (aiResponse) {
-            if (isAudioIncoming && planAllowsAI && aiConfig.is_voice_enabled) {
-                // Respond with Audio if input was audio and plan/settings allow it
-                console.log('[Z-API] Generating audio response...');
-                const audioBuffer = await aiService.generateSpeech(aiResponse);
-                await whatsappService.sendAudio(phone, audioBuffer);
-            } else {
-                // Default to Text response
-                await whatsappService.sendMessage(phone, aiResponse);
-            }
+        // 2. Clear existing timeout if any
+        if (messageBuffer.has(bufferKey)) {
+            clearTimeout(messageBuffer.get(bufferKey).timeout);
+            const existingText = messageBuffer.get(bufferKey).text;
+            messageText = `${existingText}\n${messageText}`; // Append new message
         }
 
-        res.json({
-            success: true,
-            message: aiResponse,
-            transcription: isAudioIncoming ? messageText : undefined
-        });
+        // 3. Set new timeout
+        const timeout = setTimeout(async () => {
+            try {
+                console.log(`[AI Buffer] Processing buffered message for ${phone}: "${messageText}"`);
+                messageBuffer.delete(bufferKey); // Clear buffer
+
+                // 4. Process with AI (Includes internal check for Manual status)
+                const aiResponse = await aiService.processMessage(tenant.id, phone, messageText, isAudioIncoming);
+
+                // 5. Send Response back
+                const planAllowsAI = await aiService.checkPlanAllowsAI(tenant.id);
+
+                if (aiResponse) {
+                    if (isAudioIncoming && planAllowsAI && aiConfig.is_voice_enabled) {
+                        // Respond with Audio if input was audio and plan/settings allow it
+                        console.log('[Z-API] Generating audio response...');
+                        const audioBuffer = await aiService.generateSpeech(aiResponse);
+                        await whatsappService.sendAudio(phone, audioBuffer);
+                    } else {
+                        // Default to Text response
+                        await whatsappService.sendMessage(phone, aiResponse);
+                    }
+                }
+            } catch (err) {
+                console.error('[AI Buffer Error]:', err);
+            }
+        }, 3000); // Wait 3 seconds
+
+        // Store new timeout and accumulated text
+        messageBuffer.set(bufferKey, { timeout, text: messageText });
+
+        res.json({ success: true, message: 'Message buffered for AI processing' });
+
     } catch (error) {
         console.error('[Z-API Webhook Error]:', error);
         res.status(200).json({ success: false, error: error.message });
