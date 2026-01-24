@@ -9,15 +9,14 @@ const FormData = require('form-data');
 const axios = require('axios');
 
 /**
- * AIService - Version 2.6 (Ultra-Robust Tool Sequence & Natural Voice)
+ * AIService - Version 2.7 (Atomic History & No-Hallucination Tools)
  */
 class AIService {
     constructor() {
-        console.log('[AI Service] Initializing Version 2.6...');
+        console.log('[AI Service] Initializing Version 2.7...');
         this.openai = new OpenAI({
             apiKey: config.externalServices.openai.apiKey,
         });
-        this.conversations = new Map();
     }
 
     isConfigured() {
@@ -25,30 +24,38 @@ class AIService {
     }
 
     /**
-     * Slices history without breaking tool sequence integrity.
-     * Ensures we never start with a 'tool' message or end with an unanswered assistant call.
+     * Ensures history integrity for OpenAI.
+     * 1. Never starts with a 'tool' message.
+     * 2. Never ends with an unanswered 'assistant' tool call.
+     * 3. Every 'tool' message MUST have its corresponding 'assistant' call included.
      */
-    safeSliceHistory(history, limit = 20) {
-        if (history.length <= limit) {
-            let clean = [...history];
-            while (clean.length > 0 && clean[0].role === 'tool') clean.shift();
-            while (clean.length > 0 && clean[clean.length - 1].role === 'assistant' && clean[clean.length - 1].tool_calls) clean.pop();
-            return clean;
+    getSafeMessages(systemPrompt, history, limit = 20) {
+        let messages = [...history];
+
+        // Truncate to limit first
+        if (messages.length > limit) {
+            messages = messages.slice(-limit);
         }
 
-        let slicePoint = history.length - limit;
-
-        // Backward-walking logic: if we are on a 'tool' message, we MUST go back to find its 'assistant' call
-        while (slicePoint > 0 && history[slicePoint].role === 'tool') {
-            slicePoint--;
+        // 1. Remove leading tool messages that lost their parent assistant call
+        while (messages.length > 0 && messages[0].role === 'tool') {
+            messages.shift();
         }
 
-        // Final trimming to ensure the start of the array is valid
-        let result = history.slice(slicePoint);
-        while (result.length > 0 && result[0].role === 'tool') result.shift();
-        while (result.length > 0 && result[result.length - 1].role === 'assistant' && result[result.length - 1].tool_calls) result.pop();
+        // 2. Remove trailing assistant messages that have tool_calls but no children (they'll be re-generated)
+        while (messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].tool_calls) {
+            messages.pop();
+        }
 
-        return result;
+        // 3. Final validation: OpenAI requires that tool calls are balanced
+        // If we still have a tool message whose assistant call was just outside the slice, we must drop it
+        const firstMsg = messages[0];
+        if (firstMsg && firstMsg.role === 'tool') {
+            // This shouldn't happen after step 1, but just in case
+            messages.shift();
+        }
+
+        return [{ role: "system", content: systemPrompt }, ...messages];
     }
 
     async checkPlanAllowsAI(tenantId) {
@@ -69,9 +76,11 @@ class AIService {
             .map(s => `- ${s.name} (ID: ${s.id}, R$ ${s.price}, ${s.duration}min)`).join('\n');
         const professionalsList = tenant.professionals.filter(p => !p.is_suspended && !p.is_archived)
             .map(p => `- ${p.name} (ID: ${p.id})`).join('\n');
+
         const businessHours = tenant.business_hours && Object.keys(tenant.business_hours).length > 0
             ? JSON.stringify(tenant.business_hours)
-            : "Segunda a Sexta das 08:00 às 18:00 (Sábado e Domingo fechado)";
+            : "Segunda a Sexta das 08h às 18h (Sábado e Domingo fechado)";
+
         const customBehavior = config?.prompt_behavior || config?.personality || "Seja cordial, profissional e prestativa.";
 
         return `
@@ -79,24 +88,21 @@ Data de hoje: ${new Date().toISOString().split('T')[0]}
 Você é a recepcionista virtual do ${tenant.name}.
 Horário de Funcionamento: ${businessHours}
 
-## PERSONALIDADE E TOM
+## PERSONA
 - ${customBehavior}
-- Use português do Brasil amigável e direto.
+- Use português do Brasil natural e amigável.
+- Seja CONCISA: no máximo 2 frases curtas por resposta.
 
-## REGRAS DE OURO DE DICÇÃO (PARA ÁUDIO)
-1. **NUNCA** use zero à esquerda em horários. Fale "9 horas", **NUNCA** "09 horas".
-2. **MAERAMENTO OBRIGATÓRIO**:
-   - 08:00 -> "8 horas"
-   - 12:00 -> "meio dia" (fale sempre assim)
-   - 13:00 em diante -> "[Número] horas" (ex: "15:30 horas")
-3. Use sempre o sufixo "horas" para uma locução natural.
+## DICÇÃO E VOZ (NÃO NEGOCIÁVEL)
+Escreva os horários exatamente assim para a voz soar natural:
+1. SEMPRE use o sufixo "horas" (ex: "9 horas", "14:30 horas").
+2. NUNCA use zero à esquerda. Fale "8 horas", JAMAIS "08 horas".
+3. Meio dia (12:00) deve ser escrito OBRIGATORIAMENTE como "meio dia".
 
-## REGRAS DE RESPOSTA E DISPONIBILIDADE
-1. **IDENTIFICAÇÃO OBRIGATÓRIA**: Você deve falar o NOME do profissional Wagner ou Carlos em toda listagem de horários.
-   - CERTO: "O profissional Wagner tem disponível às 9 horas."
-   - ERRADO: "Temos horários às 9 horas."
-2. **DIAS FECHADOS**: Se o salão estiver fechado hoje, informe o horário padrão e JÁ CONSULTE disponibilidade para o próximo dia útil, citando NOMES e HORÁRIOS de forma proativa.
-3. **MÁXIMO 50 PALAVRAS**: Seja extremamente direto e conciso.
+## REGRAS DE OURO DE ATENDIMENTO
+1. **IDENTIFICAÇÃO OBRIGATÓRIA**: Você deve falar o NOME do profissional (Wagner ou Carlos) em toda resposta sobre horários.
+2. **SEGUNDA-FEIRA PROATIVA**: Se o salão estiver fechado hoje ou no dia solicitado, consulte o PRÓXIMO dia disponível e já ofereça os horários com o nome do profissional.
+3. **TRATAMENTO DE "SEM VAGAS"**: Se a consulta de horários vir vazada ([]), diga educadamente que não há mais vagas para esse dia. NUNCA diga que é um "erro técnico" ou "dificuldade de acesso".
 
 ## SERVIÇOS
 ${servicesList}
@@ -105,8 +111,8 @@ ${servicesList}
 ${professionalsList}
 
 ## AGENDAMENTO
-- Para 'bookAppointment', você DEVE ter: Data, Horário, Serviço, ID do Profissional (Obrigatório) e Nome.
-- NUNCA invente horários. Use sempre 'checkAvailability'.
+- Use 'checkAvailability' para sugerir horários. NUNCA invente horários.
+- Para marcar ('bookAppointment'), você PRECISA de: Data, Horário (HH:MM), ID do Serviço, ID do Profissional e Nome do cliente.
  `;
     }
 
@@ -115,16 +121,16 @@ ${professionalsList}
             {
                 type: "function",
                 function: {
-                    name: "checkAvailability",
-                    description: "Consulta horários disponíveis. Exige proatividade em citar o nome do profissional e usar a dicção correta das horas.",
+                    name: "consultarHorarios",
+                    description: "Consulta horários disponíveis. Use sempre que o cliente quiser saber 'quais horários' ou 'quando tem'.",
                     parameters: {
                         type: "object",
                         properties: {
-                            date: { type: "string" },
+                            data: { type: "string", description: "Data no formato YYYY-MM-DD" },
                             serviceId: { type: "integer" },
                             professionalId: { type: ["integer", "null"] }
                         },
-                        required: ["date", "serviceId"]
+                        required: ["data", "serviceId"]
                     }
                 }
             },
@@ -152,19 +158,22 @@ ${professionalsList}
     async handleToolCall(toolCall, tenantId, phone) {
         const { name } = toolCall.function;
         const args = JSON.parse(toolCall.function.arguments);
-        console.log(`[AI V2.6] Executing tool: ${name}`, args);
+        console.log(`[AI V2.7] Executing tool: ${name}`, args);
 
-        if (name === 'checkAvailability') {
+        if (name === 'consultarHorarios') {
             try {
-                const result = await appointmentService.getAvailability(args.professionalId, args.date, args.serviceId, tenantId);
-                return {
-                    success: true,
-                    availableSlots: result.slots,
-                    professional: result.professional,
-                    reminder: `VOCÊ DEVE FALAR O NOME DO PROFISSIONAL ${result.professional.name} E USAR A REGRA DE HORAS (EX: 9 HORAS).`
+                const result = await appointmentService.getAvailability(args.professionalId, args.data, args.serviceId, tenantId);
+                const output = {
+                    sucesso: true,
+                    profissional: result.professional.name,
+                    horarios_livres: result.slots,
+                    instrucao_voz: `Mencione o nome ${result.professional.name} e use 'horas' (ex: 9 horas).`
                 };
+                console.log(`[AI V2.7] Tool Result:`, output);
+                return output;
             } catch (error) {
-                return { success: false, error: error.message };
+                console.error(`[AI V2.7] Tool Error:`, error.message);
+                return { sucesso: false, erro: "Ocorreu um erro ao buscar no banco de dados." };
             }
         }
 
@@ -172,12 +181,12 @@ ${professionalsList}
             try {
                 let client = await Client.findOne({ where: { phone, tenant_id: tenantId } });
                 if (!client) client = await Client.create({ name: args.customerName, phone, tenant_id: tenantId });
-                const appointment = await appointmentService.create({
+                await appointmentService.create({
                     client_id: client.id, professional_id: args.professionalId, service_id: args.serviceId,
                     date: args.date, time: args.time, status: 'confirmado'
                 }, tenantId, null);
-                return { success: true, appointmentId: appointment.id, message: "Sucesso!" };
-            } catch (error) { return { success: false, error: error.message }; }
+                return { sucesso: true, mensagem: "Agendamento realizado com sucesso!" };
+            } catch (error) { return { sucesso: false, erro: error.message }; }
         }
         return { error: "Função não encontrada" };
     }
@@ -199,7 +208,7 @@ ${professionalsList}
     }
 
     async processMessage(tenantId, phone, messageText, isAudio = false) {
-        console.log(`[AI V2.6] Processing message for ${phone}`);
+        console.log(`[AI V2.7] Processing message for ${phone}`);
         if (!this.isConfigured()) return "Configuração pendente.";
 
         let chat = await AIChat.findOne({ where: { tenant_id: tenantId, customer_phone: phone } });
@@ -208,7 +217,7 @@ ${professionalsList}
         if (chat.status === 'manual') {
             let history = [...(chat.history || [])];
             history.push({ role: "user", content: messageText });
-            chat.history = this.safeSliceHistory(history);
+            chat.history = history.slice(-20);
             await chat.save();
             return null;
         }
@@ -219,7 +228,7 @@ ${professionalsList}
         const tools = this.getTools();
 
         try {
-            let currentMessages = [{ role: "system", content: systemPrompt }, ...this.safeSliceHistory(history)];
+            let currentMessages = this.getSafeMessages(systemPrompt, history);
             let response = await this.openai.chat.completions.create({ model: "gpt-4o", messages: currentMessages, tools, tool_choice: "auto" });
             let assistantMessage = response.choices[0].message;
 
@@ -229,19 +238,20 @@ ${professionalsList}
                     const result = await this.handleToolCall(toolCall, tenantId, phone);
                     history.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) });
                 }
-                currentMessages = [{ role: "system", content: systemPrompt }, ...this.safeSliceHistory(history, 30)];
+                // When finishing tools, we use more history to ensure the AI knows what just happened
+                currentMessages = this.getSafeMessages(systemPrompt, history, 30);
                 response = await this.openai.chat.completions.create({ model: "gpt-4o", messages: currentMessages, tools });
                 assistantMessage = response.choices[0].message;
             }
 
             history.push(assistantMessage);
-            chat.history = this.safeSliceHistory(history);
+            chat.history = history.slice(-20); // History in DB is just a record, no strict sequence rules
             chat.last_message = assistantMessage.content;
             chat.changed('history', true);
             await chat.save();
             return assistantMessage.content;
         } catch (error) {
-            console.error('[AI V2.6 Error]:', error.message, error.response?.data || '');
+            console.error('[AI V2.7 Error]:', error.message, error.response?.data || '');
             return "Desculpe, tive um problema técnico. Um atendente humano irá te ajudar em breve.";
         }
     }
@@ -252,7 +262,7 @@ ${professionalsList}
         let history = [...(chat.history || [])];
         if (history.length > 0 && history[history.length - 1].content === messageText) return;
         history.push({ role: "assistant", content: messageText });
-        chat.history = this.safeSliceHistory(history);
+        chat.history = history.slice(-20);
         chat.last_message = messageText;
         chat.changed('history', true);
         await chat.save();
@@ -263,7 +273,7 @@ ${professionalsList}
         if (!chat) chat = await AIChat.create({ tenant_id: tenantId, customer_phone: phone, history: [], status: 'active' });
         let history = [...(chat.history || [])];
         history.push({ role: "user", content: messageText });
-        chat.history = this.safeSliceHistory(history);
+        chat.history = history.slice(-20);
         chat.last_message = messageText;
         chat.changed('history', true);
         await chat.save();
@@ -278,21 +288,24 @@ ${professionalsList}
     async processTestMessage(tenantId, messageText, testHistory = []) {
         const systemPrompt = await this.generateSystemPrompt(tenantId);
         const tools = this.getTools();
-        const messages = [{ role: "system", content: systemPrompt }, ...testHistory, { role: "user", content: messageText }];
+        const historyCopy = [...testHistory];
+        historyCopy.push({ role: "user", content: messageText });
         try {
+            let messages = this.getSafeMessages(systemPrompt, historyCopy);
             let response = await this.openai.chat.completions.create({ model: "gpt-4o", messages, tools, tool_choice: "auto" });
             let assistantMessage = response.choices[0].message;
             while (assistantMessage.tool_calls) {
-                messages.push(assistantMessage);
+                historyCopy.push(assistantMessage);
                 for (const toolCall of assistantMessage.tool_calls) {
                     const result = await this.handleToolCall(toolCall, tenantId, "TEST");
-                    messages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) });
+                    historyCopy.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) });
                 }
+                messages = this.getSafeMessages(systemPrompt, historyCopy, 30);
                 response = await this.openai.chat.completions.create({ model: "gpt-4o", messages, tools });
                 assistantMessage = response.choices[0].message;
             }
             return assistantMessage.content;
-        } catch (error) { return "Erro ao processar."; }
+        } catch (error) { return "Erro ao processar simulação."; }
     }
 }
 
