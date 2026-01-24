@@ -1,3 +1,7 @@
+const express = require('express');
+const router = express.Router();
+const aiController = require('./ai.controller');
+const authMiddleware = require('../../features/Auth/auth.middleware');
 const multer = require('multer');
 const upload = multer();
 
