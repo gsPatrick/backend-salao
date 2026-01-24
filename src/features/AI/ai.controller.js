@@ -232,7 +232,16 @@ exports.testChat = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
         let { message, history } = req.body;
-        const audioFile = req.file; // From multer middleware (need to add to route)
+        const audioFile = req.file;
+
+        // history comes as a string in multipart/form-data
+        if (typeof history === 'string') {
+            try {
+                history = JSON.parse(history);
+            } catch (e) {
+                history = [];
+            }
+        }
 
         // 1. Identify AIAgentConfig
         const aiConfig = await AIAgentConfig.findOne({ where: { tenant_id: tenantId } });
