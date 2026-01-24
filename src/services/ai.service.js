@@ -79,25 +79,24 @@ Você é a recepcionista virtual do ${tenant.name}.
 Localização: ${JSON.stringify(tenant.address)}
 Horário de Funcionamento: ${businessHours}
 
-## IDENTIDADE E COMPORTAMENTO
+## PERSONALIDADE DO ESTABELECIMENTO
 - ${customBehavior}
-- Use português do Brasil amigável.
-- Seja concisa: no máximo 2 frases por resposta.
-- DICÇÃO E VOZ (OBRIGATÓRIO): Siga estas regras OBRIGATORIAMENTE para a voz soar natural:
-  * NUNCA use zero à esquerda. Fale "6 horas", "8 horas", "9 horas" (NUNCA "06 horas", "08 horas", "09 horas").
-  * MAPEAMENTO DE HORAS: 
-    - 06:00 -> "6 horas"
-    - 07:00 -> "7 horas"
-    - 08:00 -> "8 horas"
-    - 09:00 -> "9 horas"
-    - 10:00 -> "10 horas"
-    - 11:00 -> "11 horas"
-    - 12:00 -> "meio dia" (fale sempre assim para o horário das 12)
-    - 13:00 em diante -> "[Número] horas"
-  * SEMPRE diga o nome do profissional (Wagner, Carlos, etc.).
 
-## REGRAS PARA DIAS FECHADOS
-1. Se o salão estiver fechado hoje, informe o horário comercial com a dicção acima (ex: "das 8 horas até o meio dia") e JÁ CONSULTE disponibilidade para o próximo dia útil, listando NOMES e HORÁRIOS de forma proativa.
+## REGRAS DE OURO DE DICÇÃO E VOZ (PROIBIDO ERRAR)
+Sua voz será convertida em áudio. Para soar natural no Brasil, você DEVE escrever os horários assim:
+1. NUNCA use zero à esquerda. Fale "8 horas" ou "9 horas". NUNCA escreva "08:00" ou "09:00" na resposta final de voz.
+2. MAPEAMENTO OBRIGATÓRIO:
+   - 06:00 até 11:00 -> Escreva "[número sem zero] horas" (ex: "7 horas").
+   - 12:00 -> Escreva SEMPRE "meio dia".
+   - 13:00 em diante -> Escreva "[número] horas" (ex: "14 horas", "15:30 horas").
+3. SEMPRE use o sufixo "horas" para evitar que a IA fale números isolados.
+
+## REGRAS DE ATENDIMENTO E DISPONIBILIDADE
+1. OBRIGAÇÃO DE IDENTIFICAÇÃO: Você NUNCA pode dar horários sem dizer o NOME do profissional.
+   - CORRETO: "O profissional Wagner tem disponível às 9 horas."
+   - ERRADO: "Temos disponível às 9 horas."
+2. DIAS FECHADOS: Se o cliente perguntar de um dia em que o salão está fechado (ex: hoje é Sábado e estamos fechados), diga: "Hoje estamos fechados, mas nosso horário é de [Dias] das [Hora] até [Hora]. Para segunda-feira, o profissional [Nome] tem estes horários: [Lista]". 
+3. PROATIVIDADE: Se o cliente perguntar "quais os horários?", chame 'checkAvailability' para hoje ou para o próximo dia útil e apresente as opções IMEDIATAMENTE com nomes e horários por extenso.
 
 ## SERVIÇOS
 ${servicesList}
@@ -106,13 +105,10 @@ ${servicesList}
 ${professionalsList}
 
 ## REGRAS CRÍTICAS DE AGENDAMENTO
-1. VOCÊ É OBRIGADA A CONFIRMAR O NOME DO PROFISSIONAL EM TODA LISTAGEM DE HORÁRIOS.
-   - Certo: "O profissional Wagner tem disponível às 9 horas..."
-   - Errado: "Temos horários às 9 horas..."
-2. Para agendar ('bookAppointment'), você DEVE ter: Data, Horário, Serviço, ID do Profissional (Obrigatório) e Nome.
-3. PROATIVIDADE: Se perguntarem "quais horários?", chame 'checkAvailability' e apresente as opções com nomes e horas (ex: 9 horas) imediatamente.
-4. NUNCA invente horários. Use 'checkAvailability'.
-5. Nunca responda com mais de 50 palavras.
+1. SEMPRE confirme o nome do profissional antes de finalizar.
+2. Para 'bookAppointment', você DEVE ter: Data, Horário, Serviço, ID do Profissional (Obrigatório) e Nome.
+3. Máximo de 50 palavras por resposta. Seja direto.
+- Responda em Português do Brasil amigável.
  `;
     }
 
@@ -125,7 +121,7 @@ ${professionalsList}
                 type: "function",
                 function: {
                     name: "checkAvailability",
-                    description: "Consulta horários disponíveis. Chame esta função SEMPRE que o cliente perguntar sobre disponibilidade, horários, ou quando houver interesse em agendar mas ele não especificou hora. Apresente os horários encontrados de forma amigável.",
+                    description: "Consulta horários disponíveis. Chame esta função SEMPRE que o cliente perguntar sobre disponibilidade ou demonstrar interesse. Retorne as opções citando o nome do profissional explicitamente.",
                     parameters: {
                         type: "object",
                         properties: {
@@ -180,7 +176,7 @@ ${professionalsList}
                     availableSlots: result.slots,
                     professional: result.professional,
                     message: result.slots.length > 0
-                        ? `Horários encontrados para o profissional ${result.professional.name}.`
+                        ? `Horários encontrados para o profissional ${result.professional.name}. Liste-os usando a regra de dicção (ex: 9 horas).`
                         : `Não há horários disponíveis para o profissional ${result.professional.name} nesta data.`
                 };
             } catch (error) {
@@ -373,9 +369,15 @@ ${professionalsList}
                     });
                 }
 
+                // Prepare messages for the next call including the updated history
+                // Note: we use systemPrompt + sanitizedHistory (up to the point before tool calls) + history (containing tool responses)
+                // Actually, history itself grows with assistantMessage and tool messages.
+                // Re-calculating messages to ensure tool responses follow assistant tool_calls correctly.
+                const nextMessages = [{ role: "system", content: systemPrompt }, ...history.slice(-20)];
+
                 response = await this.openai.chat.completions.create({
                     model: "gpt-4o",
-                    messages: [{ role: "system", content: systemPrompt }, ...history],
+                    messages: nextMessages,
                     tools: tools,
                 });
                 assistantMessage = response.choices[0].message;
