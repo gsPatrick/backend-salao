@@ -318,17 +318,22 @@ class AppointmentService {
             return true;
         });
 
-        // Filter out past slots if date is today
-        const now = new Date();
-        const requestDate = new Date(date + 'T00:00:00');
         if (requestDate.toDateString() === now.toDateString()) {
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
-            return availableSlots
+            const slots = availableSlots
                 .filter(slot => slot > currentMinutes)
                 .map(minutesToTime);
+            return {
+                professional: { id: professional.id, name: professional.name },
+                slots
+            };
         }
 
-        return availableSlots.map(minutesToTime);
+        const slots = availableSlots.map(minutesToTime);
+        return {
+            professional: { id: professional.id, name: professional.name },
+            slots
+        };
     }
 }
 

@@ -83,12 +83,13 @@ Horário de Funcionamento: ${businessHours}
 - ${customBehavior}
 - Use português do Brasil natural.
 - Seja concisa e direta: no máximo 2 frases curtas por resposta (exceto ao listar horários).
+- TERMINOLOGIA DE HORÁRIO: Sempre use o sufixo "horas" ao falar horários (ex: "9 horas", "14:30 horas"). NUNCA fale apenas o número seco.
 - Objetivo: Agendar serviços e tirar dúvidas.
 
 ## REGRAS PARA DIAS FECHADOS / FORA DE HORÁRIO
 1. Se hoje for um dia em que o salão está fechado (verifique 'Horário de Funcionamento'), INFORME o cliente imediatamente: "Hoje estamos fechados, mas funcionamos de [Dias] das [Horas] às [Horas]".
-2. APÓS informar que está fechado, verifique a disponibilidade para o PRÓXIMO dia útil e ofereça os horários: "Para amanhã (ou segunda), tenho estes horários disponíveis: [Lista]".
-3. Nunca diga apenas que está fechado. Seja prestativo e sugira o agendamento para o próximo dia disponível.
+2. APÓS informar que está fechado, sugira o PRÓXIMO dia disponível e já ofereça os horários: "Para amanhã (ou segunda), o profissional [Nome] tem estes horários disponíveis: [Lista]".
+3. Nunca diga apenas que está fechado. Seja prestativo.
 
 ## SERVIÇOS
 ${servicesList}
@@ -98,10 +99,10 @@ ${professionalsList}
 
 ## REGRAS CRÍTICAS DE AGENDAMENTO
 1. VOCÊ É OBRIGADA A CONFIRMAR O PROFISSIONAL ANTES DE AGENDAR.
-2. Se o cliente não pedir um profissional específico, PERGUNTE: "Você tem preferência por algum profissional ou pode ser qualquer um?".
-3. Se o cliente disser "Qualquer um" ou "Tanto faz", aí sim você pode escolher um profissional disponível ou usar null na consulta.
+2. Ao listar horários disponíveis, SEMPRE mencione o nome do profissional (ex: "O profissional Wagner tem disponível...").
+3. Se o cliente não pedir um profissional específico, PERGUNTE: "Você tem preferência por algum profissional ou pode ser qualquer um?".
 4. Para realizar o agendamento final ('bookAppointment'), você DEVE ter: Data, Horário, ID do Serviço, ID do Profissional (obrigatório) e Nome.
-5. PROATIVIDADE EM CONSULTAS: Se o cliente perguntar apenas "Quais horários vocês têm?", "Quais os dias?" ou algo genérico, chame 'checkAvailability' para hoje e/ou amanhã e APRESENTE as opções imediatamente.
+5. PROATIVIDADE EM CONSULTAS: Se o cliente perguntar apenas "Quais horários vocês têm?", "Quais os dias?" ou algo genérico, chame 'checkAvailability' para hoje e/ou amanhã e APRESENTE as opções com os nomes dos profissionais imediatamente.
 6. SEMPRE use 'checkAvailability' para sugerir horários. NUNCA invente horários.
 7. Nunca responda com mais de 50 palavras.
  `;
@@ -160,8 +161,7 @@ ${professionalsList}
 
         if (name === 'checkAvailability') {
             try {
-                // If professionalId is null, we might need a different strategy, but our service supports it
-                const slots = await appointmentService.getAvailability(
+                const result = await appointmentService.getAvailability(
                     args.professionalId,
                     args.date,
                     args.serviceId,
@@ -169,8 +169,11 @@ ${professionalsList}
                 );
                 return {
                     success: true,
-                    availableSlots: slots,
-                    message: slots.length > 0 ? "Horários encontrados." : "Não há horários disponíveis para esta seleção."
+                    availableSlots: result.slots,
+                    professional: result.professional,
+                    message: result.slots.length > 0
+                        ? `Horários encontrados para o profissional ${result.professional.name}.`
+                        : `Não há horários disponíveis para o profissional ${result.professional.name} nesta data.`
                 };
             } catch (error) {
                 return { success: false, error: error.message };
