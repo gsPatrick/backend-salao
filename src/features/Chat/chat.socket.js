@@ -47,6 +47,7 @@ const initSocket = (server) => {
 
                 // Save to DB
                 const message = await ChatMessage.create({
+                    tenant_id: socket.user.tenant_id,
                     sender_id: socket.user.id,
                     receiver_id: receiverId,
                     content: text,

@@ -14,12 +14,12 @@ async function startServer() {
 
         // Sync database (in development)
         if (process.env.NODE_ENV === 'development') {
-            await sequelize.sync();
-            console.log('✅ Database synchronized');
+            await sequelize.sync({ alter: true });
+            console.log('✅ Database synchronized (with alter: true)');
         }
 
         // Start server
-        app.listen(PORT, () => {
+        const server = app.listen(PORT, () => {
             console.log(`
 🚀 Salão24h API Server Started!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -33,6 +33,10 @@ async function startServer() {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       `);
         });
+
+        // Initialize WebSockets
+        const { initSocket } = require('./src/features/Chat/chat.socket');
+        initSocket(server);
     } catch (error) {
         console.error('❌ Unable to start server:', error);
         process.exit(1);

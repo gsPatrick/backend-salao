@@ -267,16 +267,18 @@ ${professionalsList}
         if (chat.status === 'manual') {
             console.log(`[AI Skipped] Chat with ${phone} is in MANUAL mode.`);
             // We still want to log the user message to history so the human agent sees context
-            let history = chat.history || [];
+            let history = [...(chat.history || [])]; // Shallow copy array
             history.push({ role: "user", content: messageText });
-            await chat.update({
-                history: history.slice(-20),
-                last_message: messageText // Update last message for list view
-            });
+
+            chat.history = history.slice(-20);
+            chat.last_message = messageText;
+            chat.changed('history', true); // Force Sequelize to see the JSON change
+            await chat.save();
+
             return null; // Return null to indicate no AI response
         }
 
-        let history = chat.history || [];
+        let history = [...(chat.history || [])];
 
         // Add user message
         history.push({ role: "user", content: messageText });
@@ -321,11 +323,12 @@ ${professionalsList}
             const updatedHistory = history.slice(-20);
 
             // 2. Update Chat in DB
-            await chat.update({
-                history: updatedHistory,
-                last_message: assistantMessage.content,
-                customer_name: chat.customer_name // Could be updated if tool found it
-            });
+            chat.history = updatedHistory;
+            chat.last_message = assistantMessage.content;
+            if (chat.customer_name) chat.customer_name = chat.customer_name; // Optional re-assignment
+
+            chat.changed('history', true);
+            await chat.save();
 
             return assistantMessage.content;
         } catch (error) {
@@ -341,7 +344,7 @@ ${professionalsList}
         let chat = await AIChat.findOne({ where: { tenant_id: tenantId, customer_phone: phone } });
         if (!chat) return; // Only sync for existing chats
 
-        let history = chat.history || [];
+        let history = [...(chat.history || [])]; // Shallow copy
         const lastMsg = history[history.length - 1];
 
         // Avoid duplication (if the last message is already this message)
@@ -351,10 +354,34 @@ ${professionalsList}
 
         history.push({ role: "assistant", content: messageText });
 
-        await chat.update({
-            history: history.slice(-20),
-            last_message: messageText
-        });
+        chat.history = history.slice(-20);
+        chat.last_message = messageText;
+        chat.changed('history', true);
+        await chat.save();
+    }
+
+    /**
+     * Synchronize a message received from a user (for logging/monitoring)
+     */
+    async synchronizeUserMessage(tenantId, phone, messageText) {
+        let chat = await AIChat.findOne({ where: { tenant_id: tenantId, customer_phone: phone } });
+
+        if (!chat) {
+            chat = await AIChat.create({
+                tenant_id: tenantId,
+                customer_phone: phone,
+                history: [],
+                status: 'active'
+            });
+        }
+
+        let history = [...(chat.history || [])];
+        history.push({ role: "user", content: messageText });
+
+        chat.history = history.slice(-20);
+        chat.last_message = messageText;
+        chat.changed('history', true);
+        await chat.save();
     }
 
     /**

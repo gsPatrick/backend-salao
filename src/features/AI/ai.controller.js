@@ -87,7 +87,18 @@ exports.handleZapiWebhook = async (req, res) => {
             return res.json({ success: true, message: 'No text content to process' });
         }
 
-        // 3. Process with AI
+        // --- NEW: Restrict to test number during testing phase ---
+        const TEST_NUMBER = '5571982862912';
+        const isTestUser = phone.includes(TEST_NUMBER);
+
+        if (!isTestUser) {
+            console.log(`[AI Skipped] AI ignored message from ${phone} (Not the test number)`);
+            // We still want to log it to history for monitoring
+            await aiService.synchronizeUserMessage(aiConfig.tenant_id, phone, messageText);
+            return res.json({ success: true, message: 'AI ignored per filter' });
+        }
+
+        // 3. Process with AI (Includes internal check for Manual status)
         const aiResponse = await aiService.processMessage(tenant.id, phone, messageText, isAudioIncoming);
 
         // 4. Send Response back
