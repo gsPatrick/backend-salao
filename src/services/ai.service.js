@@ -409,62 +409,64 @@ ${professionalsList}
             console.error('[AI Improve Text Error]:', error);
             throw error;
         }
+    }
+
     /**
      * Process Internal Test Chat Message
      */
     async processTestMessage(tenantId, messageText, history = []) {
-            if (!this.isConfigured()) {
-                return "OpenAI não configurada.";
-            }
+        if (!this.isConfigured()) {
+            return "OpenAI não configurada.";
+        }
 
-            const systemPrompt = await this.generateSystemPrompt(tenantId);
-            const tools = this.getTools();
+        const systemPrompt = await this.generateSystemPrompt(tenantId);
+        const tools = this.getTools();
 
-            // Convert frontend history format if necessary, but here we assume it's already {role, content}
-            const messages = [
-                { role: "system", content: systemPrompt },
-                ...history,
-                { role: "user", content: messageText }
-            ];
+        // Convert frontend history format if necessary, but here we assume it's already {role, content}
+        const messages = [
+            { role: "system", content: systemPrompt },
+            ...history,
+            { role: "user", content: messageText }
+        ];
 
-            try {
-                let response = await this.openai.chat.completions.create({
+        try {
+            let response = await this.openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: messages,
+                tools: tools,
+                tool_choice: "auto",
+            });
+
+            let assistantMessage = response.choices[0].message;
+
+            // Handle tool calls in a loop (Simulation mode, still executes but non-WhatsApp)
+            while (assistantMessage.tool_calls) {
+                messages.push(assistantMessage);
+
+                for (const toolCall of assistantMessage.tool_calls) {
+                    // For test chat, we pass a dummy phone or a flag to denote test
+                    const result = await this.handleToolCall(toolCall, tenantId, "INTERNAL_TEST");
+                    messages.push({
+                        role: "tool",
+                        tool_call_id: toolCall.id,
+                        content: JSON.stringify(result)
+                    });
+                }
+
+                response = await this.openai.chat.completions.create({
                     model: "gpt-4o",
                     messages: messages,
                     tools: tools,
-                    tool_choice: "auto",
                 });
-
-                let assistantMessage = response.choices[0].message;
-
-                // Handle tool calls in a loop (Simulation mode, still executes but non-WhatsApp)
-                while (assistantMessage.tool_calls) {
-                    messages.push(assistantMessage);
-
-                    for (const toolCall of assistantMessage.tool_calls) {
-                        // For test chat, we pass a dummy phone or a flag to denote test
-                        const result = await this.handleToolCall(toolCall, tenantId, "INTERNAL_TEST");
-                        messages.push({
-                            role: "tool",
-                            tool_call_id: toolCall.id,
-                            content: JSON.stringify(result)
-                        });
-                    }
-
-                    response = await this.openai.chat.completions.create({
-                        model: "gpt-4o",
-                        messages: messages,
-                        tools: tools,
-                    });
-                    assistantMessage = response.choices[0].message;
-                }
-
-                return assistantMessage.content;
-            } catch (error) {
-                console.error('[AI Test Chat Error]:', error);
-                return "Erro ao processar simulação.";
+                assistantMessage = response.choices[0].message;
             }
+
+            return assistantMessage.content;
+        } catch (error) {
+            console.error('[AI Test Chat Error]:', error);
+            return "Erro ao processar simulação.";
         }
     }
+}
 
 module.exports = new AIService();
