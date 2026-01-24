@@ -24,12 +24,24 @@ class TenantService {
         return Tenant.create({ ...data, slug });
     }
 
-    async update(id, data, isSuperAdmin) {
-        if (!isSuperAdmin) throw new Error('Apenas Super Admin pode editar tenants');
+    async update(id, data, tenantId, isSuperAdmin) {
+        if (!isSuperAdmin && parseInt(id) !== parseInt(tenantId)) {
+            throw new Error('Acesso negado: você só pode editar seu próprio salão');
+        }
+
         const tenant = await Tenant.findByPk(id);
         if (!tenant) throw new Error('Tenant não encontrado');
+
+        // Prevent non-superadmins from changing plan_id or is_active
+        if (!isSuperAdmin) {
+            delete data.plan_id;
+            delete data.is_active;
+            delete data.subscription_status;
+            delete data.trial_ends_at;
+        }
+
         await tenant.update(data);
-        return this.getById(id, null, true);
+        return this.getById(id, tenantId, isSuperAdmin);
     }
 
     async delete(id, isSuperAdmin) {

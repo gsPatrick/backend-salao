@@ -42,7 +42,7 @@ class TenantController {
 
     async update(req, res) {
         try {
-            const tenant = await tenantService.update(req.params.id, req.body, req.isSuperAdmin);
+            const tenant = await tenantService.update(req.params.id, req.body, req.tenantId, req.isSuperAdmin);
             res.json({ success: true, data: tenant });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

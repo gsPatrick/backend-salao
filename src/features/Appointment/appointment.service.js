@@ -201,6 +201,24 @@ class AppointmentService {
             throw new Error('Profissional não encontrado');
         }
 
+        // Fetch Tenant to check business hours
+        const { Tenant: TenantModel } = require('../../models');
+        const tenant = await TenantModel.findByPk(tenantId);
+        if (!tenant) throw new Error('Tenant não encontrado');
+
+        const businessHours = tenant.business_hours || [];
+        const availabilityDate = new Date(date + 'T00:00:00');
+        const dayOfWeekLabel = availabilityDate.toLocaleDateString('pt-BR', { weekday: 'long' });
+
+        // Find salon hours for this day (fuzzy match normalized)
+        const salonDay = businessHours.find(bh =>
+            bh.day.toLowerCase().trim() === dayOfWeekLabel.toLowerCase().trim()
+        );
+
+        if (salonDay && !salonDay.open) {
+            return []; // Salon is closed
+        }
+
         // Get service duration (default 30 min)
         let serviceDuration = 30;
         if (serviceId) {
@@ -211,10 +229,23 @@ class AppointmentService {
         }
 
         // Parse professional schedule times
-        const startTime = professional.start_time || '09:00';
-        const endTime = professional.end_time || '18:00';
-        const lunchStart = professional.lunch_start || '12:00';
-        const lunchEnd = professional.lunch_end || '13:00';
+        let startTime = professional.start_time || '09:00';
+        let endTime = professional.end_time || '18:00';
+        let lunchStart = professional.lunch_start || '12:00';
+        let lunchEnd = professional.lunch_end || '13:00';
+
+        // Override/Intersect with Salon Business Hours if present
+        if (salonDay && salonDay.start && salonDay.end) {
+            // Business logic: Professional cannot work before salon opens or after it closes
+            startTime = startTime > salonDay.start ? startTime : salonDay.start;
+            endTime = endTime < salonDay.end ? endTime : salonDay.end;
+
+            // Lunch override if business hours specify lunch (optional but consistent)
+            if (salonDay.lunchStart && salonDay.lunchEnd) {
+                lunchStart = salonDay.lunchStart;
+                lunchEnd = salonDay.lunchEnd;
+            }
+        }
 
         // Get existing appointments for this professional on this date
         const existingAppointments = await Appointment.findAll({
