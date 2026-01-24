@@ -227,3 +227,46 @@ exports.sendManualMessage = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+exports.testChat = async (req, res) => {
+    try {
+        const tenantId = req.user.tenant_id;
+        let { message, history } = req.body;
+        const audioFile = req.file; // From multer middleware (need to add to route)
+
+        // 1. Identify AIAgentConfig
+        const aiConfig = await AIAgentConfig.findOne({ where: { tenant_id: tenantId } });
+
+        // 2. Handle Audio Input (STT)
+        if (audioFile) {
+            console.log('[AI Test Chat] Processing audio input...');
+            message = await aiService.transcribeAudio(audioFile.buffer);
+            console.log(`[AI Test Chat] Transcribed: "${message}"`);
+        }
+
+        if (!message) {
+            return res.status(400).json({ error: 'Mensagem ou áudio é obrigatório' });
+        }
+
+        // 3. Process with AI
+        const aiResponse = await aiService.processTestMessage(tenantId, message, history || []);
+
+        // 4. Handle Voice Output (TTS)
+        let audioBase64 = null;
+        if (aiConfig?.is_voice_enabled && aiResponse) {
+            console.log('[AI Test Chat] Generating audio response...');
+            const audioBuffer = await aiService.generateSpeech(aiResponse);
+            audioBase64 = audioBuffer.toString('base64');
+        }
+
+        res.json({
+            success: true,
+            message: aiResponse,
+            userMessage: audioFile ? message : null, // Send back transcription for UI
+            audio: audioBase64
+        });
+    } catch (error) {
+        console.error('[AI Controller Test Chat Error]:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
