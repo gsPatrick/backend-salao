@@ -124,13 +124,12 @@ exports.handleZapiWebhook = async (req, res) => {
                 const aiResponse = await aiService.processMessage(tenant.id, phone, messageText, isAudioIncoming);
 
                 // 5. Send Response back
-                const planAllowsAI = await aiService.checkPlanAllowsAI(tenant.id);
-                // Extra check for specific voice flag
-                const voiceAllowed = req.user?.is_super_admin || (tenant.plan && tenant.plan.ai_voice_response);
+                const voiceAllowed = isTestUser || (tenant.plan && tenant.plan.ai_voice_response);
 
                 if (aiResponse) {
-                    if (isAudioIncoming && voiceAllowed && aiConfig.is_voice_enabled) {
-                        // Respond with Audio if input was audio and plan/settings allow it
+                    // Always respond with Voice if enabled in config and allowed by plan/test, 
+                    // or if the input was audio.
+                    if (voiceAllowed && aiConfig.is_voice_enabled) {
                         console.log('[Z-API] Generating audio response...');
                         const audioBuffer = await aiService.generateSpeech(aiResponse);
                         await whatsappService.sendAudio(phone, audioBuffer);
