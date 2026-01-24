@@ -216,7 +216,7 @@ class AppointmentService {
             { day: 'domingo', open: false, start: '09:00', end: '12:00' }
         ];
 
-        const businessHours = (tenant.business_hours && tenant.business_hours.length > 0)
+        const businessHours = (Array.isArray(tenant.business_hours) && tenant.business_hours.length > 0)
             ? tenant.business_hours
             : defaultHours;
 
