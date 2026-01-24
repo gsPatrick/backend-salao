@@ -228,6 +228,7 @@ class AuthService {
                 name: userData.tenant.name,
                 slug: userData.tenant.slug,
                 subscription_status: userData.tenant.subscription_status,
+                address: userData.tenant.address, // Include address for geolocation
                 plan: userData.tenant.plan ? {
                     id: userData.tenant.plan.id,
                     name: userData.tenant.plan.name,
