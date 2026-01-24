@@ -88,8 +88,10 @@ exports.handleZapiWebhook = async (req, res) => {
         }
 
         // --- NEW: Restrict to test number during testing phase ---
-        const TEST_NUMBER = '5571982862912';
-        const isTestUser = phone.includes(TEST_NUMBER);
+        // --- NEW: Restrict to test number during testing phase ---
+        // Allowing both with and without 9th digit just in case
+        const ALLOWED_NUMBERS = ['5571982862912', '557182862912'];
+        const isTestUser = ALLOWED_NUMBERS.some(num => phone.includes(num));
 
         if (!isTestUser) {
             console.log(`[AI Skipped] AI ignored message from ${phone} (Not the test number)`);
