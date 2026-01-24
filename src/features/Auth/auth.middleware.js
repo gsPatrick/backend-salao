@@ -161,10 +161,14 @@ const requirePlanFeature = (feature) => {
     };
 };
 
+// Import subscription blocker
+const { checkSubscriptionStatus } = require('../../middlewares/subscription.middleware');
+
 module.exports = {
     authenticate,
     requireSuperAdmin,
     requireRoles,
     requireTenant,
     requirePlanFeature,
+    checkSubscriptionStatus, // Re-export for convenience
 };
