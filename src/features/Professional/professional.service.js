@@ -29,7 +29,7 @@ class ProfessionalService {
     }
     async getAll(tenantId) {
         return Professional.findAll({
-            where: { tenant_id: tenantId, is_archived: false },
+            where: { tenant_id: tenantId },
             include: [{ model: Service, as: 'services' }],
             order: [['name', 'ASC']],
         });
