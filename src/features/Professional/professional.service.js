@@ -62,7 +62,17 @@ class ProfessionalService {
 
     async suspend(id, tenantId) {
         const professional = await this.getById(id, tenantId);
-        await professional.update({ is_suspended: !professional.is_suspended });
+        const current = professional.get('is_suspended');
+        professional.set('is_suspended', !current);
+        await professional.save();
+        return professional;
+    }
+
+    async archive(id, tenantId) {
+        const professional = await this.getById(id, tenantId);
+        const current = professional.get('is_archived');
+        professional.set('is_archived', !current);
+        await professional.save();
         return professional;
     }
 
