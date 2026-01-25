@@ -28,6 +28,7 @@ const models = {
     ContractTemplate: require('../features/Contract/contract.model'),
     MonthlyPackage: require('../features/Package/package.model').MonthlyPackage,
     PackageSubscription: require('../features/Package/package.model').PackageSubscription,
+    Lead: require('../features/CRM/lead.model'),
     MarketingCampaign: require('../features/Marketing/marketing_campaign.model'),
     SalonPlan: require('../features/SalonPlan/salon_plan.model')
 };
