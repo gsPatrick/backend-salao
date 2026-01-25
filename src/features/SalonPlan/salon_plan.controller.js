@@ -64,7 +64,9 @@ exports.toggleSuspend = async (req, res) => {
             where: { id: req.params.id, tenant_id: req.tenantId }
         });
         if (!plan) return res.status(404).json({ error: 'Plano não encontrado' });
-        plan.is_suspended = !plan.is_suspended;
+
+        const current = plan.get('is_suspended');
+        plan.set('is_suspended', !current);
         await plan.save();
         res.json(formatPlan(plan));
     } catch (error) {
@@ -78,7 +80,9 @@ exports.toggleFavorite = async (req, res) => {
             where: { id: req.params.id, tenant_id: req.tenantId }
         });
         if (!plan) return res.status(404).json({ error: 'Plano não encontrado' });
-        plan.is_favorite = !plan.is_favorite;
+
+        const current = plan.get('is_favorite');
+        plan.set('is_favorite', !current);
         await plan.save();
         res.json(formatPlan(plan));
     } catch (error) {

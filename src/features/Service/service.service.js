@@ -38,7 +38,8 @@ class ServiceService {
         const service = await Service.findOne({ where: { id, tenant_id: tenantId } });
         if (!service) throw new Error('Serviço não encontrado');
 
-        service.is_suspended = !service.is_suspended;
+        const current = service.get('is_suspended');
+        service.set('is_suspended', !current);
         await service.save();
         return service;
     }
@@ -47,7 +48,8 @@ class ServiceService {
         const service = await Service.findOne({ where: { id, tenant_id: tenantId } });
         if (!service) throw new Error('Serviço não encontrado');
 
-        service.is_favorite = !service.is_favorite;
+        const current = service.get('is_favorite');
+        service.set('is_favorite', !current);
         await service.save();
         return service;
     }

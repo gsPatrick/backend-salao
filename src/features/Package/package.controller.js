@@ -134,7 +134,8 @@ exports.togglePackage = async (req, res) => {
         const pkg = await MonthlyPackage.findOne({ where });
         if (!pkg) return res.status(404).json({ error: 'Pacote não encontrado' });
 
-        pkg.is_suspended = !pkg.is_suspended;
+        const current = pkg.get('is_suspended');
+        pkg.set('is_suspended', !current);
         await pkg.save();
         res.json(formatPackage(pkg));
     } catch (error) {
@@ -154,7 +155,8 @@ exports.toggleFavoritePackage = async (req, res) => {
         const pkg = await MonthlyPackage.findOne({ where });
         if (!pkg) return res.status(404).json({ error: 'Pacote não encontrado' });
 
-        pkg.is_favorite = !pkg.is_favorite;
+        const current = pkg.get('is_favorite');
+        pkg.set('is_favorite', !current);
         await pkg.save();
         res.json(formatPackage(pkg));
     } catch (error) {
