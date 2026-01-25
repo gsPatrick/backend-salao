@@ -39,7 +39,7 @@ module.exports = (sequelize) => {
             defaultValue: 'https://i.pravatar.cc/150?u=default',
         },
         role: {
-            type: DataTypes.ENUM('admin', 'gerente', 'recepcao', 'profissional'),
+            type: DataTypes.ENUM('admin', 'gerente', 'recepcao', 'profissional', 'cliente'),
             allowNull: false,
             defaultValue: 'profissional',
         },

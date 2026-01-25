@@ -37,6 +37,10 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING(255),
             allowNull: true,
         },
+        whatsapp: {
+            type: DataTypes.STRING(20),
+            allowNull: true,
+        },
         cnpj_cpf: {
             type: DataTypes.STRING(20),
             allowNull: true,

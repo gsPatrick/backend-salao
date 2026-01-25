@@ -110,6 +110,11 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: true,
         },
+        commission: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            defaultValue: 0.00,
+        },
         is_suspended: {
             type: DataTypes.BOOLEAN,
             allowNull: false,

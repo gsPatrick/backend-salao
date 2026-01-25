@@ -3,7 +3,7 @@ const { Client } = require('../../models');
 class ClientService {
     async getAll(tenantId) {
         return Client.findAll({
-            where: { tenant_id: tenantId },
+            where: { tenant_id: tenantId, is_active: true },
             order: [['created_at', 'DESC']],
         });
     }
@@ -25,8 +25,7 @@ class ClientService {
     }
 
     async delete(id, tenantId) {
-        const client = await this.getById(id, tenantId);
-        await client.update({ status: 'inactive' });
+        await Client.update({ is_active: false }, { where: { id, tenant_id: tenantId } });
         return { message: 'Cliente arquivado' };
     }
 
@@ -41,6 +40,7 @@ class ClientService {
         return Client.findAll({
             where: {
                 tenant_id: tenantId,
+                is_active: true,
                 [Op.or]: [
                     { name: { [Op.iLike]: `%${query}%` } },
                     { email: { [Op.iLike]: `%${query}%` } },

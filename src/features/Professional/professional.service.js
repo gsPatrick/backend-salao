@@ -2,26 +2,30 @@ const { Professional, Service, ProfessionalReview, sequelize } = require('../../
 
 class ProfessionalService {
     async getRanking(tenantId, limit = 5) {
-        // Calculate average rating for each professional
-        // This requires a group by query
-        const rankings = await ProfessionalReview.findAll({
-            attributes: [
-                'professional_id',
-                [sequelize.fn('AVG', sequelize.col('rating')), 'average_rating'],
-                [sequelize.fn('COUNT', sequelize.col('id')), 'review_count']
-            ],
-            where: tenantId ? { tenant_id: tenantId } : {},
-            include: [{
-                model: Professional,
-                as: 'professional',
-                attributes: ['id', 'name', 'photo', 'occupation']
-            }],
-            group: ['professional_id', 'professional.id', 'professional.name', 'professional.photo', 'professional.occupation'],
-            order: [[sequelize.literal('average_rating'), 'DESC']],
-            limit: limit
-        });
-
-        return rankings;
+        // Using raw query to avoid complex Sequelize association issues with GROUP BY
+        try {
+            const tenantFilter = tenantId ? `WHERE pr.tenant_id = ${tenantId}` : '';
+            const [rankings] = await sequelize.query(`
+                SELECT 
+                    p.id,
+                    p.name,
+                    p.photo,
+                    p.occupation,
+                    COALESCE(AVG(pr.rating), 0) as average_rating,
+                    COUNT(pr.id) as review_count
+                FROM professionals p
+                LEFT JOIN professional_reviews pr ON p.id = pr.professional_id
+                ${tenantFilter}
+                GROUP BY p.id, p.name, p.photo, p.occupation
+                ORDER BY average_rating DESC
+                LIMIT ${limit}
+            `);
+            return rankings;
+        } catch (error) {
+            console.error('Error in getRanking:', error);
+            // Fallback: return empty array on error
+            return [];
+        }
     }
     async getAll(tenantId) {
         return Professional.findAll({

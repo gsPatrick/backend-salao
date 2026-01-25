@@ -2,22 +2,30 @@ const { TimeRecord, Professional } = require('../../models');
 
 class TimeClockService {
     async punch(data, tenantId) {
-        const { professionalId, type, time } = data;
+        const { professionalId, type, time, photo, location } = data;
         const date = new Date().toISOString().split('T')[0];
+        const punchTime = time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
 
         let record = await TimeRecord.findOne({
             where: { tenant_id: tenantId, professional_id: professionalId, date }
         });
+
+        const newPunch = {
+            time: punchTime,
+            type,
+            photo, // Base64 evidence
+            location
+        };
 
         if (!record) {
             record = await TimeRecord.create({
                 tenant_id: tenantId,
                 professional_id: professionalId,
                 date,
-                punches: [{ time, type }]
+                punches: [newPunch]
             });
         } else {
-            const punches = [...record.punches, { time, type }];
+            const punches = [...record.punches, newPunch];
             await record.update({ punches });
         }
 
