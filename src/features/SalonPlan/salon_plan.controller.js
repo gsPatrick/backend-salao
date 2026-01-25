@@ -15,9 +15,12 @@ exports.list = async (req, res) => {
 
 exports.create = async (req, res) => {
     try {
+        const data = req.body;
         const plan = await SalonPlan.create({
-            ...req.body,
-            tenant_id: req.tenantId
+            ...data,
+            tenant_id: req.tenantId,
+            is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended,
+            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite
         });
         res.status(201).json(formatPlan(plan));
     } catch (error) {
@@ -31,7 +34,12 @@ exports.update = async (req, res) => {
             where: { id: req.params.id, tenant_id: req.tenantId }
         });
         if (!plan) return res.status(404).json({ error: 'Plano não encontrado' });
-        await plan.update(req.body);
+        const data = req.body;
+        await plan.update({
+            ...data,
+            is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended,
+            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite
+        });
         res.json(formatPlan(plan));
     } catch (error) {
         res.status(500).json({ error: error.message });

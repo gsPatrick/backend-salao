@@ -46,9 +46,9 @@ exports.createPackage = async (req, res) => {
             price: data.price,
             description: data.description,
             duration: data.duration,
-            active: data.isActive !== undefined ? data.isActive : true,
-            is_suspended: data.suspended !== undefined ? data.suspended : false,
-            is_favorite: data.isFavorite !== undefined ? data.isFavorite : false
+            active: data.isActive !== undefined ? data.isActive : data.active !== undefined ? data.active : true,
+            is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended !== undefined ? data.is_suspended : false,
+            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite !== undefined ? data.is_favorite : false
         });
 
         console.log('Package created:', pkg.id);
@@ -100,9 +100,9 @@ async function updateAndSend(pkg, data, res) {
         price: data.price,
         description: data.description,
         duration: data.duration,
-        active: data.isActive,
-        is_suspended: data.suspended,
-        is_favorite: data.isFavorite
+        active: data.isActive !== undefined ? data.isActive : data.active,
+        is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended,
+        is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite
     });
     return res.json(formatPackage(pkg));
 }
