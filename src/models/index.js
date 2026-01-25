@@ -28,8 +28,8 @@ const models = {
     ContractTemplate: require('../features/Contract/contract.model'),
     MonthlyPackage: require('../features/Package/package.model').MonthlyPackage,
     PackageSubscription: require('../features/Package/package.model').PackageSubscription,
-    Lead: require('../features/CRM/lead.model'),
-    MarketingCampaign: require('../features/Marketing/marketing_campaign.model')
+    MarketingCampaign: require('../features/Marketing/marketing_campaign.model'),
+    SalonPlan: require('../features/SalonPlan/salon_plan.model')
 };
 
 // Initialize models
@@ -52,7 +52,7 @@ const {
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
-    Lead, MarketingCampaign
+    Lead, MarketingCampaign, SalonPlan
 } = db;
 
 // Notification associations
@@ -175,6 +175,10 @@ Lead.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 // MarketingCampaign associations
 Tenant.hasMany(MarketingCampaign, { foreignKey: 'tenant_id' });
 MarketingCampaign.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// SalonPlan associations
+Tenant.hasMany(SalonPlan, { foreignKey: 'tenant_id' });
+SalonPlan.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 db.sequelize = sequelize;
 

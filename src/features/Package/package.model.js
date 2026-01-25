@@ -30,6 +30,14 @@ const MonthlyPackage = sequelize.define('MonthlyPackage', {
     active: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    is_suspended: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    is_favorite: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 }, {
     tableName: 'monthly_packages',

@@ -3,7 +3,7 @@ const { Service, Professional } = require('../../models');
 class ServiceService {
     async getAll(tenantId) {
         return Service.findAll({
-            where: { tenant_id: tenantId, is_suspended: false },
+            where: { tenant_id: tenantId },
             include: [{ model: Professional, as: 'professionals' }],
             order: [['name', 'ASC']],
         });
@@ -32,6 +32,18 @@ class ServiceService {
         const service = await this.getById(id, tenantId);
         await service.update({ is_suspended: true });
         return { message: 'Serviço desativado' };
+    }
+
+    async toggleSuspend(id, tenantId) {
+        const service = await this.getById(id, tenantId);
+        await service.update({ is_suspended: !service.is_suspended });
+        return service;
+    }
+
+    async toggleFavorite(id, tenantId) {
+        const service = await this.getById(id, tenantId);
+        await service.update({ is_favorite: !service.is_favorite });
+        return service;
     }
 
     async assignProfessionals(id, professionalIds, tenantId) {

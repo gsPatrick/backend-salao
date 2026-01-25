@@ -23,6 +23,8 @@ exports.listPackages = async (req, res) => {
             description: p.description,
             duration: p.duration,
             isActive: p.active,
+            suspended: p.is_suspended,
+            isFavorite: p.is_favorite,
             createdAt: p.created_at
         }));
 
@@ -44,7 +46,9 @@ exports.createPackage = async (req, res) => {
             price: data.price,
             description: data.description,
             duration: data.duration,
-            active: data.isActive !== undefined ? data.isActive : true
+            active: data.isActive !== undefined ? data.isActive : true,
+            is_suspended: data.suspended !== undefined ? data.suspended : false,
+            is_favorite: data.isFavorite !== undefined ? data.isFavorite : false
         });
 
         console.log('Package created:', pkg.id);
@@ -63,6 +67,8 @@ function formatPackage(p) {
         description: p.description,
         duration: p.duration,
         isActive: p.active,
+        suspended: p.is_suspended,
+        isFavorite: p.is_favorite,
         createdAt: p.created_at
     };
 }
@@ -94,7 +100,9 @@ async function updateAndSend(pkg, data, res) {
         price: data.price,
         description: data.description,
         duration: data.duration,
-        active: data.isActive
+        active: data.isActive,
+        is_suspended: data.suspended,
+        is_favorite: data.isFavorite
     });
     return res.json(formatPackage(pkg));
 }
@@ -126,10 +134,29 @@ exports.togglePackage = async (req, res) => {
         const pkg = await MonthlyPackage.findOne({ where });
         if (!pkg) return res.status(404).json({ error: 'Pacote não encontrado' });
 
-        await pkg.update({ active: !pkg.active });
-        res.json({ active: pkg.active });
+        await pkg.update({ is_suspended: !pkg.is_suspended });
+        res.json(formatPackage(pkg));
     } catch (error) {
         console.error('Error toggling package:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.toggleFavoritePackage = async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { id } = req.params;
+        const where = { id };
+        if (!req.isSuperAdmin) {
+            where.tenant_id = tenantId;
+        }
+        const pkg = await MonthlyPackage.findOne({ where });
+        if (!pkg) return res.status(404).json({ error: 'Pacote não encontrado' });
+
+        await pkg.update({ is_favorite: !pkg.is_favorite });
+        res.json(formatPackage(pkg));
+    } catch (error) {
+        console.error('Error toggling favorite package:', error);
         res.status(500).json({ error: error.message });
     }
 };

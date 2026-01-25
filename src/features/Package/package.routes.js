@@ -9,6 +9,7 @@ router.post('/', authMiddleware.authenticate, packageController.createPackage);
 router.put('/:id', authMiddleware.authenticate, packageController.updatePackage);
 router.delete('/:id', authMiddleware.authenticate, packageController.deletePackage);
 router.patch('/:id/toggle', authMiddleware.authenticate, packageController.togglePackage);
+router.patch('/:id/favorite', authMiddleware.authenticate, packageController.toggleFavoritePackage);
 
 // Subscriptions
 router.get('/subscriptions', authMiddleware.authenticate, packageController.listSubscriptions);

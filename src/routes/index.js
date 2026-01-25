@@ -28,6 +28,7 @@ const adminRoutes = require('../features/Admin/admin.routes');
 const supportRoutes = require('../features/Support/support.routes');
 const unitRoutes = require('../features/Unit/unit.routes');
 const paymentRoutes = require('../features/Payment/payment.routes');
+const salonPlanRoutes = require('../features/SalonPlan/salon_plan.routes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -56,6 +57,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
 router.use('/support', supportRoutes);
 router.use('/units', unitRoutes);
+router.use('/salon-plans', salonPlanRoutes);
 
 // Health Check
 router.get('/health', (req, res) => {

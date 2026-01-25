@@ -57,6 +57,24 @@ class ServiceController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async toggleSuspend(req, res) {
+        try {
+            const service = await serviceService.toggleSuspend(req.params.id, req.tenantId);
+            res.json({ success: true, data: service });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async toggleFavorite(req, res) {
+        try {
+            const service = await serviceService.toggleFavorite(req.params.id, req.tenantId);
+            res.json({ success: true, data: service });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new ServiceController();
