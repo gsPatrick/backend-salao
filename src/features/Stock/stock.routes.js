@@ -8,6 +8,9 @@ router.get('/products/:id', authMiddleware.authenticate, stockController.getProd
 router.post('/products', authMiddleware.authenticate, stockController.createProduct);
 router.put('/products/:id', authMiddleware.authenticate, stockController.updateProduct);
 router.delete('/products/:id', authMiddleware.authenticate, stockController.deleteProduct);
+router.patch('/products/:id/suspend', authMiddleware.authenticate, stockController.toggleSuspend);
+router.patch('/products/:id/favorite', authMiddleware.authenticate, stockController.toggleFavorite);
+router.patch('/products/:id/quantity', authMiddleware.authenticate, stockController.updateQuantity);
 router.post('/adjust', authMiddleware.authenticate, stockController.adjustStock);
 
 module.exports = router;

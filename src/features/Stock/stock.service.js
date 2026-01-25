@@ -57,6 +57,43 @@ class StockService {
 
         return { product, transaction };
     }
+
+    async toggleSuspend(id, tenantId) {
+        const product = await this.getProduct(id, tenantId);
+        const current = product.get('is_suspended');
+        product.set('is_suspended', !current);
+        await product.save();
+        return product;
+    }
+
+    async toggleFavorite(id, tenantId) {
+        const product = await this.getProduct(id, tenantId);
+        const current = product.get('is_favorite');
+        product.set('is_favorite', !current);
+        await product.save();
+        return product;
+    }
+
+    async updateQuantity(id, change, tenantId, userId) {
+        const product = await this.getProduct(id, tenantId);
+        const previousQuantity = product.stock_quantity;
+        const newQuantity = previousQuantity + change;
+
+        await product.update({ stock_quantity: newQuantity });
+
+        await StockTransaction.create({
+            tenant_id: tenantId,
+            product_id: id,
+            type: change > 0 ? 'in' : 'out',
+            quantity: Math.abs(change),
+            previous_quantity: previousQuantity,
+            new_quantity: newQuantity,
+            reason: 'Ajuste rápido pelo painel de estoque',
+            user_id: userId
+        });
+
+        return product;
+    }
 }
 
 module.exports = new StockService();

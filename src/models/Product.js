@@ -47,9 +47,23 @@ const Product = sequelize.define('product', {
         type: DataTypes.STRING,
         allowNull: true
     },
-    supplier_id: {
+    purchase_price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: 0
+    },
+    min_stock_level: {
         type: DataTypes.INTEGER,
-        allowNull: true
+        allowNull: false,
+        defaultValue: 5
+    },
+    is_suspended: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    is_favorite: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     },
     is_active: {
         type: DataTypes.BOOLEAN,

@@ -54,3 +54,30 @@ exports.adjustStock = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+exports.toggleSuspend = async (req, res) => {
+    try {
+        const product = await stockService.toggleSuspend(req.params.id, req.tenantId);
+        res.json({ success: true, data: product });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.toggleFavorite = async (req, res) => {
+    try {
+        const product = await stockService.toggleFavorite(req.params.id, req.tenantId);
+        res.json({ success: true, data: product });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.updateQuantity = async (req, res) => {
+    try {
+        const product = await stockService.updateQuantity(req.params.id, req.body.change, req.tenantId, req.user.id);
+        res.json({ success: true, data: product });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
