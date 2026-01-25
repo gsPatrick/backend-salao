@@ -27,7 +27,13 @@ class PaymentController {
             switch (event) {
                 case 'PAYMENT_CONFIRMED':
                 case 'PAYMENT_RECEIVED':
-                    await tenant.update({ subscription_status: 'ACTIVE' });
+                    {
+                        const asaasSubscription = await paymentService.getSubscription(tenant.asaas_subscription_id);
+                        await tenant.update({
+                            subscription_status: 'ACTIVE',
+                            next_billing_date: asaasSubscription.nextDueDate
+                        });
+                    }
                     break;
                 case 'PAYMENT_OVERDUE':
                     await tenant.update({ subscription_status: 'OVERDUE' });
@@ -70,7 +76,8 @@ class PaymentController {
             await tenant.update({
                 plan_id: planId,
                 asaas_subscription_id: subscription.id,
-                subscription_status: 'trial' // Initial status
+                subscription_status: 'trial', // Initial status
+                next_billing_date: subscription.nextDueDate || subscription.due_date
             });
 
             res.json({ success: true, data: subscription });

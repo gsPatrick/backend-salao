@@ -30,7 +30,8 @@ const models = {
     PackageSubscription: require('../features/Package/package.model').PackageSubscription,
     Lead: require('../features/CRM/lead.model'),
     MarketingCampaign: require('../features/Marketing/marketing_campaign.model'),
-    SalonPlan: require('../features/SalonPlan/salon_plan.model')
+    SalonPlan: require('../features/SalonPlan/salon_plan.model'),
+    Unit: require('./Unit')
 };
 
 // Initialize models
@@ -53,7 +54,7 @@ const {
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
-    Lead, MarketingCampaign, SalonPlan
+    Lead, MarketingCampaign, SalonPlan, Unit
 } = db;
 
 // Notification associations
@@ -76,6 +77,10 @@ User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 
 Tenant.belongsTo(Plan, { foreignKey: 'plan_id', as: 'plan' });
 Plan.hasMany(Tenant, { foreignKey: 'plan_id' });
+
+// Tenant - Unit associations
+Tenant.hasMany(Unit, { foreignKey: 'tenant_id', as: 'units' });
+Unit.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 // Professional associations
 Tenant.hasMany(Professional, { foreignKey: 'tenant_id', as: 'professionals' });

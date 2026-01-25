@@ -102,9 +102,9 @@ class UserService {
     async delete(id, tenantId, isSuperAdmin) {
         const user = await this.getById(id, tenantId, isSuperAdmin);
 
-        await user.update({ is_active: false });
+        await user.destroy();
 
-        return { message: 'Usuário desativado com sucesso' };
+        return { message: 'Usuário excluído com sucesso' };
     }
 
     /**

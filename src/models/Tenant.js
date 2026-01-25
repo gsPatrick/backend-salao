@@ -54,6 +54,23 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING(500),
             allowNull: true,
         },
+        description: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
+        primary_color: {
+            type: DataTypes.STRING(20),
+            allowNull: true,
+            defaultValue: '#000000',
+        },
+        checkin_message: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
+        terms_and_conditions: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
         business_hours: {
             type: DataTypes.JSONB,
             allowNull: true,
@@ -84,6 +101,10 @@ module.exports = (sequelize) => {
         },
         asaas_subscription_id: {
             type: DataTypes.STRING(100),
+            allowNull: true,
+        },
+        next_billing_date: {
+            type: DataTypes.DATEONLY,
             allowNull: true,
         },
     }, {

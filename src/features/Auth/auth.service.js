@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
-const { User, Tenant, Plan } = require('../../models');
+const { User, Tenant, Plan, Unit } = require('../../models');
 
 class AuthService {
     /**
@@ -103,6 +103,24 @@ class AuthService {
 
         // Update tenant owner
         await tenant.update({ owner_user_id: user.id });
+
+        // Create default unit (Unidade Matriz)
+        await Unit.create({
+            tenant_id: tenant.id,
+            name: 'Unidade Matriz',
+            is_suspended: false,
+            address: {},
+            working_hours: [
+                { day: 'Segunda-feira', open: true, start: '08:00', end: '18:00', lunch_start: '12:00', lunch_end: '13:00' },
+                { day: 'Terça-feira', open: true, start: '08:00', end: '18:00', lunch_start: '12:00', lunch_end: '13:00' },
+                { day: 'Quarta-feira', open: true, start: '08:00', end: '18:00', lunch_start: '12:00', lunch_end: '13:00' },
+                { day: 'Quinta-feira', open: true, start: '08:00', end: '18:00', lunch_start: '12:00', lunch_end: '13:00' },
+                { day: 'Sexta-feira', open: true, start: '08:00', end: '18:00', lunch_start: '12:00', lunch_end: '13:00' },
+                { day: 'Sábado', open: true, start: '08:00', end: '14:00', lunch_start: '12:00', lunch_end: '13:00' },
+                { day: 'Domingo', open: false, start: '08:00', end: '18:00', lunch_start: '12:00', lunch_end: '13:00' },
+            ],
+            checkin_message: 'Seja bem-vindo ao @' + tenantName + '! Seu atendimento começará em breve.'
+        });
 
         // Reload user with relationships
         const fullUser = await User.findByPk(user.id, {
