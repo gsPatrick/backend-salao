@@ -26,7 +26,7 @@ class ClientService {
 
     async delete(id, tenantId) {
         await Client.update({ is_active: false }, { where: { id, tenant_id: tenantId } });
-        return { message: 'Cliente arquivado' };
+        return { message: 'Cliente deletado com sucesso' };
     }
 
     async block(id, reason, tenantId) {
