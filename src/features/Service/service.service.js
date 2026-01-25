@@ -35,14 +35,20 @@ class ServiceService {
     }
 
     async toggleSuspend(id, tenantId) {
-        const service = await this.getById(id, tenantId);
-        await service.update({ is_suspended: !service.is_suspended });
+        const service = await Service.findOne({ where: { id, tenant_id: tenantId } });
+        if (!service) throw new Error('Serviço não encontrado');
+
+        service.is_suspended = !service.is_suspended;
+        await service.save();
         return service;
     }
 
     async toggleFavorite(id, tenantId) {
-        const service = await this.getById(id, tenantId);
-        await service.update({ is_favorite: !service.is_favorite });
+        const service = await Service.findOne({ where: { id, tenant_id: tenantId } });
+        if (!service) throw new Error('Serviço não encontrado');
+
+        service.is_favorite = !service.is_favorite;
+        await service.save();
         return service;
     }
 

@@ -134,7 +134,8 @@ exports.togglePackage = async (req, res) => {
         const pkg = await MonthlyPackage.findOne({ where });
         if (!pkg) return res.status(404).json({ error: 'Pacote não encontrado' });
 
-        await pkg.update({ is_suspended: !pkg.is_suspended });
+        pkg.is_suspended = !pkg.is_suspended;
+        await pkg.save();
         res.json(formatPackage(pkg));
     } catch (error) {
         console.error('Error toggling package:', error);
@@ -153,7 +154,8 @@ exports.toggleFavoritePackage = async (req, res) => {
         const pkg = await MonthlyPackage.findOne({ where });
         if (!pkg) return res.status(404).json({ error: 'Pacote não encontrado' });
 
-        await pkg.update({ is_favorite: !pkg.is_favorite });
+        pkg.is_favorite = !pkg.is_favorite;
+        await pkg.save();
         res.json(formatPackage(pkg));
     } catch (error) {
         console.error('Error toggling favorite package:', error);
