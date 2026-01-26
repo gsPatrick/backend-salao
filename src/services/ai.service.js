@@ -170,9 +170,31 @@ ${professionalsList}
         } finally { await fsp.unlink(tmp).catch(() => { }); }
     }
 
-    async generateSpeech(text, voice = 'alloy') {
-        const res = await this.openai.audio.speech.create({ model: "tts-1", voice, input: text, response_format: "opus" });
-        return Buffer.from(await res.arrayBuffer());
+    async generateSpeech(text, voice = 'alloy', speed = 1.0) {
+        const voiceMap = {
+            'Sofia (Amigável)': 'alloy',
+            'Julia (Profissional)': 'onyx',
+            'Clara (Calma)': 'nova',
+            'Sofia': 'alloy',
+            'Julia': 'onyx',
+            'Clara': 'nova'
+        };
+        const openAIVoice = voiceMap[voice] || voice || 'alloy';
+        const validSpeed = Math.max(0.25, Math.min(4.0, speed));
+
+        try {
+            const res = await this.openai.audio.speech.create({
+                model: "tts-1",
+                voice: openAIVoice,
+                input: text,
+                speed: validSpeed,
+                response_format: "opus"
+            });
+            return Buffer.from(await res.arrayBuffer());
+        } catch (e) {
+            console.error("TTS Error:", e);
+            throw e;
+        }
     }
 
     async processMessage(tenantId, phone, messageText, isAudio = false) {

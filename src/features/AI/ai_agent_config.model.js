@@ -40,6 +40,30 @@ const AIAgentConfig = sequelize.define('ai_agent_config', {
     voice_id: {
         type: DataTypes.STRING, // e.g., ElevenLabs ID or Google Voice name
         allowNull: true
+    },
+    basic_agent_name: {
+        type: DataTypes.STRING,
+        defaultValue: 'Júlia'
+    },
+    basic_reminder_msg: {
+        type: DataTypes.TEXT,
+        defaultValue: 'Olá, [NOME_CLIENTE]! Passando para lembrar do seu horário amanhã às [HORARIO]...'
+    },
+    custom_personality: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    voice_settings: {
+        type: DataTypes.JSON,
+        defaultValue: {
+            speed: 1.0,
+            pitch: 1.1,
+            variation: 0.5,
+            pauses: 0.5,
+            expressiveness: 0.5,
+            breaths: 0.5,
+            tempoVariation: 0.5
+        }
     }
 }, {
     tableName: 'ai_agent_configs',

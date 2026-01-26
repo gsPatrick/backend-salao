@@ -1,5 +1,4 @@
-const ChatMessage = require('./chat.model');
-const { User } = require('../../models');
+const { User, ChatMessage } = require('../../models');
 const { Op } = require('sequelize');
 
 exports.getContacts = async (req, res) => {

@@ -31,7 +31,8 @@ const models = {
     Lead: require('../features/CRM/lead.model'),
     MarketingCampaign: require('../features/Marketing/marketing_campaign.model'),
     SalonPlan: require('../features/SalonPlan/salon_plan.model'),
-    Unit: require('./Unit')
+    Unit: require('./Unit'),
+    ChatMessage: require('../features/Chat/chat.model')
 };
 
 // Initialize models
@@ -54,7 +55,7 @@ const {
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
-    Lead, MarketingCampaign, SalonPlan, Unit
+    Lead, MarketingCampaign, SalonPlan, Unit, ChatMessage
 } = db;
 
 // Notification associations
@@ -185,6 +186,16 @@ MarketingCampaign.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 // SalonPlan associations
 Tenant.hasMany(SalonPlan, { foreignKey: 'tenant_id' });
 SalonPlan.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// ChatMessage associations
+Tenant.hasMany(ChatMessage, { foreignKey: 'tenant_id' });
+ChatMessage.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+User.hasMany(ChatMessage, { foreignKey: 'sender_id', as: 'sentMessages' });
+ChatMessage.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
+
+User.hasMany(ChatMessage, { foreignKey: 'receiver_id', as: 'receivedMessages' });
+ChatMessage.belongsTo(User, { foreignKey: 'receiver_id', as: 'receiver' });
 
 db.sequelize = sequelize;
 

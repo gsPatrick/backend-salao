@@ -1,7 +1,6 @@
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
-const ChatMessage = require('./chat.model');
-const { User } = require('../../models');
+const { User, ChatMessage } = require('../../models');
 
 let io;
 
@@ -54,7 +53,7 @@ const initSocket = (server) => {
                     attachment_url: attachment?.url,
                     attachment_type: attachment?.type,
                     is_ai_generated: false,
-                    read: false
+                    is_read: false
                 });
 
                 // Construct message object for frontend

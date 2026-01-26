@@ -131,7 +131,9 @@ exports.handleZapiWebhook = async (req, res) => {
                     // or if the input was audio.
                     if (voiceAllowed && aiConfig.is_voice_enabled) {
                         console.log('[Z-API] Generating audio response...');
-                        const audioBuffer = await aiService.generateSpeech(aiResponse);
+                        const voiceId = aiConfig.voice_id || 'alloy';
+                        const speed = aiConfig.voice_settings?.speed || 1.0;
+                        const audioBuffer = await aiService.generateSpeech(aiResponse, voiceId, speed);
                         await whatsappService.sendAudio(phone, audioBuffer);
                     } else {
                         // Default to Text response
@@ -268,7 +270,9 @@ exports.testChat = async (req, res) => {
         let audioBase64 = null;
         if (voiceAllowed && aiConfig?.is_voice_enabled && aiResponse) {
             console.log('[AI Test Chat] Generating audio response...');
-            const audioBuffer = await aiService.generateSpeech(aiResponse);
+            const voiceId = aiConfig.voice_id || 'alloy';
+            const speed = aiConfig.voice_settings?.speed || 1.0;
+            const audioBuffer = await aiService.generateSpeech(aiResponse, voiceId, speed);
             audioBase64 = audioBuffer.toString('base64');
         }
 
