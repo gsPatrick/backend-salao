@@ -14,13 +14,28 @@ class ClientService {
         return client;
     }
 
+    sanitizeClientData(data) {
+        const sanitized = { ...data };
+        const dateFields = ['birth_date', 'last_visit', 'birthdate', 'lastVisit'];
+
+        dateFields.forEach(field => {
+            if (sanitized[field] === '' || sanitized[field] === 'Invalid date') {
+                sanitized[field] = null;
+            }
+        });
+
+        return sanitized;
+    }
+
     async create(data, tenantId) {
-        return Client.create({ ...data, tenant_id: tenantId });
+        const sanitizedData = this.sanitizeClientData(data);
+        return Client.create({ ...sanitizedData, tenant_id: tenantId });
     }
 
     async update(id, data, tenantId) {
         const client = await this.getById(id, tenantId);
-        await client.update(data);
+        const sanitizedData = this.sanitizeClientData(data);
+        await client.update(sanitizedData);
         return client;
     }
 
