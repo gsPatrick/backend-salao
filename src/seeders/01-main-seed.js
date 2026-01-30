@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { Plan, Tenant, User, Professional, Service, AIAgentConfig, sequelize } = require('../models');
+const { Plan, Tenant, User, Client, Professional, Service, AIAgentConfig, sequelize } = require('../models');
 
 module.exports = {
     up: async (queryInterface, Sequelize) => {
@@ -262,12 +262,39 @@ async function seedDatabaseLogic() {
             where: { tenant_id: tenant.id },
             defaults: {
                 zapi_instance_id: '3EDA29EB314652490154DA5DEAAACE51',
-                active_plan: 'Vitalício',
+                active_plan: 'Avançada',
                 is_voice_enabled: true,
                 personality: 'Wagner Vicente (Idealizador)',
                 prompt_behavior: 'Seja o Wagner, o criador do Salão24h. Seja carismático, proativo e ajude os clientes com agendamentos e dúvidas sobre a plataforma.'
             }
         });
+
+        // 8. Create Test Client
+        console.log('👥 Creating test client...');
+        const [clientUser] = await User.findOrCreate({
+            where: { email: 'juliana.costa@example.com' },
+            defaults: {
+                tenant_id: tenant.id,
+                name: 'Juliana Costa',
+                password: '123',
+                role: 'cliente',
+                is_super_admin: false,
+                is_active: true,
+            }
+        });
+
+        await Client.findOrCreate({
+            where: { email: 'juliana.costa@example.com', tenant_id: tenant.id },
+            defaults: {
+                tenant_id: tenant.id,
+                name: 'Juliana Costa',
+                email: 'juliana.costa@example.com',
+                password: '123',
+                phone: '11999999999',
+                is_active: true
+            }
+        });
+        console.log('✅ Test client ready');
 
         console.log('\n🎉 Database seeding completed successfully!');
     } catch (error) {
