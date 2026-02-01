@@ -85,6 +85,56 @@ class PaymentController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+    /**
+     * Get invoices for current tenant
+     */
+    async getInvoices(req, res) {
+        try {
+            const tenant = await Tenant.findByPk(req.tenantId);
+            if (!tenant.asaas_customer_id) {
+                return res.json({ data: [], totalCount: 0 });
+            }
+
+            const payments = await paymentService.listPayments(tenant.asaas_customer_id, 20); // Limit 20 for now
+            res.json(payments);
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    /**
+     * Cancel subscription
+     */
+    async cancelSubscription(req, res) {
+        try {
+            const tenant = await Tenant.findByPk(req.tenantId);
+            if (!tenant.asaas_subscription_id) {
+                return res.status(400).json({ success: false, message: 'Nenhuma assinatura ativa encontrada.' });
+            }
+
+            // Call Asaas service
+            await paymentService.cancelSubscription(tenant.asaas_subscription_id);
+
+            // Update local state
+            // We set it to canceled, but usually we should wait for webhook. 
+            // However, for UX, we can set a flag or keep it until webhook confirms.
+            // Asaas returns "deleted: true". 
+            // The user requested: "aviso que nao vai pagar no mes seguinte mas o mes vigente ele vai pagar"
+            // So we might want to set status to 'canceling' or similar if we want to support access until end of period.
+            // For now, let's mark as CANCELED or keep active until webhook?
+            // "mes vigente ele vai pagar" -> This implies access remains until end of period.
+            // We can check `next_billing_date` and keep access until then.
+
+            await tenant.update({
+                subscription_status: 'CANCELED_PENDING' // Custom status to indicate cancellation requested but period active
+            });
+
+            res.json({ success: true, message: 'Assinatura cancelada com sucesso.' });
+        } catch (error) {
+            console.error('Cancellation Error:', error);
+            res.status(500).json({ success: false, message: 'Erro ao cancelar assinatura.' });
+        }
+    }
 }
 
 module.exports = new PaymentController();

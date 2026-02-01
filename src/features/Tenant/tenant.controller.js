@@ -57,6 +57,18 @@ class TenantController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async updateSettings(req, res) {
+        try {
+            if (!req.tenantId) {
+                return res.status(404).json({ success: false, message: 'Tenant não associado ao usuário atual' });
+            }
+            const tenant = await tenantService.update(req.tenantId, req.body, req.tenantId, req.isSuperAdmin);
+            res.json({ success: true, data: tenant });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new TenantController();

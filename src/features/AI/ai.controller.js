@@ -71,6 +71,20 @@ exports.handleZapiWebhook = async (req, res) => {
             include: [{ model: Plan, as: 'plan' }]
         });
 
+        // --- NEW: Check if Support/Marketing channel is active ---
+        // If not active, we still log but DO NOT Reply/Process with AI
+        const settings = tenant.settings || {};
+        const isChannelActive = settings.support_active; // Default false if undefined
+
+        if (!isChannelActive) {
+            console.log(`[AI Skipped] Channel 'support_active' is OFF for Tenant ${tenant.id}. Message logged but not answered.`);
+            // Sync to history so user sees it in panel
+            if (payload.text?.message) {
+                await aiService.synchronizeUserMessage(aiConfig.tenant_id, phone, payload.text.message);
+            }
+            return res.json({ success: true, message: 'Channel inactive, message synced but ignored by AI' });
+        }
+
         // 2. Extract Message
         let messageText = '';
         let isAudioIncoming = false;

@@ -40,6 +40,11 @@ class TenantService {
             delete data.trial_ends_at;
         }
 
+        // map pixKey from frontend to chave_pix if needed
+        if (data.settings?.bank_info?.pixKey && !data.settings?.bank_info?.chave_pix) {
+            data.settings.bank_info.chave_pix = data.settings.bank_info.pixKey;
+        }
+
         await tenant.update(data);
         return this.getById(id, tenantId, isSuperAdmin);
     }

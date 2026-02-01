@@ -9,5 +9,7 @@ router.post('/webhook', paymentController.handleWebhook);
 // Protected routes
 router.use(authenticate);
 router.post('/subscribe', paymentController.createSubscription);
+router.post('/cancel', paymentController.cancelSubscription);
+router.get('/invoices', paymentController.getInvoices);
 
 module.exports = router;

@@ -1,4 +1,6 @@
 const appointmentService = require('./appointment.service');
+const whatsappService = require('../../services/whatsapp.service');
+const { Tenant, Client, Service, Professional } = require('../../models');
 
 class AppointmentController {
     async getAll(req, res) {
@@ -23,6 +25,28 @@ class AppointmentController {
         try {
             const data = { ...req.body, tenant_id: req.tenantId };
             const appointment = await appointmentService.create(data, req.tenantId, req.userId);
+
+            // --- Send Confirmation WhatsApp if Channel is Active ---
+            try {
+                const tenant = await Tenant.findByPk(req.tenantId);
+                const settings = tenant.settings || {};
+
+                if (settings.support_active) {
+                    // Fetch full details for message
+                    const client = await Client.findByPk(data.client_id);
+                    const service = await Service.findByPk(data.service_id);
+                    const professional = await Professional.findByPk(data.professional_id);
+
+                    if (client && service && professional) {
+                        console.log(`[Appointment] Sending confirmation to ${client.phone}`);
+                        await whatsappService.sendAppointmentConfirmation(client, appointment, service, professional);
+                    }
+                }
+            } catch (msgError) {
+                console.error('Error sending appointment confirmation:', msgError.message);
+                // Don't block the response, just log
+            }
+
             res.status(201).json({ success: true, data: appointment });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

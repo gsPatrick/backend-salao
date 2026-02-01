@@ -109,8 +109,8 @@ Service.belongsToMany(Professional, {
 });
 
 // Client associations
-Tenant.hasMany(Client, { foreignKey: 'tenant_id' });
-Client.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+Tenant.hasMany(Client, { foreignKey: 'tenant_id', as: 'clients' });
+Client.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 
 // Appointment associations
 Tenant.hasMany(Appointment, { foreignKey: 'tenant_id' });

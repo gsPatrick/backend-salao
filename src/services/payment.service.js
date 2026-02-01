@@ -107,6 +107,25 @@ class PaymentService {
             throw new Error('Falha ao cancelar assinatura');
         }
     }
+    /**
+     * List payments for a customer
+     */
+    async listPayments(customerId, limit = 10, offset = 0) {
+        if (!this.isConfigured()) return { data: [], totalCount: 0 };
+        try {
+            const response = await this.client.get('/payments', {
+                params: {
+                    customer: customerId,
+                    limit,
+                    offset
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('[Asaas] List Payments Error:', error.response?.data || error.message);
+            throw new Error('Falha ao buscar pagamentos');
+        }
+    }
 }
 
 module.exports = new PaymentService();

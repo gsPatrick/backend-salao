@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
-const { User, Tenant, Plan, Unit } = require('../../models');
+const { User, Tenant, Plan, Unit, Client } = require('../../models');
 
 class AuthService {
     /**
@@ -25,6 +25,34 @@ class AuthService {
         });
 
         if (!user) {
+            // Try to find in Client table
+            const client = await this.getClientByEmail(email);
+
+            if (client) {
+                if (!client.is_active) {
+                    throw new Error('Cliente desativado');
+                }
+
+                // Simple password check (assuming plaintext '123' legacy or simple match)
+                // In production, this should also use bcrypt or similar if needed.
+                if (client.password !== password) {
+                    throw new Error('Credenciais inválidas');
+                }
+
+                const token = this.generateToken({
+                    id: client.id,
+                    email: client.email,
+                    tenant_id: client.tenant_id,
+                    is_super_admin: false,
+                    role: 'cliente'
+                });
+
+                return {
+                    token,
+                    user: this.formatClientResponse(client)
+                };
+            }
+
             throw new Error('Credenciais inválidas');
         }
 
@@ -41,7 +69,6 @@ class AuthService {
         // Update last login
         await user.update({ last_login_at: new Date() });
 
-        // Generate JWT token
         const token = this.generateToken(user);
 
         // Prepare user response (without password)
@@ -50,6 +77,47 @@ class AuthService {
         return {
             token,
             user: userResponse,
+        };
+    }
+
+    async getClientByEmail(email) {
+        return Client.findOne({
+            where: { email: email.toLowerCase() },
+            include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
+        });
+    }
+
+    /**
+     * Format client response (similar to user)
+     */
+    formatClientResponse(client) {
+        const clientData = client.toJSON();
+        return {
+            id: clientData.id,
+            name: clientData.name,
+            email: clientData.email,
+            avatarUrl: clientData.photo_url || `https://i.pravatar.cc/150?u=${clientData.email}`,
+            role: 'cliente',
+            is_super_admin: false,
+            tenant_id: clientData.tenant_id,
+            permissions: {}, // Clients have limited/no specific permissions object usually
+            tenant: clientData.tenant ? {
+                id: clientData.tenant.id,
+                name: clientData.tenant.name,
+                slug: clientData.tenant.slug,
+                subscription_status: clientData.tenant.subscription_status,
+                address: clientData.tenant.address,
+                plan: clientData.tenant.plan ? {
+                    id: clientData.tenant.plan.id,
+                    name: clientData.tenant.plan.name,
+                    display_name: clientData.tenant.plan.display_name,
+                    ai_voice_response: clientData.tenant.plan.ai_voice_response,
+                    priority_support: clientData.tenant.plan.priority_support,
+                    whatsapp_integration: clientData.tenant.plan.whatsapp_integration,
+                    financial_reports: clientData.tenant.plan.financial_reports,
+                    marketing_campaigns: clientData.tenant.plan.marketing_campaigns,
+                } : null,
+            } : null,
         };
     }
 

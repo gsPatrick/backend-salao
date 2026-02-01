@@ -60,6 +60,11 @@ const Client = sequelize.define('client', {
         type: DataTypes.STRING, // Acquisition Channel
         allowNull: true
     },
+    indicated_by: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'Name of the person who referred this client'
+    },
     status: {
         type: DataTypes.STRING,
         allowNull: true

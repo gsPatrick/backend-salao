@@ -25,30 +25,6 @@ module.exports = {
                     role: 'admin',
                     is_super_admin: true,
                     tenant_id: tenant.id
-                },
-                {
-                    name: 'Carlos Gerente',
-                    email: 'gerente@salao24h.com',
-                    password: '123',
-                    role: 'gerente',
-                    is_super_admin: false,
-                    tenant_id: tenant.id
-                },
-                {
-                    name: 'Fernanda Profissional',
-                    email: 'fernanda@salao24h.com',
-                    password: '123',
-                    role: 'profissional',
-                    is_super_admin: false,
-                    tenant_id: tenant.id
-                },
-                {
-                    name: 'João Cliente',
-                    email: 'cliente@salao24h.com',
-                    password: '123',
-                    role: 'cliente',
-                    is_super_admin: false,
-                    tenant_id: tenant.id
                 }
             ];
 
