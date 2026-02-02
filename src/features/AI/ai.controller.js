@@ -301,3 +301,34 @@ exports.testChat = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+exports.uploadVoice = async (req, res) => {
+    try {
+        if (!req.file) throw new Error('Nenhum arquivo enviado');
+
+        // In a real scenario, we would upload to S3/Cloudinary.
+        // For this POC, we'll simulate a URL. 
+        const voiceUrl = `https://generated-voice-url.com/voice_${Date.now()}.mp3`;
+
+        res.json({ success: true, url: voiceUrl });
+    } catch (error) {
+        res.status(400).json({ success: false, error: error.message });
+    }
+};
+
+exports.uploadTrainingFile = async (req, res) => {
+    try {
+        if (!req.file) throw new Error('Nenhum arquivo enviado');
+
+        const fileMetadata = {
+            id: Date.now(),
+            name: req.file.originalname,
+            size: req.file.size,
+            uploaded_at: new Date()
+        };
+
+        res.json({ success: true, file: fileMetadata });
+    } catch (error) {
+        res.status(400).json({ success: false, error: error.message });
+    }
+};

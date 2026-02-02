@@ -64,6 +64,18 @@ const AIAgentConfig = sequelize.define('ai_agent_config', {
             breaths: 0.5,
             tempoVariation: 0.5
         }
+    },
+    use_custom_voice: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    custom_voice_url: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    training_files: {
+        type: DataTypes.JSONB,
+        defaultValue: []
     }
 }, {
     tableName: 'ai_agent_configs',
