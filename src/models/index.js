@@ -84,6 +84,9 @@ SupportTicket.belongsTo(User, { foreignKey: 'user_id' });
 Tenant.hasMany(User, { foreignKey: 'tenant_id' });
 User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 
+// Owner association
+Tenant.belongsTo(User, { foreignKey: 'owner_user_id', as: 'owner' });
+
 Tenant.belongsTo(Plan, { foreignKey: 'plan_id', as: 'plan' });
 Plan.hasMany(Tenant, { foreignKey: 'plan_id' });
 
