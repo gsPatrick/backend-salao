@@ -75,6 +75,7 @@ exports.update = async (req, res) => {
         if (!promotion) return res.status(404).json({ error: 'Promoção não encontrada' });
 
         await promotion.update({
+            type: data.type || promotion.type,
             title: data.title,
             subtitle: data.subtitle,
             description: data.description,
