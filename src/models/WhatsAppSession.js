@@ -1,36 +1,36 @@
-const { Model, DataTypes } = require('sequelize');
+```javascript
+const { DataTypes } = require('sequelize');
 
-class WhatsAppSession extends Model {
-    static init(sequelize) {
-        super.init({
-            tenant_id: {
-                type: DataTypes.INTEGER,
-                allowNull: false,
-                primaryKey: true,
-                references: {
-                    model: 'Tenants',
-                    key: 'id'
-                }
-            },
-            key: {
-                type: DataTypes.STRING,
-                allowNull: false,
-                primaryKey: true
-            },
-            value: {
-                type: DataTypes.TEXT,
-                allowNull: false
+module.exports = (sequelize) => {
+    const WhatsAppSession = sequelize.define('WhatsAppSession', {
+        tenant_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            primaryKey: true,
+            references: {
+                model: 'tenants',
+                key: 'id'
             }
-        }, {
-            sequelize,
-            tableName: 'WhatsAppSessions',
-            underscored: true,
-        });
-    }
+        },
+        key: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            primaryKey: true
+        },
+        value: {
+            type: DataTypes.TEXT,
+            allowNull: false
+        }
+    }, {
+        tableName: 'whatsapp_sessions',
+        underscored: true,
+        timestamps: true
+    });
 
-    static associate(models) {
-        this.belongsTo(models.Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
-    }
-}
+    WhatsAppSession.associate = (models) => {
+        WhatsAppSession.belongsTo(models.Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+    };
 
-module.exports = WhatsAppSession;
+    return WhatsAppSession;
+};
+```

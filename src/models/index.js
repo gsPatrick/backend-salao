@@ -32,7 +32,8 @@ const models = {
     MarketingCampaign: require('../features/Marketing/marketing_campaign.model'),
     SalonPlan: require('../features/SalonPlan/salon_plan.model'),
     Unit: require('./Unit'),
-    ChatMessage: require('../features/Chat/chat.model')
+    ChatMessage: require('../features/Chat/chat.model'),
+    WhatsAppSession: require('./WhatsAppSession')
 };
 
 // Initialize models
@@ -55,7 +56,7 @@ const {
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
-    Lead, MarketingCampaign, SalonPlan, Unit, ChatMessage
+    Lead, MarketingCampaign, SalonPlan, Unit, ChatMessage, WhatsAppSession
 } = db;
 
 // Notification associations
@@ -190,6 +191,10 @@ SalonPlan.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 // ChatMessage associations
 Tenant.hasMany(ChatMessage, { foreignKey: 'tenant_id' });
 ChatMessage.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// WhatsAppSession associations
+Tenant.hasMany(WhatsAppSession, { foreignKey: 'tenant_id', as: 'whatsapp_sessions' });
+WhatsAppSession.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 
 User.hasMany(ChatMessage, { foreignKey: 'sender_id', as: 'sentMessages' });
 ChatMessage.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
