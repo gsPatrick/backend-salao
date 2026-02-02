@@ -20,10 +20,10 @@ const initSocket = (server) => {
             if (!token) return next(new Error('Authentication error'));
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const user = await User.findByPk(decoded.id);
+            const user = await User.findByPk(decoded.userId || decoded.id);
 
             if (!user) {
-                console.error(`[Socket Auth] User not found for ID: ${decoded.id}`);
+                console.error(`[Socket Auth] User not found for ID: ${decoded.userId || decoded.id}`);
                 return next(new Error('User not found'));
             }
 

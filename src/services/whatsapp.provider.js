@@ -61,9 +61,7 @@ const connectToWhatsApp = async (tenantId) => {
             } else {
                 console.log(`[WhatsApp] Tenant ${tenantId} logged out. Session removed.`);
                 sessions.delete(tenantId);
-                if (fs.existsSync(authPath)) {
-                    fs.rmSync(authPath, { recursive: true, force: true });
-                }
+                // Auth data in DB is preserved or handled by Baileys logout
                 if (io) io.to(`tenant:${tenantId}`).emit('whatsapp:status', { tenantId, status: 'logged_out' });
             }
         } else if (connection === 'open') {
