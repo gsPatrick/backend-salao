@@ -40,7 +40,7 @@ const Client = sequelize.define('client', {
         allowNull: true
     },
     photo_url: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: true
     },
     observation: {
