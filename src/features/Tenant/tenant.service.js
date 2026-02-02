@@ -14,17 +14,17 @@ class TenantService {
         }
 
         // JSONB filtering for address fields with iLike for partial matches
-        if (filters.country) {
-            where['address.country'] = { [Op.iLike]: `%${filters.country}%` };
+        if (filters.country && filters.country.trim()) {
+            where['address.country'] = { [Op.iLike]: `%${filters.country.trim()}%` };
         }
-        if (filters.state) {
-            where['address.state'] = { [Op.iLike]: `%${filters.state}%` };
+        if (filters.state && filters.state.trim()) {
+            where['address.state'] = { [Op.iLike]: `%${filters.state.trim()}%` };
         }
-        if (filters.city) {
-            where['address.city'] = { [Op.iLike]: `%${filters.city}%` };
+        if (filters.city && filters.city.trim()) {
+            where['address.city'] = { [Op.iLike]: `%${filters.city.trim()}%` };
         }
-        if (filters.neighborhood) {
-            where['address.neighborhood'] = { [Op.iLike]: `%${filters.neighborhood}%` };
+        if (filters.neighborhood && filters.neighborhood.trim()) {
+            where['address.neighborhood'] = { [Op.iLike]: `%${filters.neighborhood.trim()}%` };
         }
 
         return Tenant.findAll({

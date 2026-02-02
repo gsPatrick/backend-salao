@@ -59,6 +59,13 @@ const {
     Lead, MarketingCampaign, SalonPlan, Unit, ChatMessage, WhatsAppSession
 } = db;
 
+// Call associate for all models
+Object.keys(db).forEach(modelName => {
+    if (db[modelName].associate) {
+        db[modelName].associate(db);
+    }
+});
+
 // Notification associations
 Tenant.hasMany(Notification, { foreignKey: 'tenant_id' });
 Notification.belongsTo(Tenant, { foreignKey: 'tenant_id' });
