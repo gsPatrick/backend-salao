@@ -23,6 +23,15 @@ module.exports = (sequelize) => {
             type: DataTypes.TEXT,
             allowNull: true,
         },
+        subtitle: {
+            type: DataTypes.STRING(200),
+            allowNull: true,
+        },
+        button_text: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
+            defaultValue: 'Saiba mais',
+        },
         position: {
             type: DataTypes.ENUM('dashboard_top', 'dashboard_side', 'dashboard_bottom'),
             allowNull: false,

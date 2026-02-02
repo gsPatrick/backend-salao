@@ -16,8 +16,47 @@ class ClientService {
 
     sanitizeClientData(data) {
         const sanitized = { ...data };
-        const dateFields = ['birth_date', 'last_visit', 'birthdate', 'lastVisit'];
 
+        // Map frontend fields to database column names
+        if (sanitized.photo !== undefined && sanitized.photo_url === undefined) {
+            sanitized.photo_url = sanitized.photo;
+            delete sanitized.photo;
+        }
+        if (sanitized.birthdate !== undefined && sanitized.birth_date === undefined) {
+            sanitized.birth_date = sanitized.birthdate;
+            delete sanitized.birthdate;
+        }
+        if (sanitized.lastVisit !== undefined && sanitized.last_visit === undefined) {
+            sanitized.last_visit = sanitized.lastVisit;
+            delete sanitized.lastVisit;
+        }
+        if (sanitized.socialName !== undefined && sanitized.social_name === undefined) {
+            sanitized.social_name = sanitized.socialName;
+            delete sanitized.socialName;
+        }
+        if (sanitized.howTheyFoundUs !== undefined && sanitized.how_found_us === undefined) {
+            sanitized.how_found_us = sanitized.howTheyFoundUs;
+            delete sanitized.howTheyFoundUs;
+        }
+        if (sanitized.maritalStatus !== undefined && sanitized.marital_status === undefined) {
+            sanitized.marital_status = sanitized.maritalStatus;
+            delete sanitized.maritalStatus;
+        }
+        if (sanitized.totalVisits !== undefined && sanitized.total_visits === undefined) {
+            sanitized.total_visits = sanitized.totalVisits;
+            delete sanitized.totalVisits;
+        }
+        if (sanitized.additionalPhones !== undefined && sanitized.additional_phones === undefined) {
+            sanitized.additional_phones = sanitized.additionalPhones;
+            delete sanitized.additionalPhones;
+        }
+        if (sanitized.indicatedBy !== undefined && sanitized.indicated_by === undefined) {
+            sanitized.indicated_by = sanitized.indicatedBy;
+            delete sanitized.indicatedBy;
+        }
+
+        // Clean up date fields with invalid values
+        const dateFields = ['birth_date', 'last_visit'];
         dateFields.forEach(field => {
             if (sanitized[field] === '' || sanitized[field] === 'Invalid date') {
                 sanitized[field] = null;
@@ -31,6 +70,7 @@ class ClientService {
         const sanitizedData = this.sanitizeClientData(data);
         return Client.create({ ...sanitizedData, tenant_id: tenantId });
     }
+
 
     async update(id, data, tenantId) {
         const client = await this.getById(id, tenantId);

@@ -18,13 +18,14 @@ class AdminController {
                 order: [['order', 'ASC']]
             });
 
-            // Map to expected structure: title, image_url, button_text, link, description
+            // Map to expected structure: title, subtitle, image_url, button_text, link, description
             const mappedBanners = banners.map(banner => ({
                 id: banner.id,
                 title: banner.title,
+                subtitle: banner.subtitle || 'Destaque',
                 description: banner.description,
                 image_url: banner.image_url,
-                button_text: 'Saiba mais',
+                button_text: banner.button_text || 'Saiba mais',
                 link: banner.link_url || '#'
             }));
 
