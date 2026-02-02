@@ -161,9 +161,30 @@ class AppointmentService {
 
     async updateStatus(id, status, tenantId) {
         const appointment = await this.getById(id, tenantId);
+        const oldStatus = appointment.status;
         await appointment.update({ status });
 
         const crmAutomationService = require('../../services/crm_automation.service');
+
+        // Financial integration: Create transaction when completed
+        const completionStatuses = ['Atendido', 'realizado', 'concluído', 'Completed'];
+        if (completionStatuses.includes(status) && !completionStatuses.includes(oldStatus)) {
+            try {
+                const financeService = require('../Finance/finance.service');
+                await financeService.create({
+                    type: 'receita',
+                    category: 'Serviço',
+                    amount: appointment.price || 0,
+                    date: appointment.date,
+                    description: `Atendimento: ${appointment.client?.name || 'Cliente'} - ${appointment.service?.name || 'Serviço'}`,
+                    status: 'pago',
+                    unit: appointment.unit,
+                    appointment_id: appointment.id
+                }, tenantId);
+            } catch (error) {
+                console.error('[Finance Hook Error]:', error);
+            }
+        }
 
         // Update client status if faltante
         if (status === 'faltante') {

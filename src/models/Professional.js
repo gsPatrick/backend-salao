@@ -33,7 +33,7 @@ module.exports = (sequelize) => {
             allowNull: true,
         },
         photo: {
-            type: DataTypes.STRING(500),
+            type: DataTypes.TEXT,
             allowNull: true,
             defaultValue: 'https://i.pravatar.cc/150?u=default',
         },
