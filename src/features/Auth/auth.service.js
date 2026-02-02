@@ -122,11 +122,64 @@ class AuthService {
     }
 
     /**
-     * Register a new tenant with admin user
+     * Register a new tenant with admin user or a new client
      */
     async register(data) {
-        const { tenantName, userName, email, password, planId } = data;
+        const { tenantName, userName, email, password, planId, userType, tenantId, phone } = data;
 
+        if (userType === 'client') {
+            // Check if email already exists in User or Client table
+            const existingUser = await User.findOne({ where: { email: email.toLowerCase() } });
+            const existingClient = await Client.findOne({ where: { email: email.toLowerCase() } });
+
+            if (existingUser || existingClient) {
+                throw new Error('Email já cadastrado');
+            }
+
+            let targetTenantId = tenantId;
+            if (!targetTenantId) {
+                // For client registration, we need a tenant. 
+                // In a multi-tenant setup, this should come from the current context/slug.
+                // Fallback to the first tenant for now if not provided (e.g. testing)
+                const defaultTenant = await Tenant.findOne();
+                if (defaultTenant) {
+                    targetTenantId = defaultTenant.id;
+                } else {
+                    throw new Error('Nenhum salão disponível para cadastro');
+                }
+            }
+
+            const client = await Client.create({
+                name: userName,
+                email: email.toLowerCase(),
+                phone,
+                password, // Note: Existing logic uses plaintext passwords for clients in this POC, 
+                // but should use hashing in production.
+                tenant_id: targetTenantId,
+                is_active: true
+            });
+
+            // Reload client with relationships
+            const fullClient = await Client.findByPk(client.id, {
+                include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
+            });
+
+            // Generate token
+            const token = this.generateToken({
+                id: client.id,
+                email: client.email,
+                tenant_id: client.tenant_id,
+                is_super_admin: false,
+                role: 'cliente'
+            });
+
+            return {
+                token,
+                user: this.formatClientResponse(fullClient),
+            };
+        }
+
+        // --- Original Salon Registration Logic ---
         // Check if email already exists
         const existingUser = await User.findOne({
             where: { email: email.toLowerCase() },

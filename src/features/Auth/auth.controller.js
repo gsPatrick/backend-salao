@@ -36,12 +36,20 @@ class AuthController {
      */
     async register(req, res) {
         try {
-            const { tenantName, userName, email, password, planId } = req.body;
+            const { tenantName, userName, email, password, planId, tenantId, phone } = req.body;
+            const userType = req.body.userType || req.body.user_type;
 
-            if (!tenantName || !userName || !email || !password) {
+            if (userType !== 'client' && (!tenantName || !userName || !email || !password)) {
                 return res.status(400).json({
                     success: false,
                     message: 'Todos os campos são obrigatórios',
+                });
+            }
+
+            if (userType === 'client' && (!userName || !email || !password)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Nome, email e senha são obrigatórios',
                 });
             }
 
@@ -51,6 +59,9 @@ class AuthController {
                 email,
                 password,
                 planId,
+                userType,
+                tenantId,
+                phone,
             });
 
             res.status(201).json({
