@@ -117,6 +117,10 @@ module.exports = (sequelize) => {
             foreignKey: 'plan_id',
             as: 'plan',
         });
+        Tenant.belongsTo(models.User, {
+            foreignKey: 'owner_user_id',
+            as: 'owner',
+        });
         Tenant.hasMany(models.User, {
             foreignKey: 'tenant_id',
             as: 'users',

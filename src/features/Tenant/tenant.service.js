@@ -9,6 +9,10 @@ class TenantService {
             where.is_active = filters.is_active === 'true' || filters.is_active === true;
         }
 
+        if (filters.name) {
+            where.name = { [Op.iLike]: `%${filters.name}%` };
+        }
+
         // JSONB filtering for address fields with iLike for partial matches
         if (filters.country) {
             where['address.country'] = { [Op.iLike]: `%${filters.country}%` };
@@ -25,14 +29,20 @@ class TenantService {
 
         return Tenant.findAll({
             where,
-            include: [{ model: Plan, as: 'plan' }],
+            include: [
+                { model: Plan, as: 'plan' },
+                { model: User, as: 'owner', attributes: ['id', 'name', 'phone', 'email'] }
+            ],
             order: [['created_at', 'DESC']],
         });
     }
 
     async getById(id, tenantId, isSuperAdmin) {
         const tenant = await Tenant.findByPk(id, {
-            include: [{ model: Plan, as: 'plan' }],
+            include: [
+                { model: Plan, as: 'plan' },
+                { model: User, as: 'owner', attributes: ['id', 'name', 'phone', 'email'] }
+            ],
         });
 
         if (!tenant) throw new Error('Tenant não encontrado');
