@@ -28,6 +28,11 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: 'dashboard_top',
         },
+        target_area: {
+            type: DataTypes.ENUM('painel_de_controle', 'area_do_cliente', 'todos'),
+            allowNull: false,
+            defaultValue: 'todos',
+        },
         order: {
             type: DataTypes.INTEGER,
             allowNull: false,
