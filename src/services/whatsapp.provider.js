@@ -1,6 +1,5 @@
 const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const { getIo } = require('../features/Chat/chat.socket');
 const { usePostgresAuthState } = require('./whatsapp.auth');
 
 // Map to store active sessions: tenantId -> socketInstance
@@ -37,6 +36,7 @@ const connectToWhatsApp = async (tenantId) => {
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
+        const { getIo } = require('../features/Chat/chat.socket');
         const io = getIo();
 
         if (qr) {
@@ -84,6 +84,8 @@ const connectToWhatsApp = async (tenantId) => {
 
             // Dynamic import to avoid circular dependency
             const aiController = require('../features/AI/ai.controller');
+            const { getIo } = require('../features/Chat/chat.socket');
+            const io = getIo();
 
             const phone = msg.key.remoteJid.replace('@s.whatsapp.net', '');
 

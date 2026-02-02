@@ -1,7 +1,6 @@
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const { User, ChatMessage } = require('../../models');
-const { connectToWhatsApp, deleteSession, getStatus } = require('../../services/whatsapp.provider');
 
 let io;
 
@@ -16,6 +15,9 @@ const initSocket = (server) => {
             credentials: true
         }
     });
+
+    // Import provider here to avoid circular dependency
+    const whatsappProvider = require('../../services/whatsapp.provider');
 
     // Authentication Middleware
     io.use(async (socket, next) => {
@@ -58,7 +60,7 @@ const initSocket = (server) => {
                 const tenantId = socket.user.tenant_id;
                 console.log(`[Socket] whatsapp:connect requested by Tenant ${tenantId}`);
                 console.log('[Socket] Calling connectToWhatsApp...');
-                await connectToWhatsApp(tenantId);
+                await whatsappProvider.connectToWhatsApp(tenantId);
                 console.log('[Socket] connectToWhatsApp called successfully');
             } catch (err) {
                 console.error('[Socket] Error connecting WhatsApp:', err);
@@ -70,7 +72,7 @@ const initSocket = (server) => {
             try {
                 const tenantId = socket.user.tenant_id;
                 console.log(`[Socket] whatsapp:disconnect requested by Tenant ${tenantId}`);
-                deleteSession(tenantId);
+                whatsappProvider.deleteSession(tenantId);
                 io.to(`tenant:${tenantId}`).emit('whatsapp:status', { tenantId, status: 'disconnected' });
             } catch (err) {
                 console.error('Error disconnecting WhatsApp:', err);
@@ -79,7 +81,7 @@ const initSocket = (server) => {
 
         socket.on('whatsapp:check_status', () => {
             const tenantId = socket.user.tenant_id;
-            const status = getStatus(tenantId);
+            const status = whatsappProvider.getStatus(tenantId);
             socket.emit('whatsapp:status', { tenantId, status });
         });
 
