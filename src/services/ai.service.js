@@ -197,7 +197,7 @@ ${professionalsList}
         }
     }
 
-    async processMessage(tenantId, phone, messageText, isAudio = false) {
+    async processMessage(tenantId, phone, messageText, isAudio = false, additionalContext = '') {
         console.log(`[AI V2.8] Processing: ${phone}`);
         if (!this.isConfigured()) return "Configuração pendente.";
 
@@ -214,7 +214,7 @@ ${professionalsList}
 
         let history = [...(chat.history || [])];
         history.push({ role: "user", content: messageText });
-        const systemPrompt = await this.generateSystemPrompt(tenantId);
+        const systemPrompt = (await this.generateSystemPrompt(tenantId)) + '\n' + additionalContext;
         const tools = this.getTools();
 
         try {

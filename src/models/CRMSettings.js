@@ -14,11 +14,12 @@ const CRMSettings = sequelize.define('crm_settings', {
     funnel_stages: {
         type: DataTypes.JSONB,
         defaultValue: [
-            { id: 'lead', name: 'Leads', color: '#3b82f6' },
-            { id: 'contacted', name: 'Contato Feito', color: '#f59e0b' },
-            { id: 'scheduled', name: 'Agendado', color: '#8b5cf6' },
-            { id: 'converted', name: 'Convertido', color: '#10b981' },
-            { id: 'lost', name: 'Perdido', color: '#ef4444' }
+            { id: 'new', title: 'Novos Clientes', icon: '✨', visible: true, deletable: true, configTitle: 'Boas-vindas', configDescription: 'Enviar mensagem de boas-vindas via WhatsApp e agendar primeiro contato.', isAIActionActive: true },
+            { id: 'birthday', title: 'Aniversariante do Dia', icon: '🎂', visible: true, deletable: false, configTitle: 'Mensagem de Aniversário', configDescription: 'Enviar mensagem automática de feliz aniversário com um cupom de 10% de desconto.', isAIActionActive: true },
+            { id: 'scheduled', title: 'Agendados Hoje', icon: '✅', visible: true, deletable: false, configTitle: 'Lembrete de Agendamento', configDescription: 'Enviar lembrete 1 hora antes do horário. Confirmar com cliente se ele vem.', isAIActionActive: false },
+            { id: 'absent', title: 'Faltantes', icon: '❌', visible: true, deletable: false, configTitle: 'Contato Pós-Falta', configDescription: 'Entrar em contato para entender o motivo da falta e oferecer reagendamento.', isAIActionActive: false },
+            { id: 'rescheduled', title: 'Reagendados', icon: '🔄', visible: true, deletable: false, configTitle: 'Confirmar Reagendamento', configDescription: 'Enviar confirmação do novo horário para o cliente.', isAIActionActive: true },
+            { id: 'inactive', title: 'Inativas (60+ dias)', icon: '⏳', visible: true, deletable: false, configTitle: 'Campanha de Reativação', configDescription: 'Enviar mensagem com oferta especial para clientes que não retornam há mais de 60 dias.', isAIActionActive: false },
         ]
     },
     automation_rules: {

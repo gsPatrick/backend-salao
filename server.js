@@ -37,6 +37,18 @@ async function startServer() {
         // Initialize WebSockets
         const { initSocket } = require('./src/features/Chat/chat.socket');
         initSocket(server);
+
+        // Initialize CRM Automation (Runs every 6 hours)
+        const crmAutomation = require('./src/services/crm_automation.service');
+        const SIX_HOURS = 6 * 60 * 60 * 1000;
+        setInterval(() => {
+            crmAutomation.runDailyChecks().catch(err => console.error('CRM Automation Error:', err));
+        }, SIX_HOURS);
+
+        // Run once on startup after a small delay
+        setTimeout(() => {
+            crmAutomation.runDailyChecks().catch(err => console.error('CRM Automation Startup Error:', err));
+        }, 10000);
     } catch (error) {
         console.error('❌ Unable to start server:', error);
         process.exit(1);
