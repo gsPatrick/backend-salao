@@ -1,6 +1,7 @@
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const { User, ChatMessage } = require('../../models');
+const { connectToWhatsApp, deleteSession, getStatus } = require('../../services/whatsapp.provider');
 
 let io;
 
@@ -35,16 +36,51 @@ const initSocket = (server) => {
 
         // Join a room specific to this user ID for private messaging
         socket.join(`user:${socket.user.id}`);
+        // Join tenant room
+        if (socket.user.tenant_id) {
+            socket.join(`tenant:${socket.user.tenant_id}`);
+        }
 
         // Online status (could broadcast to others)
         socket.broadcast.emit('user_status', { userId: socket.user.id, status: 'online' });
+
+        // --- WhatsApp Events ---
+        socket.on('whatsapp:connect', async () => {
+            try {
+                const tenantId = socket.user.tenant_id;
+                console.log(`[Socket] whatsapp:connect requested by Tenant ${tenantId}`);
+                await connectToWhatsApp(tenantId);
+            } catch (err) {
+                console.error('Error connecting WhatsApp:', err);
+                socket.emit('error', { message: 'Failed to initiate WhatsApp connection' });
+            }
+        });
+
+        socket.on('whatsapp:disconnect', async () => {
+            try {
+                const tenantId = socket.user.tenant_id;
+                console.log(`[Socket] whatsapp:disconnect requested by Tenant ${tenantId}`);
+                deleteSession(tenantId);
+                io.to(`tenant:${tenantId}`).emit('whatsapp:status', { tenantId, status: 'disconnected' });
+            } catch (err) {
+                console.error('Error disconnecting WhatsApp:', err);
+            }
+        });
+
+        socket.on('whatsapp:check_status', () => {
+            const tenantId = socket.user.tenant_id;
+            const status = getStatus(tenantId);
+            socket.emit('whatsapp:status', { tenantId, status });
+        });
+
+        // --- End WhatsApp Events ---
 
         socket.on('send_message', async (data) => {
             // data: { receiverId, text, attachment }
             try {
                 const { receiverId, text, attachment } = data;
 
-                // Save to DB
+                // Save to DB (mock tenant check if needed)
                 const message = await ChatMessage.create({
                     tenant_id: socket.user.tenant_id,
                     sender_id: socket.user.id,

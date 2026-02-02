@@ -39,7 +39,7 @@ class AppointmentController {
 
                     if (client && service && professional) {
                         console.log(`[Appointment] Sending confirmation to ${client.phone}`);
-                        await whatsappService.sendAppointmentConfirmation(client, appointment, service, professional);
+                        await whatsappService.sendAppointmentConfirmation(client, appointment, service, professional, { id: req.tenantId });
                     }
                 }
             } catch (msgError) {

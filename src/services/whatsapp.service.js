@@ -1,99 +1,90 @@
-const config = require('../config');
-const axios = require('axios');
-const fs = require('fs').promises;
-const path = require('path');
+const provider = require('./whatsapp.provider');
+const { format } = require('date-fns');
+const { ptBR } = require('date-fns/locale');
 
 class WhatsAppService {
-    constructor() {
-        this.instanceId = config.externalServices.zapi.instanceId;
-        this.token = config.externalServices.zapi.token;
-        this.clientToken = config.externalServices.zapi.clientToken;
-        this.baseUrl = `https://api.z-api.io/instances/${this.instanceId}/token/${this.token}`;
-    }
-
-    isConfigured() {
-        return !!(this.instanceId && this.token);
-    }
-
-    getHeaders() {
-        const headers = { 'Content-Type': 'application/json' };
-        if (this.clientToken) {
-            headers['Client-Token'] = this.clientToken;
-        }
-        return headers;
-    }
-
     /**
-     * Send a text message via WhatsApp
+     * Send a text message
+     * @param {string} phone - The recipient's phone number
+     * @param {string} message - The text message
+     * @param {object} tenant - The tenant object (required for context)
      */
-    async sendMessage(phone, message) {
-        if (!this.isConfigured()) {
-            console.log('[Z-API] Not configured. Would send to:', phone, message);
-            return { success: true, simulated: true };
+    async sendMessage(phone, message, tenant) {
+        if (!tenant) {
+            console.error('[WhatsAppService] Tenant context missing for sendMessage');
+            throw new Error('Tenant context required');
         }
 
         try {
-            const response = await axios.post(`${this.baseUrl}/send-text`, {
-                phone: phone,
-                message: message
-            }, { headers: this.getHeaders() });
-            return response.data;
+            const result = await provider.sendMessage(tenant.id, phone, message);
+            return result;
         } catch (error) {
-            console.error('[Z-API] Error sending text:', error.response?.data || error.message);
-            throw new Error('Falha ao enviar mensagem WhatsApp');
+            console.error(`[WhatsAppService] Error sending message to ${phone} for Tenant ${tenant.id}:`, error.message);
+            throw error;
         }
     }
 
     /**
-     * Send an audio message via WhatsApp
+     * Send an audio message
+     * @param {string} phone - The recipient's phone number
+     * @param {string} audioUrl - URL or base64 of the audio
+     * @param {object} tenant - The tenant object
      */
-    async sendAudio(phone, audioBuffer) {
-        if (!this.isConfigured()) {
-            console.log('[Z-API] Not configured. Would send audio to:', phone);
-            return { success: true, simulated: true };
+    async sendAudio(phone, audioUrl, tenant) {
+        if (!tenant) {
+            console.error('[WhatsAppService] Tenant context missing for sendAudio');
+            throw new Error('Tenant context required');
         }
 
         try {
-            // Z-API often requires the data URI prefix for Base64 media
-            const base64Audio = `data:audio/ogg;base64,${audioBuffer.toString('base64')}`;
-            const response = await axios.post(`${this.baseUrl}/send-audio`, {
-                phone: phone,
-                audio: base64Audio
-            }, { headers: this.getHeaders() });
-            return response.data;
+            // Logic to handle base64 vs URL
+            let content = { audio: { url: audioUrl }, mimetype: 'audio/mp4', ptt: true };
+
+            if (audioUrl.startsWith('data:audio')) {
+                const base64Data = audioUrl.split(';base64,').pop();
+                content.audio = Buffer.from(base64Data, 'base64');
+                delete content.audio.url; // Remove url if buffer present? Baileys prioritizes one.
+            }
+
+            const result = await provider.sendMessage(tenant.id, phone, content);
+            return result;
         } catch (error) {
-            console.error('[Z-API] Error sending audio:', error.response?.data || error.message);
-            throw new Error('Falha ao enviar áudio WhatsApp');
+            console.error(`[WhatsAppService] Error sending audio to ${phone} for Tenant ${tenant.id}:`, error.message);
+            throw error;
         }
     }
 
     /**
-     * Download audio from a URL (e.g., from Z-API webhook)
+     * Send Appointment Confirmation
+     * @param {object} client 
+     * @param {object} appointment 
+     * @param {object} service 
+     * @param {object} professional 
+     * @param {object} tenant - Required
      */
-    async downloadAudio(url) {
+    async sendAppointmentConfirmation(client, appointment, service, professional, tenant) {
+        if (!tenant) throw new Error('Tenant context required for appointment confirmation');
+
         try {
-            const response = await axios.get(url, { responseType: 'arraybuffer' });
-            return Buffer.from(response.data);
+            const dateFormatted = format(new Date(appointment.date), "dd 'de' MMMM", { locale: ptBR });
+            const timeFormatted = appointment.start_time.slice(0, 5);
+
+            const message = `Olá, ${client.name}! 👋\n\nSeu agendamento está confirmado!\n\n🗓 Data: ${dateFormatted}\n⏰ Horário: ${timeFormatted}\n💇 Serviço: ${service.name}\n👤 Profissional: ${professional.name}\n\n📍 Endereço: Salão24h (Exemplo)`;
+
+            await this.sendMessage(client.phone, message, tenant);
         } catch (error) {
-            console.error('[WhatsApp Service] Error downloading audio:', error.message);
-            throw new Error('Falha ao baixar áudio do WhatsApp');
+            console.error('[WhatsAppService] Error sending appointment confirmation:', error);
+            throw error;
         }
     }
 
     /**
-     * Send appointment confirmation
+     * Check if WhatsApp is configured and connected for the tenant
+     * @param {object} tenant 
      */
-    async sendAppointmentConfirmation(client, appointment, service, professional) {
-        const message = `Olá ${client.name}! ✅\n\n` +
-            `Seu agendamento foi confirmado!\n\n` +
-            `📋 Serviço: ${service.name}\n` +
-            `👤 Profissional: ${professional.name}\n` +
-            `📅 Data: ${appointment.date}\n` +
-            `⏰ Horário: ${appointment.time}\n\n` +
-            `Te esperamos!\n\n` +
-            `Salão24h`;
-
-        return this.sendMessage(client.phone, message);
+    isConfigured(tenant) {
+        if (!tenant) return false;
+        return provider.getStatus(tenant.id) === 'connected';
     }
 }
 
