@@ -1,5 +1,4 @@
 const { BufferJSON, initAuthCreds } = require('@whiskeysockets/baileys');
-const { WhatsAppSession } = require('../models');
 
 /**
  * Custom Auth State for Baileys using PostgreSQL (via Sequelize)
@@ -7,6 +6,8 @@ const { WhatsAppSession } = require('../models');
  * @returns {object} { state, saveCreds }
  */
 const usePostgresAuthState = async (tenantId) => {
+    const { WhatsAppSession } = require('../models');
+
     // 1. Helper to read data from DB
     const readData = async (type) => {
         try {
