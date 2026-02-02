@@ -80,11 +80,19 @@ class ClientService {
 
     async create(data, tenantId) {
         const sanitizedData = this.sanitizeClientData(data);
-        return Client.create({
+        const client = await Client.create({
             ...sanitizedData,
             tenant_id: tenantId,
             registration_date: sanitizedData.registration_date || new Date()
         });
+
+        // Real-time CRM hook
+        const crmAutomationService = require('../../services/crm_automation.service');
+        crmAutomationService.handleNewClient(tenantId, client).catch(err =>
+            console.error('[CRM Hook Error] handleNewClient:', err)
+        );
+
+        return client;
     }
 
 

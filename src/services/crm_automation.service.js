@@ -18,34 +18,59 @@ class CRMAutomationService {
     }
 
     async processTenantCRM(tenantId) {
+        // Daily scan only for Birthdays (can't be real-time based on creation event)
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         if (!settings || !settings.funnel_stages) return;
 
-        const today = new Date().toISOString().split('T')[0];
-
-        // 1. Process Birthdays
         const birthdayConfig = settings.funnel_stages.find(s => s.id === 'birthday');
         if (birthdayConfig && birthdayConfig.isAIActionActive) {
-            await this.handleBirthdays(tenantId, birthdayConfig);
-        }
-
-        // 2. Process Scheduled Today
-        const scheduledConfig = settings.funnel_stages.find(s => s.id === 'scheduled');
-        if (scheduledConfig && scheduledConfig.isAIActionActive) {
-            await this.handleScheduledToday(tenantId, scheduledConfig);
-        }
-
-        // 3. Process Absent (Faltantes)
-        const absentConfig = settings.funnel_stages.find(s => s.id === 'absent');
-        if (absentConfig && absentConfig.isAIActionActive) {
-            await this.handleAbsentClients(tenantId, absentConfig);
+            await this.handleBirthdaysDaily(tenantId, birthdayConfig);
         }
     }
 
-    async handleBirthdays(tenantId, config) {
+    // --- Real-time Handlers (triggered by Service Hooks) ---
+
+    async handleNewClient(tenantId, client) {
+        const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
+        const config = settings?.funnel_stages?.find(s => s.id === 'new');
+        if (config && config.isAIActionActive) {
+            await this.triggerRobotAction(tenantId, client, config);
+        }
+    }
+
+    async handleScheduledToday(tenantId, client, appointment) {
+        const today = new Date().toISOString().split('T')[0];
+        if (appointment.date !== today) return; // Only trigger for today's appointments
+
+        const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
+        const config = settings?.funnel_stages?.find(s => s.id === 'scheduled');
+        if (config && config.isAIActionActive) {
+            await this.triggerRobotAction(tenantId, client, config, appointment);
+        }
+    }
+
+    async handleAbsent(tenantId, client) {
+        const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
+        const config = settings?.funnel_stages?.find(s => s.id === 'absent');
+        if (config && config.isAIActionActive) {
+            await this.triggerRobotAction(tenantId, client, config);
+        }
+    }
+
+    async handleRescheduled(tenantId, client, appointment) {
+        const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
+        const config = settings?.funnel_stages?.find(s => s.id === 'rescheduled');
+        if (config && config.isAIActionActive) {
+            await this.triggerRobotAction(tenantId, client, config, appointment);
+        }
+    }
+
+    // --- Periodic Internal Helpers ---
+
+    async handleBirthdaysDaily(tenantId, config) {
         const today = new Date();
-        const month = today.getMonth() + 1;
-        const day = today.getDate();
+        const month = today.getUTCMonth() + 1;
+        const day = today.getUTCDate();
 
         const clients = await Client.findAll({
             where: {
@@ -55,39 +80,6 @@ class CRMAutomationService {
                     { [Op.where]: sequelize.where(sequelize.fn('EXTRACT', sequelize.col('birth_date'), 'MONTH'), month) },
                     { [Op.where]: sequelize.where(sequelize.fn('EXTRACT', sequelize.col('birth_date'), 'DAY'), day) }
                 ]
-            }
-        });
-
-        for (const client of clients) {
-            await this.triggerRobotAction(tenantId, client, config);
-        }
-    }
-
-    async handleScheduledToday(tenantId, config) {
-        const today = new Date().toISOString().split('T')[0];
-        const appointments = await Appointment.findAll({
-            where: {
-                tenant_id: tenantId,
-                date: today,
-                status: 'confirmado'
-            },
-            include: [{ model: Client, as: 'client' }]
-        });
-
-        for (const appt of appointments) {
-            if (appt.client) {
-                await this.triggerRobotAction(tenantId, appt.client, config, appt);
-            }
-        }
-    }
-
-    async handleAbsentClients(tenantId, config) {
-        // Find clients whose last appointment was 'faltante' and haven't been contacted yet
-        const clients = await Client.findAll({
-            where: {
-                tenant_id: tenantId,
-                status: 'Faltante',
-                is_active: true
             }
         });
 

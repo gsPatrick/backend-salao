@@ -103,11 +103,26 @@ class AppointmentService {
                 }
             }
 
-            return Appointment.create({
+            const appointment = await Appointment.create({
                 ...data,
                 tenant_id: tenantId,
                 created_by_user_id: userId,
             }, { transaction: t });
+
+            // Real-time CRM hook (out of transaction to avoid blocking)
+            const today = new Date().toISOString().split('T')[0];
+            if (data.date === today) {
+                const crmAutomationService = require('../../services/crm_automation.service');
+                Client.findByPk(data.client_id).then(client => {
+                    if (client) {
+                        crmAutomationService.handleScheduledToday(tenantId, client, appointment).catch(err =>
+                            console.error('[CRM Hook Error] handleScheduledToday:', err)
+                        );
+                    }
+                });
+            }
+
+            return appointment;
         });
     }
 
@@ -148,9 +163,23 @@ class AppointmentService {
         const appointment = await this.getById(id, tenantId);
         await appointment.update({ status });
 
+        const crmAutomationService = require('../../services/crm_automation.service');
+
         // Update client status if faltante
         if (status === 'faltante') {
             await Client.update({ status: 'Faltante' }, { where: { id: appointment.client_id } });
+
+            // Real-time CRM hook
+            crmAutomationService.handleAbsent(tenantId, appointment.client).catch(err =>
+                console.error('[CRM Hook Error] handleAbsent:', err)
+            );
+        }
+
+        if (status === 'reagendado') {
+            // Real-time CRM hook
+            crmAutomationService.handleRescheduled(tenantId, appointment.client, appointment).catch(err =>
+                console.error('[CRM Hook Error] handleRescheduled:', err)
+            );
         }
 
         return this.getById(id, tenantId);

@@ -38,14 +38,14 @@ async function startServer() {
         const { initSocket } = require('./src/features/Chat/chat.socket');
         initSocket(server);
 
-        // Initialize CRM Automation (Runs every 6 hours)
+        // Initialize CRM Automation (Daily checks for Birthdays)
         const crmAutomation = require('./src/services/crm_automation.service');
-        const SIX_HOURS = 6 * 60 * 60 * 1000;
+        const ONE_DAY = 24 * 60 * 60 * 1000;
         setInterval(() => {
             crmAutomation.runDailyChecks().catch(err => console.error('CRM Automation Error:', err));
-        }, SIX_HOURS);
+        }, ONE_DAY);
 
-        // Run once on startup after a small delay
+        // Run once on startup (checks for anything missed while server was down)
         setTimeout(() => {
             crmAutomation.runDailyChecks().catch(err => console.error('CRM Automation Startup Error:', err));
         }, 10000);
