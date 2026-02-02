@@ -17,11 +17,11 @@ const Promotion = sequelize.define('Promotion', {
         allowNull: false
     },
     title: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false
     },
     subtitle: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: true
     },
     description: {
@@ -29,7 +29,7 @@ const Promotion = sequelize.define('Promotion', {
         allowNull: true
     },
     call_to_action: { // 'Chamada'
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: true
     },
     image_url: { // Stores URL or Base64 (for now)
@@ -37,7 +37,7 @@ const Promotion = sequelize.define('Promotion', {
         allowNull: true
     },
     link_url: { // promotionUrl or bannerLink
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: true
     },
     target_area: {
@@ -45,7 +45,7 @@ const Promotion = sequelize.define('Promotion', {
         defaultValue: 'painel'
     },
     action_button: {
-        type: DataTypes.STRING, // 'Comprar Agora'
+        type: DataTypes.TEXT, // 'Comprar Agora'
         allowNull: true
     },
     start_date: {
