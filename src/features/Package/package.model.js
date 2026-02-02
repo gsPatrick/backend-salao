@@ -38,6 +38,11 @@ const MonthlyPackage = sequelize.define('MonthlyPackage', {
     is_favorite: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
+    },
+    usage_type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'Serviços'
     }
 }, {
     tableName: 'monthly_packages',

@@ -112,40 +112,7 @@ module.exports = (sequelize) => {
         timestamps: true,
     });
 
-    Tenant.associate = (models) => {
-        Tenant.belongsTo(models.Plan, {
-            foreignKey: 'plan_id',
-            as: 'plan',
-        });
-        Tenant.belongsTo(models.User, {
-            foreignKey: 'owner_user_id',
-            as: 'owner',
-        });
-        Tenant.hasMany(models.User, {
-            foreignKey: 'tenant_id',
-            as: 'users',
-        });
-        Tenant.hasMany(models.Client, {
-            foreignKey: 'tenant_id',
-            as: 'clients',
-        });
-        Tenant.hasMany(models.Professional, {
-            foreignKey: 'tenant_id',
-            as: 'professionals',
-        });
-        Tenant.hasMany(models.Service, {
-            foreignKey: 'tenant_id',
-            as: 'services',
-        });
-        Tenant.hasMany(models.Appointment, {
-            foreignKey: 'tenant_id',
-            as: 'appointments',
-        });
-        Tenant.hasMany(models.FinancialTransaction, {
-            foreignKey: 'tenant_id',
-            as: 'transactions',
-        });
-    };
+
 
     return Tenant;
 };

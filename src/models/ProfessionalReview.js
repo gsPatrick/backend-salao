@@ -56,24 +56,7 @@ module.exports = (sequelize) => {
         timestamps: true,
     });
 
-    ProfessionalReview.associate = (models) => {
-        ProfessionalReview.belongsTo(models.Tenant, {
-            foreignKey: 'tenant_id',
-            as: 'tenant',
-        });
-        ProfessionalReview.belongsTo(models.Professional, {
-            foreignKey: 'professional_id',
-            as: 'professional',
-        });
-        ProfessionalReview.belongsTo(models.Client, {
-            foreignKey: 'client_id',
-            as: 'client',
-        });
-        ProfessionalReview.belongsTo(models.Appointment, {
-            foreignKey: 'appointment_id',
-            as: 'appointment',
-        });
-    };
+
 
     return ProfessionalReview;
 };

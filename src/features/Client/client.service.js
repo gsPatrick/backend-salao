@@ -58,6 +58,14 @@ class ClientService {
             sanitized.preferred_unit = sanitized.preferredUnit;
             delete sanitized.preferredUnit;
         }
+        if (sanitized.planId !== undefined && sanitized.plan_id === undefined) {
+            sanitized.plan_id = sanitized.planId;
+            delete sanitized.planId;
+        }
+        if (sanitized.packageId !== undefined && sanitized.package_id === undefined) {
+            sanitized.package_id = sanitized.packageId;
+            delete sanitized.packageId;
+        }
 
         // Clean up date fields with invalid values
         const dateFields = ['birth_date', 'last_visit'];
@@ -72,7 +80,11 @@ class ClientService {
 
     async create(data, tenantId) {
         const sanitizedData = this.sanitizeClientData(data);
-        return Client.create({ ...sanitizedData, tenant_id: tenantId });
+        return Client.create({
+            ...sanitizedData,
+            tenant_id: tenantId,
+            registration_date: sanitizedData.registration_date || new Date()
+        });
     }
 
 

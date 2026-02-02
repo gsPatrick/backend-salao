@@ -62,22 +62,7 @@ module.exports = (sequelize) => {
         timestamps: true,
     });
 
-    Service.associate = (models) => {
-        Service.belongsTo(models.Tenant, {
-            foreignKey: 'tenant_id',
-            as: 'tenant',
-        });
-        Service.belongsToMany(models.Professional, {
-            through: 'professional_services',
-            foreignKey: 'service_id',
-            otherKey: 'professional_id',
-            as: 'professionals',
-        });
-        Service.hasMany(models.Appointment, {
-            foreignKey: 'service_id',
-            as: 'appointments',
-        });
-    };
+
 
     return Service;
 };

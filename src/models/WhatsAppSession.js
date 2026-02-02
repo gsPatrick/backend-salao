@@ -26,9 +26,7 @@ module.exports = (sequelize) => {
         timestamps: true
     });
 
-    WhatsAppSession.associate = (models) => {
-        WhatsAppSession.belongsTo(models.Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
-    };
+
 
     return WhatsAppSession;
 };

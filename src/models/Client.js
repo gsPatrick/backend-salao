@@ -39,6 +39,14 @@ const Client = sequelize.define('client', {
         type: DataTypes.DATEONLY,
         allowNull: true
     },
+    plan_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    package_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     photo_url: {
         type: DataTypes.TEXT,
         allowNull: true

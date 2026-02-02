@@ -77,16 +77,7 @@ module.exports = (sequelize) => {
         timestamps: true,
     });
 
-    FinancialTransaction.associate = (models) => {
-        FinancialTransaction.belongsTo(models.Tenant, {
-            foreignKey: 'tenant_id',
-            as: 'tenant',
-        });
-        FinancialTransaction.belongsTo(models.Appointment, {
-            foreignKey: 'appointment_id',
-            as: 'appointment',
-        });
-    };
+
 
     return FinancialTransaction;
 };

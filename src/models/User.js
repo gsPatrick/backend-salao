@@ -95,12 +95,7 @@ module.exports = (sequelize) => {
         return values;
     };
 
-    User.associate = (models) => {
-        User.belongsTo(models.Tenant, {
-            foreignKey: 'tenant_id',
-            as: 'tenant',
-        });
-    };
+
 
     return User;
 };

@@ -61,12 +61,7 @@ module.exports = (sequelize) => {
         underscored: true,
     });
 
-    Unit.associate = (models) => {
-        Unit.belongsTo(models.Tenant, {
-            foreignKey: 'tenant_id',
-            as: 'tenant',
-        });
-    };
+
 
     return Unit;
 };

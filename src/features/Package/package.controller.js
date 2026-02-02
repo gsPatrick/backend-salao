@@ -25,6 +25,7 @@ exports.listPackages = async (req, res) => {
             isActive: p.active,
             suspended: p.is_suspended,
             isFavorite: p.is_favorite,
+            usageType: p.usage_type,
             createdAt: p.created_at
         }));
 
@@ -48,7 +49,8 @@ exports.createPackage = async (req, res) => {
             duration: data.duration,
             active: data.isActive !== undefined ? data.isActive : data.active !== undefined ? data.active : true,
             is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended !== undefined ? data.is_suspended : false,
-            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite !== undefined ? data.is_favorite : false
+            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite !== undefined ? data.is_favorite : false,
+            usage_type: data.usageType || 'Serviços'
         });
 
         console.log('Package created:', pkg.id);
@@ -69,6 +71,7 @@ function formatPackage(p) {
         isActive: p.active,
         suspended: p.is_suspended,
         isFavorite: p.is_favorite,
+        usageType: p.usage_type,
         createdAt: p.created_at
     };
 }
@@ -102,7 +105,8 @@ async function updateAndSend(pkg, data, res) {
         duration: data.duration,
         active: data.isActive !== undefined ? data.isActive : data.active,
         is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended,
-        is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite
+        is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite,
+        usage_type: data.usageType !== undefined ? data.usageType : pkg.usage_type
     });
     return res.json(formatPackage(pkg));
 }
