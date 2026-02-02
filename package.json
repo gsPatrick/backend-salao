@@ -4,7 +4,7 @@
   "description": "Backend API for Salão24h - Multi-tenant SaaS for beauty salons",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "sequelize-cli db:migrate && node server.js",
     "dev": "nodemon server.js",
     "db:migrate": "sequelize-cli db:migrate",
     "db:seed": "sequelize-cli db:seed:all",
