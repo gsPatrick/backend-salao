@@ -78,7 +78,8 @@ class ProfessionalController {
     async getRanking(req, res) {
         try {
             const limit = req.query.limit ? parseInt(req.query.limit) : 5;
-            const rankings = await professionalService.getRanking(req.tenantId, limit);
+            const unit = req.query.unit;
+            const rankings = await professionalService.getRanking(req.tenantId, limit, unit);
             res.json({ success: true, data: rankings });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

@@ -54,6 +54,10 @@ class ClientService {
             sanitized.indicated_by = sanitized.indicatedBy;
             delete sanitized.indicatedBy;
         }
+        if (sanitized.preferredUnit !== undefined && sanitized.preferred_unit === undefined) {
+            sanitized.preferred_unit = sanitized.preferredUnit;
+            delete sanitized.preferredUnit;
+        }
 
         // Clean up date fields with invalid values
         const dateFields = ['birth_date', 'last_visit'];

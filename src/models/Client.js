@@ -120,6 +120,10 @@ const Client = sequelize.define('client', {
         type: DataTypes.INTEGER,
         defaultValue: 0
     },
+    preferred_unit: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     password: {
         type: DataTypes.STRING,
         defaultValue: '123'

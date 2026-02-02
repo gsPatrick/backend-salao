@@ -7,6 +7,7 @@ class FinanceService {
 
         if (filters.type) where.type = filters.type;
         if (filters.status) where.status = filters.status;
+        if (filters.unit) where.unit = filters.unit;
         if (filters.dateFrom && filters.dateTo) {
             where.date = { [Op.between]: [filters.dateFrom, filters.dateTo] };
         }
@@ -61,7 +62,7 @@ class FinanceService {
         return transaction;
     }
 
-    async getSummary(tenantId, period = 'month') {
+    async getSummary(tenantId, period = 'month', unit = null) {
         const now = new Date();
         let dateFrom, dateTo;
 
@@ -76,12 +77,15 @@ class FinanceService {
             dateTo = now.toISOString().split('T')[0];
         }
 
-        const transactions = await this.getAll(tenantId, { dateFrom, dateTo });
+        const transactions = await this.getAll(tenantId, { dateFrom, dateTo, unit });
+        const appointmentsWhere = {
+            tenant_id: tenantId,
+            date: { [Op.between]: [dateFrom, dateTo] }
+        };
+        if (unit) appointmentsWhere.unit = unit;
+
         const appointments = await Appointment.findAll({
-            where: {
-                tenant_id: tenantId,
-                date: { [Op.between]: [dateFrom, dateTo] }
-            }
+            where: appointmentsWhere
         });
 
         const totalTransCount = transactions.length;
@@ -128,6 +132,12 @@ class FinanceService {
             expenses: sortedDates.map(d => chartDataMap[d].expenses)
         };
 
+        const clientsWhere = {
+            tenant_id: tenantId,
+            created_at: { [Op.between]: [dateFrom, dateTo] }
+        };
+        if (unit) clientsWhere.preferred_unit = unit;
+
         return {
             receitas,
             despesas,
@@ -140,10 +150,7 @@ class FinanceService {
             ticket_medio,
             chartData,
             clients_new: await Client.count({
-                where: {
-                    tenant_id: tenantId,
-                    created_at: { [Op.between]: [dateFrom, dateTo] }
-                }
+                where: clientsWhere
             })
         };
     }

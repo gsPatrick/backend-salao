@@ -1,10 +1,9 @@
 const { Professional, Service, ProfessionalReview, sequelize } = require('../../models');
 
 class ProfessionalService {
-    async getRanking(tenantId, limit = 5) {
+    async getRanking(tenantId, limit = 5, unit = null) {
         // Using raw query to avoid complex Sequelize association issues with GROUP BY
         try {
-            const tenantFilter = tenantId ? `WHERE pr.tenant_id = ${tenantId}` : '';
             const [rankings] = await sequelize.query(`
                 SELECT 
                     p.id,
@@ -15,11 +14,14 @@ class ProfessionalService {
                     COUNT(pr.id) as review_count
                 FROM professionals p
                 LEFT JOIN professional_reviews pr ON p.id = pr.professional_id
-                ${tenantFilter}
+                WHERE pr.tenant_id = :tenantId
+                ${unit ? 'AND p.unit = :unit' : ''}
                 GROUP BY p.id, p.name, p.photo, p.occupation
                 ORDER BY average_rating DESC
-                LIMIT ${limit}
-            `);
+                LIMIT :limit
+            `, {
+                replacements: { tenantId, unit, limit },
+            });
             return rankings;
         } catch (error) {
             console.error('Error in getRanking:', error);
