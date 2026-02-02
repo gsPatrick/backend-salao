@@ -7,6 +7,38 @@ class CRMService {
         if (!settings) {
             settings = await CRMSettings.create({ tenant_id: tenantId });
         }
+
+        // Self-healing: Ensure 'recurrent' stage exists
+        if (settings.funnel_stages && Array.isArray(settings.funnel_stages)) {
+            const hasRecurrent = settings.funnel_stages.some(s => s.id === 'recurrent');
+            if (!hasRecurrent) {
+                const newStage = {
+                    id: 'recurrent',
+                    title: 'Recorrentes (Ativos)',
+                    icon: '💎',
+                    visible: true,
+                    deletable: true,
+                    configTitle: 'Fidelização',
+                    configDescription: 'Manter engajamento com cliente ativo.',
+                    isAIActionActive: false
+                };
+
+                const stages = [...settings.funnel_stages];
+                const newIndex = stages.findIndex(s => s.id === 'new');
+
+                if (newIndex >= 0) {
+                    stages.splice(newIndex + 1, 0, newStage);
+                } else {
+                    stages.unshift(newStage);
+                }
+
+                // Update and persist
+                settings.funnel_stages = stages;
+                settings.changed('funnel_stages', true); // Force update for JSONB
+                await settings.save();
+            }
+        }
+
         return settings;
     }
 
