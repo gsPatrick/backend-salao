@@ -15,7 +15,7 @@ class TenantController {
 
     async getAll(req, res) {
         try {
-            const tenants = await tenantService.getAll();
+            const tenants = await tenantService.getAll(req.query);
             res.json({ success: true, data: tenants });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

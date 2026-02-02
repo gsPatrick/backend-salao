@@ -1,8 +1,27 @@
 const { Tenant, Plan, User } = require('../../models');
+const { Op } = require('sequelize');
 
 class TenantService {
-    async getAll() {
+    async getAll(filters = {}) {
+        const where = {};
+
+        if (filters.is_active !== undefined) {
+            where.is_active = filters.is_active === 'true' || filters.is_active === true;
+        }
+
+        // JSONB filtering for address fields with iLike for partial matches
+        if (filters.country) {
+            where['address.country'] = { [Op.iLike]: `%${filters.country}%` };
+        }
+        if (filters.state) {
+            where['address.state'] = { [Op.iLike]: `%${filters.state}%` };
+        }
+        if (filters.neighborhood) {
+            where['address.neighborhood'] = { [Op.iLike]: `%${filters.neighborhood}%` };
+        }
+
         return Tenant.findAll({
+            where,
             include: [{ model: Plan, as: 'plan' }],
             order: [['created_at', 'DESC']],
         });
