@@ -69,6 +69,15 @@ class TenantController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async getFilterOptions(req, res) {
+        try {
+            const options = await tenantService.getFilterOptions();
+            res.json({ success: true, data: options });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new TenantController();

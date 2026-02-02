@@ -16,6 +16,9 @@ class TenantService {
         if (filters.state) {
             where['address.state'] = { [Op.iLike]: `%${filters.state}%` };
         }
+        if (filters.city) {
+            where['address.city'] = { [Op.iLike]: `%${filters.city}%` };
+        }
         if (filters.neighborhood) {
             where['address.neighborhood'] = { [Op.iLike]: `%${filters.neighborhood}%` };
         }
@@ -74,6 +77,33 @@ class TenantService {
         if (!tenant) throw new Error('Tenant não encontrado');
         await tenant.update({ is_active: false });
         return { message: 'Tenant desativado' };
+    }
+
+    async getFilterOptions() {
+        const tenants = await Tenant.findAll({
+            attributes: ['address'],
+            where: { is_active: true }
+        });
+
+        const countries = new Set();
+        const states = new Set();
+        const cities = new Set();
+        const neighborhoods = new Set();
+
+        tenants.forEach(t => {
+            const addr = t.address || {};
+            if (addr.country) countries.add(addr.country);
+            if (addr.state) states.add(addr.state);
+            if (addr.city) cities.add(addr.city);
+            if (addr.neighborhood) neighborhoods.add(addr.neighborhood);
+        });
+
+        return {
+            countries: Array.from(countries).sort(),
+            states: Array.from(states).sort(),
+            cities: Array.from(cities).sort(),
+            neighborhoods: Array.from(neighborhoods).sort()
+        };
     }
 
     generateSlug(name) {
