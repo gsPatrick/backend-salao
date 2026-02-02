@@ -15,6 +15,7 @@ const CRMSettings = sequelize.define('crm_settings', {
         type: DataTypes.JSONB,
         defaultValue: [
             { id: 'new', title: 'Novos Clientes', icon: '✨', visible: true, deletable: true, configTitle: 'Boas-vindas', configDescription: 'Enviar mensagem de boas-vindas via WhatsApp e agendar primeiro contato.', isAIActionActive: true },
+            { id: 'recurrent', title: 'Recorrentes (Ativos)', icon: '💎', visible: true, deletable: true, configTitle: 'Fidelização', configDescription: 'Manter engajamento com cliente ativo.', isAIActionActive: false },
             { id: 'birthday', title: 'Aniversariante do Dia', icon: '🎂', visible: true, deletable: false, configTitle: 'Mensagem de Aniversário', configDescription: 'Enviar mensagem automática de feliz aniversário com um cupom de 10% de desconto.', isAIActionActive: true },
             { id: 'scheduled', title: 'Agendados Hoje', icon: '✅', visible: true, deletable: false, configTitle: 'Lembrete de Agendamento', configDescription: 'Enviar lembrete 1 hora antes do horário. Confirmar com cliente se ele vem.', isAIActionActive: false },
             { id: 'absent', title: 'Faltantes', icon: '❌', visible: true, deletable: false, configTitle: 'Contato Pós-Falta', configDescription: 'Entrar em contato para entender o motivo da falta e oferecer reagendamento.', isAIActionActive: false },
