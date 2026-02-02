@@ -51,7 +51,7 @@ module.exports = (sequelize) => {
             defaultValue: {},
         },
         logo_url: {
-            type: DataTypes.STRING(500),
+            type: DataTypes.TEXT,
             allowNull: true,
         },
         description: {

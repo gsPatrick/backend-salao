@@ -34,7 +34,7 @@ module.exports = (sequelize) => {
             allowNull: false,
         },
         avatar_url: {
-            type: DataTypes.STRING(500),
+            type: DataTypes.TEXT,
             allowNull: true,
             defaultValue: 'https://i.pravatar.cc/150?u=default',
         },
