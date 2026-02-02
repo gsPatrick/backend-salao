@@ -8,8 +8,12 @@ let io;
 const initSocket = (server) => {
     io = socketIo(server, {
         cors: {
-            origin: "*", // Allow all origins for now
-            methods: ["GET", "POST"]
+            origin: (origin, callback) => {
+                // Allow all origins for now to match Express CORS
+                callback(null, true);
+            },
+            methods: ["GET", "POST"],
+            credentials: true
         }
     });
 
