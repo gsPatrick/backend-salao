@@ -42,8 +42,11 @@ const connectToWhatsApp = async (tenantId) => {
         if (qr) {
             console.log(`[WhatsApp] QR Code generated for Tenant ${tenantId}`);
             if (io) {
+                console.log(`[WhatsApp] Emitting QR to tenant:${tenantId}`);
                 // Emit to the specific tenant room
                 io.to(`tenant:${tenantId}`).emit('whatsapp:qr', { tenantId, qr });
+            } else {
+                console.error('[WhatsApp] IO instance not found when trying to emit QR');
             }
         }
 

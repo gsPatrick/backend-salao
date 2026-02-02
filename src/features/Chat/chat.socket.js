@@ -49,9 +49,11 @@ const initSocket = (server) => {
             try {
                 const tenantId = socket.user.tenant_id;
                 console.log(`[Socket] whatsapp:connect requested by Tenant ${tenantId}`);
+                console.log('[Socket] Calling connectToWhatsApp...');
                 await connectToWhatsApp(tenantId);
+                console.log('[Socket] connectToWhatsApp called successfully');
             } catch (err) {
-                console.error('Error connecting WhatsApp:', err);
+                console.error('[Socket] Error connecting WhatsApp:', err);
                 socket.emit('error', { message: 'Failed to initiate WhatsApp connection' });
             }
         });
