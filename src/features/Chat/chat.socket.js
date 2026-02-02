@@ -22,11 +22,15 @@ const initSocket = (server) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const user = await User.findByPk(decoded.id);
 
-            if (!user) return next(new Error('User not found'));
+            if (!user) {
+                console.error(`[Socket Auth] User not found for ID: ${decoded.id}`);
+                return next(new Error('User not found'));
+            }
 
             socket.user = user;
             next();
         } catch (err) {
+            console.error('[Socket Auth] Verification failed:', err.message);
             next(new Error('Authentication error'));
         }
     });
