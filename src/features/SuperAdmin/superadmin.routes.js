@@ -9,6 +9,7 @@ router.get('/training-videos/:id', authenticate, superAdminController.getVideoBy
 // Write operations - Super Admin only
 router.post('/training-videos', authenticate, requireSuperAdmin, superAdminController.createVideo);
 router.put('/training-videos/:id', authenticate, requireSuperAdmin, superAdminController.updateVideo);
+router.patch('/training-videos/reorder', authenticate, requireSuperAdmin, superAdminController.reorderVideos);
 router.delete('/training-videos/:id', authenticate, requireSuperAdmin, superAdminController.deleteVideo);
 
 // Ad Banners - Read is public

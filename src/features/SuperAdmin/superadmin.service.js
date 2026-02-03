@@ -1,4 +1,5 @@
 const { TrainingVideo, AdBanner } = require('../../models');
+const sequelize = require('../../config/db');
 
 class SuperAdminService {
     // Training Videos
@@ -28,6 +29,23 @@ class SuperAdminService {
         if (!video) throw new Error('Vídeo não encontrado');
         await video.update({ is_active: false });
         return { message: 'Vídeo removido' };
+    }
+
+    async reorderVideos(orders) {
+        const transaction = await sequelize.transaction();
+        try {
+            for (const item of orders) {
+                await TrainingVideo.update(
+                    { order: item.order },
+                    { where: { id: item.id }, transaction }
+                );
+            }
+            await transaction.commit();
+            return { message: 'Ordem atualizada com sucesso' };
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     }
 
     // Ad Banners

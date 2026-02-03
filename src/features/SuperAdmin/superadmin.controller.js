@@ -47,6 +47,19 @@ class SuperAdminController {
         }
     }
 
+    async reorderVideos(req, res) {
+        try {
+            const { orders } = req.body;
+            if (!Array.isArray(orders)) {
+                throw new Error('Formato de ordens inválido');
+            }
+            const result = await superAdminService.reorderVideos(orders);
+            res.json({ success: true, message: result.message });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
     // Ad Banners
     async getAllBanners(req, res) {
         try {
