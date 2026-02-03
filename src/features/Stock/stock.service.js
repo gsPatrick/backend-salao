@@ -94,6 +94,13 @@ class StockService {
 
         return product;
     }
+
+    async deleteCategory(category, tenantId) {
+        return Product.update(
+            { category: '' },
+            { where: { category, tenant_id: tenantId } }
+        );
+    }
 }
 
 module.exports = new StockService();

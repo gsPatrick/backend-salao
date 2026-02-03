@@ -36,6 +36,11 @@ const Promotion = sequelize.define('Promotion', {
         type: DataTypes.TEXT('long'),
         allowNull: true
     },
+    mobile_image_url: {
+        type: DataTypes.TEXT('long'),
+        allowNull: true
+    },
+
     link_url: { // promotionUrl or bannerLink
         type: DataTypes.TEXT,
         allowNull: true

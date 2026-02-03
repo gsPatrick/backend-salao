@@ -43,6 +43,18 @@ const MonthlyPackage = sequelize.define('MonthlyPackage', {
         type: DataTypes.STRING,
         allowNull: false,
         defaultValue: 'Serviços'
+    },
+    sessions: {
+        type: DataTypes.STRING, // e.g., "Ilimitadas", "10"
+        allowNull: true
+    },
+    category: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    unit: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     tableName: 'monthly_packages',

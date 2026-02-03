@@ -33,7 +33,8 @@ const models = {
     SalonPlan: require('../features/SalonPlan/salon_plan.model'),
     Unit: require('./Unit'),
     ChatMessage: require('../features/Chat/chat.model'),
-    WhatsAppSession: require('./WhatsAppSession')
+    WhatsAppSession: require('./WhatsAppSession'),
+    ScheduleBlock: require('./ScheduleBlock')
 };
 
 // Initialize models
@@ -56,7 +57,8 @@ const {
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
-    Lead, MarketingCampaign, SalonPlan, Unit, ChatMessage, WhatsAppSession
+    Lead, MarketingCampaign, SalonPlan, Unit, ChatMessage, WhatsAppSession,
+    ScheduleBlock
 } = db;
 
 // Call associate for all models

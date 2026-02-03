@@ -81,3 +81,13 @@ exports.updateQuantity = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+exports.deleteCategory = async (req, res) => {
+    try {
+        const { category } = req.params;
+        const result = await stockService.deleteCategory(category, req.tenantId);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

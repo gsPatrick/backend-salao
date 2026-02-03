@@ -11,6 +11,7 @@ router.delete('/products/:id', authMiddleware.authenticate, stockController.dele
 router.patch('/products/:id/suspend', authMiddleware.authenticate, stockController.toggleSuspend);
 router.patch('/products/:id/favorite', authMiddleware.authenticate, stockController.toggleFavorite);
 router.patch('/products/:id/quantity', authMiddleware.authenticate, stockController.updateQuantity);
+router.delete('/categories/:category', authMiddleware.authenticate, stockController.deleteCategory);
 router.post('/adjust', authMiddleware.authenticate, stockController.adjustStock);
 
 module.exports = router;

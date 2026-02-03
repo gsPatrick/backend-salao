@@ -19,11 +19,20 @@ module.exports = (sequelize) => {
             type: DataTypes.TEXT,
             allowNull: false,
         },
+        mobile_image_url: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
+
         link_url: {
             type: DataTypes.TEXT,
             allowNull: true,
         },
         subtitle: {
+            type: DataTypes.STRING(200),
+            allowNull: true,
+        },
+        call_to_action: {
             type: DataTypes.STRING(200),
             allowNull: true,
         },

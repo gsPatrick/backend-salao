@@ -52,12 +52,16 @@ class TenantService {
     }
 
     async create(data) {
+        this.formatData(data);
         const slug = this.generateSlug(data.name);
         return Tenant.create({ ...data, slug });
     }
 
+
     async update(id, data, tenantId, isSuperAdmin) {
+        this.formatData(data);
         if (!isSuperAdmin && parseInt(id) !== parseInt(tenantId)) {
+
             throw new Error('Acesso negado: você só pode editar seu próprio salão');
         }
 
@@ -120,6 +124,39 @@ class TenantService {
         return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now().toString(36);
     }
+
+    formatData(data) {
+        if (data.phone) data.phone = this.formatPhone(data.phone);
+        if (data.whatsapp) data.whatsapp = this.formatPhone(data.whatsapp);
+        if (data.cnpj_cpf) data.cnpj_cpf = this.formatCPFOrCNPJ(data.cnpj_cpf);
+        if (data.address && data.address.cep) {
+            data.address.cep = this.formatCEP(data.address.cep);
+        }
+    }
+
+    formatPhone(value) {
+        if (!value) return value;
+        const clean = value.replace(/\D/g, '');
+        if (clean.length === 10) return clean.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+        if (clean.length === 11) return clean.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        return value;
+    }
+
+    formatCEP(value) {
+        if (!value) return value;
+        const clean = value.replace(/\D/g, '');
+        if (clean.length === 8) return clean.replace(/(\d{5})(\d{3})/, '$1-$2');
+        return value;
+    }
+
+    formatCPFOrCNPJ(value) {
+        if (!value) return value;
+        const clean = value.replace(/\D/g, '');
+        if (clean.length === 11) return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        if (clean.length === 14) return clean.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        return value;
+    }
 }
+
 
 module.exports = new TenantService();

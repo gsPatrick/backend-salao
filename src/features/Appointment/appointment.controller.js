@@ -125,6 +125,33 @@ class AppointmentController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async getAllBlocks(req, res) {
+        try {
+            const blocks = await appointmentService.getAllBlocks(req.tenantId, req.query);
+            res.json({ success: true, data: blocks });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async createBlock(req, res) {
+        try {
+            const block = await appointmentService.createBlock(req.body, req.tenantId);
+            res.status(201).json({ success: true, data: block });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async deleteBlock(req, res) {
+        try {
+            const success = await appointmentService.deleteBlock(req.params.id, req.tenantId);
+            res.json({ success, message: success ? 'Bloqueio excluído' : 'Falha ao excluir bloqueio' });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new AppointmentController();

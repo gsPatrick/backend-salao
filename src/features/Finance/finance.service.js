@@ -69,8 +69,10 @@ class FinanceService {
         if (period === 'today') {
             dateFrom = dateTo = now.toISOString().split('T')[0];
         } else if (period === 'week') {
-            const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
-            dateFrom = weekAgo.toISOString().split('T')[0];
+            const today = new Date();
+            const day = today.getDay();
+            const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
+            dateFrom = new Date(today.setDate(diff)).toISOString().split('T')[0];
             dateTo = now.toISOString().split('T')[0];
         } else {
             dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];

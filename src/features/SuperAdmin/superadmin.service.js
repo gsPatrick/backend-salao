@@ -34,6 +34,7 @@ class SuperAdminService {
     async getAllBanners() {
         return AdBanner.findAll({
             where: { is_active: true },
+            attributes: { exclude: ['subtitle'] },
             order: [['order', 'ASC']]
         });
     }

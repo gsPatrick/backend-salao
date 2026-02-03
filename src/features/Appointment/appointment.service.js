@@ -231,12 +231,23 @@ class AppointmentService {
 
         if (professionalId) {
             professional = await Professional.findOne({
-                where: { id: professionalId, tenant_id: tenantId }
+                where: {
+                    id: professionalId,
+                    tenant_id: tenantId,
+                    is_suspended: false,
+                    is_archived: false,
+                    open_schedule: true
+                }
             });
         } else {
             // Pick first professional if none specified
             professional = await Professional.findOne({
-                where: { tenant_id: tenantId, is_suspended: false, is_archived: false }
+                where: {
+                    tenant_id: tenantId,
+                    is_suspended: false,
+                    is_archived: false,
+                    open_schedule: true
+                }
             });
             if (professional) {
                 professionalId = professional.id;
@@ -246,6 +257,16 @@ class AppointmentService {
         if (!professional) {
             throw new Error('Profissional não encontrado');
         }
+
+        // Fetch blocks for this professional
+        const { ScheduleBlock } = require('../../models');
+        const blocks = await ScheduleBlock.findAll({
+            where: {
+                tenant_id: tenantId,
+                professional_id: professionalId,
+                date: date
+            }
+        });
 
         // Fetch Tenant to check business hours
         const { Tenant: TenantModel } = require('../../models');
@@ -363,6 +384,17 @@ class AppointmentService {
                     return false;
                 }
             }
+
+            // Also check blocks
+            for (const block of blocks) {
+                const blockStart = timeToMinutes(block.start_time);
+                const blockEnd = timeToMinutes(block.end_time);
+
+                if (slotStart < blockEnd && slotEnd > blockStart) {
+                    return false;
+                }
+            }
+
             return true;
         });
 
@@ -385,6 +417,24 @@ class AppointmentService {
             professional: { id: professional.id, name: professional.name },
             slots
         };
+    }
+
+    // --- Schedule Blocks Methods ---
+    async getAllBlocks(tenantId, filters = {}) {
+        const { ScheduleBlock } = require('../../models');
+        const where = { tenant_id: tenantId, ...filters };
+        return await ScheduleBlock.findAll({ where, order: [['date', 'ASC'], ['start_time', 'ASC']] });
+    }
+
+    async createBlock(data, tenantId) {
+        const { ScheduleBlock } = require('../../models');
+        return await ScheduleBlock.create({ ...data, tenant_id: tenantId });
+    }
+
+    async deleteBlock(id, tenantId) {
+        const { ScheduleBlock } = require('../../models');
+        const result = await ScheduleBlock.destroy({ where: { id, tenant_id: tenantId } });
+        return result > 0;
     }
 }
 
