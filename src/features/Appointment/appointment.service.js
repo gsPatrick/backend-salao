@@ -236,7 +236,7 @@ class AppointmentService {
                     tenant_id: tenantId,
                     is_suspended: false,
                     is_archived: false,
-                    open_schedule: true
+                    // open_schedule: true  <-- Ignored to allow booking even if schedule marked closed
                 }
             });
         } else {
@@ -246,7 +246,7 @@ class AppointmentService {
                     tenant_id: tenantId,
                     is_suspended: false,
                     is_archived: false,
-                    open_schedule: true
+                    // open_schedule: true <-- Ignored
                 }
             });
             if (professional) {
