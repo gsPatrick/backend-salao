@@ -28,6 +28,10 @@ const ContractTemplate = sequelize.define('ContractTemplate', {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     },
+    logo: {
+        type: DataTypes.TEXT('long'),
+        allowNull: true
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW

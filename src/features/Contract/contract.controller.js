@@ -15,7 +15,7 @@ exports.listTemplates = async (req, res) => {
             name: t.title,
             type: t.type,
             content: t.content,
-            logo: null // Logo logic can be added later if stored
+            logo: t.logo || null
         }));
 
         res.json(formatted);
@@ -28,13 +28,14 @@ exports.listTemplates = async (req, res) => {
 exports.createTemplate = async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const { title, type, content } = req.body; // Expects title (name in front), type, content
+        const { title, type, content, logo } = req.body;
 
         const template = await ContractTemplate.create({
             tenant_id: tenantId,
             title,
             type,
             content,
+            logo: logo || null,
             active: true
         });
 
@@ -42,7 +43,8 @@ exports.createTemplate = async (req, res) => {
             id: template.id,
             name: template.title,
             type: template.type,
-            content: template.content
+            content: template.content,
+            logo: template.logo
         });
     } catch (error) {
         console.error('Error creating template:', error);
@@ -54,7 +56,7 @@ exports.updateTemplate = async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const { id } = req.params;
-        const { title, content } = req.body;
+        const { title, content, logo } = req.body;
 
         const template = await ContractTemplate.findOne({
             where: { id, tenant_id: tenantId }
@@ -64,13 +66,14 @@ exports.updateTemplate = async (req, res) => {
             return res.status(404).json({ error: 'Modelo não encontrado.' });
         }
 
-        await template.update({ title, content });
+        await template.update({ title, content, logo: logo !== undefined ? logo : template.logo });
 
         res.json({
             id: template.id,
             name: template.title,
             type: template.type,
-            content: template.content
+            content: template.content,
+            logo: template.logo
         });
     } catch (error) {
         console.error('Error updating template:', error);
