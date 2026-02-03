@@ -84,10 +84,26 @@ class ClientService {
 
     async create(data, tenantId) {
         const sanitizedData = this.sanitizeClientData(data);
+
+        if (sanitizedData.email) {
+            sanitizedData.email = sanitizedData.email.trim().toLowerCase();
+            const existing = await Client.findOne({
+                where: {
+                    email: sanitizedData.email,
+                    tenant_id: tenantId,
+                    is_active: true
+                }
+            });
+            if (existing) {
+                throw new Error('Já existe um cliente ativo com este e-mail');
+            }
+        }
+
         const client = await Client.create({
             ...sanitizedData,
             tenant_id: tenantId,
-            registration_date: sanitizedData.registration_date || new Date()
+            registration_date: sanitizedData.registration_date || new Date(),
+            is_active: true
         });
 
         // Real-time CRM hook

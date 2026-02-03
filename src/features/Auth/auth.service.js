@@ -7,9 +7,10 @@ class AuthService {
      * Login with email and password
      */
     async login(email, password) {
+        const sanitizedEmail = email.trim().toLowerCase();
         // Find user by email
         const user = await User.findOne({
-            where: { email: email.toLowerCase() },
+            where: { email: sanitizedEmail },
             include: [
                 {
                     model: Tenant,
@@ -26,7 +27,7 @@ class AuthService {
 
         if (!user) {
             // Try to find in Client table
-            const client = await this.getClientByEmail(email);
+            const client = await this.getClientByEmail(sanitizedEmail);
 
             if (client) {
                 if (!client.is_active) {
@@ -81,8 +82,10 @@ class AuthService {
     }
 
     async getClientByEmail(email) {
+        const sanitizedEmail = email.trim().toLowerCase();
         return Client.findOne({
-            where: { email: email.toLowerCase() },
+            where: { email: sanitizedEmail },
+            order: [['is_active', 'DESC']],
             include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
         });
     }
@@ -128,9 +131,10 @@ class AuthService {
         const { tenantName, userName, email, password, planId, userType, tenantId, phone } = data;
 
         if (userType === 'client') {
+            const sanitizedEmail = email.trim().toLowerCase();
             // Check if email already exists in User or Client table
-            const existingUser = await User.findOne({ where: { email: email.toLowerCase() } });
-            const existingClient = await Client.findOne({ where: { email: email.toLowerCase() } });
+            const existingUser = await User.findOne({ where: { email: sanitizedEmail } });
+            const existingClient = await Client.findOne({ where: { email: sanitizedEmail, is_active: true } });
 
             if (existingUser || existingClient) {
                 throw new Error('Email já cadastrado');
@@ -151,7 +155,7 @@ class AuthService {
 
             const client = await Client.create({
                 name: userName,
-                email: email.toLowerCase(),
+                email: sanitizedEmail,
                 phone,
                 password, // Note: Existing logic uses plaintext passwords for clients in this POC, 
                 // but should use hashing in production.
