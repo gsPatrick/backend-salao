@@ -57,13 +57,16 @@ exports.handleZapiWebhook = async (req, res) => {
  * @param {string} messageText 
  * @param {boolean} isAudio 
  * @param {Buffer} audioBuffer 
+ * @param {boolean} isFromMe
+ * @param {boolean} skipAI
+ * @param {string} name
  */
-exports.handleInternalMessage = async (tenantId, phone, messageText, isAudio, audioBuffer) => {
+exports.handleInternalMessage = async (tenantId, phone, messageText, isAudio, audioBuffer, isFromMe = false, skipAI = false, name = null) => {
     try {
         // Normalize phone: Remove + and ensure format
         phone = phone.replace(/\D/g, '');
 
-        console.log(`[Internal Message] Processing for Tenant ${tenantId}, Phone: ${phone}`);
+        console.log(`[Internal Message] Processing for Tenant ${tenantId}, Phone: ${phone}, isFromMe: ${isFromMe}, skipAI: ${skipAI}`);
 
         // 1. Identify Config & Tenant
         const aiConfig = await AIAgentConfig.findOne({ where: { tenant_id: tenantId } });
@@ -82,7 +85,11 @@ exports.handleInternalMessage = async (tenantId, phone, messageText, isAudio, au
             console.log(`[AI Skipped] Channel 'support_active' is OFF for Tenant ${tenant.id}.`);
             // Sync to history so user sees it in panel
             if (messageText) {
-                await aiService.synchronizeUserMessage(tenantId, phone, messageText);
+                if (isFromMe) {
+                    await aiService.synchronizeMessage(tenantId, phone, messageText, name);
+                } else {
+                    await aiService.synchronizeUserMessage(tenantId, phone, messageText, name);
+                }
             }
             return;
         }
@@ -104,8 +111,18 @@ exports.handleInternalMessage = async (tenantId, phone, messageText, isAudio, au
         // --- Message Buffering Logic ---
         const bufferKey = `${tenantId}:${phone}`;
 
-        // 1. Always sync user message to history
-        await aiService.synchronizeUserMessage(tenantId, phone, messageText);
+        // 1. Always sync message to history
+        if (isFromMe) {
+            await aiService.synchronizeMessage(tenantId, phone, messageText, name);
+        } else {
+            await aiService.synchronizeUserMessage(tenantId, phone, messageText, name);
+        }
+
+        // 2. Skip AI if requested or if message is from me
+        if (skipAI || isFromMe) {
+            console.log(`[Internal] AI Skip requested or message from me. Synced only.`);
+            return;
+        }
 
         // 2. Clear existing timeout
         if (messageBuffer.has(bufferKey)) {

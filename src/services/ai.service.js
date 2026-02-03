@@ -245,9 +245,20 @@ ${professionalsList}
         }
     }
 
-    async synchronizeMessage(tenantId, phone, text) {
+    async synchronizeMessage(tenantId, phone, text, name = null) {
         let chat = await AIChat.findOne({ where: { tenant_id: tenantId, customer_phone: phone } });
-        if (!chat) return;
+        if (!chat) {
+            chat = await AIChat.create({
+                tenant_id: tenantId,
+                customer_phone: phone,
+                customer_name: name,
+                history: [],
+                status: 'active'
+            });
+        } else if (name && !chat.customer_name) {
+            await chat.update({ customer_name: name });
+        }
+
         let h = [...(chat.history || [])];
         if (h.length > 0 && h[h.length - 1].content === text) return;
         h.push({ role: "assistant", content: text });
@@ -257,10 +268,22 @@ ${professionalsList}
         await chat.save();
     }
 
-    async synchronizeUserMessage(tenantId, phone, text) {
+    async synchronizeUserMessage(tenantId, phone, text, name = null) {
         let chat = await AIChat.findOne({ where: { tenant_id: tenantId, customer_phone: phone } });
-        if (!chat) chat = await AIChat.create({ tenant_id: tenantId, customer_phone: phone, history: [], status: 'active' });
+        if (!chat) {
+            chat = await AIChat.create({
+                tenant_id: tenantId,
+                customer_phone: phone,
+                customer_name: name,
+                history: [],
+                status: 'active'
+            });
+        } else if (name && !chat.customer_name) {
+            await chat.update({ customer_name: name });
+        }
+
         let h = [...(chat.history || [])];
+        if (h.length > 0 && h[h.length - 1].content === text && h[h.length - 1].role === 'user') return;
         h.push({ role: "user", content: text });
         chat.history = h.slice(-20);
         chat.last_message = text;

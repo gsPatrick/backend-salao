@@ -70,23 +70,64 @@ const connectToWhatsApp = async (tenantId) => {
         }
     });
 
+    sock.ev.on('messaging-history.upsert', async (history) => {
+        try {
+            const { chats, contacts, messages, isLatest } = history;
+            console.log(`[WhatsApp History] Tenant ${tenantId}: ${messages?.length || 0} messages, ${chats?.length || 0} chats received.`);
+
+            const contactMap = new Map();
+            if (contacts) {
+                contacts.forEach(c => {
+                    if (c.id && (c.name || c.verifyName || c.notify)) {
+                        contactMap.set(c.id, c.name || c.verifyName || c.notify);
+                    }
+                });
+            }
+
+            const aiController = require('../features/AI/ai.controller');
+            if (messages) {
+                for (const msg of messages) {
+                    if (!msg.message) continue;
+                    if (msg.key.remoteJid === 'status@broadcast') continue;
+                    if (msg.key.remoteJid.endsWith('@g.us')) continue; // Ignore groups
+
+                    const phone = msg.key.remoteJid.replace('@s.whatsapp.net', '');
+                    const name = contactMap.get(msg.key.remoteJid) || msg.pushName || null;
+                    const messageType = Object.keys(msg.message)[0];
+                    let text = '';
+                    if (messageType === 'conversation') text = msg.message.conversation;
+                    else if (messageType === 'extendedTextMessage') text = msg.message.extendedTextMessage.text;
+
+                    if (text) {
+                        // Always skip AI for history import
+                        await aiController.handleInternalMessage(tenantId, phone, text, false, null, msg.key.fromMe, true, name);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[WhatsApp History Error]:', err);
+        }
+    });
+
     sock.ev.on('messages.upsert', async (m) => {
         try {
             const msg = m.messages[0];
-            if (!msg.message || m.type !== 'notify') return; // Ignore if no message content or not a notify event (e.g. initial sync)
-            if (msg.key.fromMe) return; // Ignore own messages
-            if (msg.key.remoteJid === 'status@broadcast') return; // Ignore status updates
+            if (!msg.message) return;
+            if (msg.key.remoteJid === 'status@broadcast') return;
 
             const isGroup = msg.key.remoteJid.endsWith('@g.us');
-            if (isGroup) return; // Filter out groups as per requirement
+            if (isGroup) return;
 
-            console.log(`[WhatsApp] New message for Tenant ${tenantId}`, msg.key.remoteJid);
+            // Determine if we should skip AI (history sync or own message)
+            const isHistory = m.type !== 'notify';
+            const isFromMe = msg.key.fromMe;
+            const skipAI = isHistory || isFromMe;
+            const pushName = msg.pushName || null;
+
+            console.log(`[WhatsApp] ${isHistory ? 'History' : 'New message'} for Tenant ${tenantId} ${isFromMe ? '(Own)' : '(Remote)'}:`, msg.key.remoteJid, pushName ? `(${pushName})` : '');
 
             // Dynamic import to avoid circular dependency
             const aiController = require('../features/AI/ai.controller');
-            const { getIo } = require('../features/Chat/chat.socket');
-            const io = getIo();
-
             const phone = msg.key.remoteJid.replace('@s.whatsapp.net', '');
 
             // Extract content
@@ -101,16 +142,11 @@ const connectToWhatsApp = async (tenantId) => {
                 text = msg.message.extendedTextMessage.text;
             } else if (messageType === 'audioMessage') {
                 isAudio = true;
-                // Download audio
                 try {
-                    // buffer
                     audioBuffer = await downloadMediaMessage(
                         msg,
                         'buffer',
-                        { logger }, // Pass logger
-                        {
-                            // reuploadRequest: sock.updateMediaMessage
-                        }
+                        { logger }
                     );
                 } catch (e) {
                     console.error('Error downloading audio:', e);
@@ -118,7 +154,7 @@ const connectToWhatsApp = async (tenantId) => {
             }
 
             if (text || isAudio) {
-                await aiController.handleInternalMessage(tenantId, phone, text, isAudio, audioBuffer);
+                await aiController.handleInternalMessage(tenantId, phone, text, isAudio, audioBuffer, isFromMe, skipAI, pushName);
             }
 
         } catch (err) {
