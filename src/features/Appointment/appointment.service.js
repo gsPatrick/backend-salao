@@ -65,6 +65,24 @@ class AppointmentService {
     async create(data, tenantId, userId) {
         // Use a SERIALIZABLE transaction to prevent race conditions
         return sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE }, async (t) => {
+            // Normalize and Validate Status
+            const allowedStatuses = ['agendado', 'confirmado', 'em_atendimento', 'concluido', 'faltou', 'cancelado', 'reagendado'];
+            if (data.status) {
+                data.status = data.status.toLowerCase();
+                if (!allowedStatuses.includes(data.status)) {
+                    data.status = 'agendado'; // Default to agendado if invalid
+                }
+            } else {
+                data.status = 'agendado';
+            }
+
+            // Validate Service Presence
+            if (!data.service_id) {
+                const error = new Error('O campo service_id é obrigatório para criar um agendamento');
+                error.status = 400;
+                throw error;
+            }
+
             // Check for conflicting appointment within transaction
             if (data.professional_id && data.date && data.time) {
                 const conflict = await Appointment.findOne({
@@ -92,16 +110,18 @@ class AppointmentService {
             }
 
             // Calculate end time based on service duration
-            if (data.service_id) {
-                const service = await Service.findByPk(data.service_id, { transaction: t });
-                if (service) {
-                    const [hours, minutes] = data.time.split(':').map(Number);
-                    const endDate = new Date();
-                    endDate.setHours(hours, minutes + service.duration);
-                    data.end_time = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
-                    data.price = data.price || service.price;
-                }
+            const service = await Service.findByPk(data.service_id, { transaction: t });
+            if (!service) {
+                const error = new Error('Serviço não encontrado');
+                error.status = 404;
+                throw error;
             }
+
+            const [hours, minutes] = data.time.split(':').map(Number);
+            const endDate = new Date();
+            endDate.setHours(hours, minutes + service.duration);
+            data.end_time = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+            data.price = data.price || service.price;
 
             const appointment = await Appointment.create({
                 ...data,

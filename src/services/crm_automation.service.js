@@ -42,6 +42,12 @@ class CRMAutomationService {
         const today = new Date().toISOString().split('T')[0];
         if (appointment.date !== today) return; // Only trigger for today's appointments
 
+        // Update Client CRM Stage
+        if (client.crm_stage !== 'scheduled') {
+            await client.update({ crm_stage: 'scheduled' });
+            console.log(`[CRM Automation] Client ${client.name} stage updated to 'scheduled'`);
+        }
+
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         const config = settings?.funnel_stages?.find(s => s.id === 'scheduled');
         if (config && config.isAIActionActive) {
