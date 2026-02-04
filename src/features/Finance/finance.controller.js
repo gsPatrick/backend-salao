@@ -3,7 +3,10 @@ const financeService = require('./finance.service');
 class FinanceController {
     async getAll(req, res) {
         try {
-            const transactions = await financeService.getAll(req.tenantId, req.query);
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+            const filters = { ...req.query };
+            if (unitId) filters.unitId = unitId;
+            const transactions = await financeService.getAll(req.tenantId, filters);
             res.json({ success: true, data: transactions });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -21,7 +24,8 @@ class FinanceController {
 
     async create(req, res) {
         try {
-            const data = { ...req.body, tenant_id: req.tenantId };
+            const unitId = req.headers['x-unit-id'] || req.body.unitId;
+            const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
             const transaction = await financeService.create(data, req.tenantId);
             res.status(201).json({ success: true, data: transaction });
         } catch (error) {
@@ -31,7 +35,8 @@ class FinanceController {
 
     async update(req, res) {
         try {
-            const transaction = await financeService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
+            const unitId = req.headers['x-unit-id'] || req.body.unitId;
+            const transaction = await financeService.update(req.params.id, { ...req.body, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
             res.json({ success: true, data: transaction });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -58,7 +63,8 @@ class FinanceController {
 
     async getSummary(req, res) {
         try {
-            const summary = await financeService.getSummary(req.tenantId, req.query.period, req.query.unit);
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+            const summary = await financeService.getSummary(req.tenantId, req.query.period, unitId);
             res.json({ success: true, data: summary });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

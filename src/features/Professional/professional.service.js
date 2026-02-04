@@ -1,7 +1,7 @@
 const { Professional, Service, ProfessionalReview, sequelize } = require('../../models');
 
 class ProfessionalService {
-    async getRanking(tenantId, limit = 5, unit = null) {
+    async getRanking(tenantId, limit = 5, unit = null, unitId = null) {
         // Using raw query to avoid complex Sequelize association issues with GROUP BY
         try {
             const [rankings] = await sequelize.query(`
@@ -15,12 +15,12 @@ class ProfessionalService {
                 FROM professionals p
                 LEFT JOIN professional_reviews pr ON p.id = pr.professional_id
                 WHERE pr.tenant_id = :tenantId
-                ${unit ? 'AND p.unit = :unit' : ''}
+                ${unitId ? 'AND p.unit_id = :unitId' : (unit ? 'AND p.unit = :unit' : '')}
                 GROUP BY p.id, p.name, p.photo, p.occupation
                 ORDER BY average_rating DESC
                 LIMIT :limit
             `, {
-                replacements: { tenantId, unit, limit },
+                replacements: { tenantId, unit, unitId, limit },
             });
             return rankings;
         } catch (error) {
@@ -35,6 +35,8 @@ class ProfessionalService {
         if (filters.open_schedule !== undefined) {
             where.open_schedule = filters.open_schedule === 'true' || filters.open_schedule === true;
         }
+
+        if (filters.unitId) where.unit_id = filters.unitId;
 
         return Professional.findAll({
             where,
@@ -53,7 +55,24 @@ class ProfessionalService {
     }
 
     async create(data, tenantId) {
-        return Professional.create({ ...data, tenant_id: tenantId });
+        const unitIds = (data.targetUnitIds && data.targetUnitIds.length > 0)
+            ? data.targetUnitIds
+            : [data.unit_id];
+
+        let createdProfessional = null;
+        for (const unitId of unitIds) {
+            if (!unitId) continue;
+            // Create a record for each unit
+            // Note: If creating multiple, we assume 'Ambas' scenario.
+            // Future improvement: check if professional already exists in that unit to avoid dupes if re-submitting?
+            const professional = await Professional.create({
+                ...data,
+                tenant_id: tenantId,
+                unit_id: unitId
+            });
+            if (!createdProfessional) createdProfessional = professional;
+        }
+        return createdProfessional;
     }
 
     async update(id, data, tenantId) {

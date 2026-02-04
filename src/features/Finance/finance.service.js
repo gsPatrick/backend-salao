@@ -7,7 +7,10 @@ class FinanceService {
 
         if (filters.type) where.type = filters.type;
         if (filters.status) where.status = filters.status;
-        if (filters.unit) where.unit = filters.unit;
+        if (filters.unitId) where.unit_id = filters.unitId;
+        // Also support legacy 'unit' filter string if needed, but prefer ID
+        if (filters.unit && !filters.unitId) where.unit = filters.unit;
+
         if (filters.dateFrom && filters.dateTo) {
             where.date = { [Op.between]: [filters.dateFrom, filters.dateTo] };
         }
@@ -31,6 +34,7 @@ class FinanceService {
         const mappedData = {
             ...data,
             tenant_id: tenantId,
+            unit_id: data.unit_id,
             bill_attachment: data.billAttachment || data.bill_attachment,
             receipt_attachment: data.receiptAttachment || data.receipt_attachment
         };
@@ -43,6 +47,7 @@ class FinanceService {
         const transaction = await this.getById(id, tenantId);
         const mappedData = {
             ...data,
+            unit_id: data.unit_id,
             bill_attachment: data.billAttachment || data.bill_attachment,
             receipt_attachment: data.receiptAttachment || data.receipt_attachment
         };
@@ -62,7 +67,7 @@ class FinanceService {
         return transaction;
     }
 
-    async getSummary(tenantId, period = 'month', unit = null) {
+    async getSummary(tenantId, period = 'month', unitId = null) {
         const now = new Date();
         let dateFrom, dateTo;
 
@@ -79,12 +84,12 @@ class FinanceService {
             dateTo = now.toISOString().split('T')[0];
         }
 
-        const transactions = await this.getAll(tenantId, { dateFrom, dateTo, unit });
+        const transactions = await this.getAll(tenantId, { dateFrom, dateTo, unitId });
         const appointmentsWhere = {
             tenant_id: tenantId,
             date: { [Op.between]: [dateFrom, dateTo] }
         };
-        if (unit) appointmentsWhere.unit = unit;
+        if (unitId) appointmentsWhere.unit_id = unitId;
 
         const appointments = await Appointment.findAll({
             where: appointmentsWhere
@@ -138,7 +143,7 @@ class FinanceService {
             tenant_id: tenantId,
             created_at: { [Op.between]: [dateFrom, dateTo] }
         };
-        if (unit) clientsWhere.preferred_unit = unit;
+        if (unitId) clientsWhere.unit_id = unitId;
 
         return {
             receitas,

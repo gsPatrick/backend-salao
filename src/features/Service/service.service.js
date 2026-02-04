@@ -1,9 +1,13 @@
 const { Service, Professional } = require('../../models');
 
 class ServiceService {
-    async getAll(tenantId) {
+    async getAll(tenantId, unitId = null) {
+        const where = { tenant_id: tenantId, is_suspended: false };
+        if (unitId) {
+            where.unit_id = unitId;
+        }
         return Service.findAll({
-            where: { tenant_id: tenantId, is_suspended: false },
+            where,
             include: [{ model: Professional, as: 'professionals' }],
             order: [['name', 'ASC']],
         });
@@ -19,7 +23,21 @@ class ServiceService {
     }
 
     async create(data, tenantId) {
-        return Service.create({ ...data, tenant_id: tenantId });
+        const unitIds = (data.targetUnitIds && data.targetUnitIds.length > 0)
+            ? data.targetUnitIds
+            : [data.unit_id];
+
+        let createdService = null;
+        for (const unitId of unitIds) {
+            if (!unitId) continue;
+            const service = await Service.create({
+                ...data,
+                tenant_id: tenantId,
+                unit_id: unitId
+            });
+            if (!createdService) createdService = service;
+        }
+        return createdService;
     }
 
     async update(id, data, tenantId) {

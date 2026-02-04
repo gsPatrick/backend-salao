@@ -5,7 +5,10 @@ const { Tenant, Client, Service, Professional } = require('../../models');
 class AppointmentController {
     async getAll(req, res) {
         try {
-            const appointments = await appointmentService.getAll(req.tenantId, req.query);
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+            const filters = { ...req.query };
+            if (unitId) filters.unitId = unitId;
+            const appointments = await appointmentService.getAll(req.tenantId, filters);
             res.json({ success: true, data: appointments });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -23,7 +26,8 @@ class AppointmentController {
 
     async create(req, res) {
         try {
-            const data = { ...req.body, tenant_id: req.tenantId };
+            const unitId = req.headers['x-unit-id'] || req.body.unitId;
+            const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
             const appointment = await appointmentService.create(data, req.tenantId, req.userId);
 
             // --- Send Confirmation WhatsApp if Channel is Active ---

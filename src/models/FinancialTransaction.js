@@ -15,6 +15,14 @@ module.exports = (sequelize) => {
                 key: 'id',
             },
         },
+        unit_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'units',
+                key: 'id',
+            },
+        },
         appointment_id: {
             type: DataTypes.INTEGER,
             allowNull: true,

@@ -4,7 +4,8 @@ const auditLogService = require('../../services/auditLog.service');
 // --- Campaigns ---
 exports.listCampaigns = async (req, res) => {
     try {
-        const campaigns = await marketingService.listCampaigns(req.tenantId);
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const campaigns = await marketingService.listCampaigns(req.tenantId, unitId);
         res.json(campaigns);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -13,7 +14,8 @@ exports.listCampaigns = async (req, res) => {
 
 exports.createCampaign = async (req, res) => {
     try {
-        const data = { ...req.body, tenant_id: req.tenantId };
+        const unitId = req.headers['x-unit-id'] || req.body.unitId;
+        const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
         const campaign = await marketingService.createCampaign(data, req.tenantId);
 
         await auditLogService.record(
@@ -74,7 +76,8 @@ exports.deleteCampaign = async (req, res) => {
 // --- Acquisition Channels ---
 exports.listChannels = async (req, res) => {
     try {
-        const channels = await marketingService.listChannels(req.tenantId);
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const channels = await marketingService.listChannels(req.tenantId, unitId);
         res.json(channels);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -83,7 +86,8 @@ exports.listChannels = async (req, res) => {
 
 exports.createChannel = async (req, res) => {
     try {
-        const data = { ...req.body, tenant_id: req.tenantId };
+        const unitId = req.headers['x-unit-id'] || req.body.unitId;
+        const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
         const channel = await marketingService.createChannel(data, req.tenantId);
         res.status(201).json(channel);
     } catch (error) {
@@ -107,7 +111,8 @@ exports.updateChannel = async (req, res) => {
 // --- Direct Mail Campaigns ---
 exports.listDirectMail = async (req, res) => {
     try {
-        const campaigns = await marketingService.listDirectMail(req.tenantId);
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const campaigns = await marketingService.listDirectMail(req.tenantId, unitId);
         res.json(campaigns);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -116,7 +121,8 @@ exports.listDirectMail = async (req, res) => {
 
 exports.createDirectMail = async (req, res) => {
     try {
-        const data = { ...req.body, tenant_id: req.tenantId };
+        const unitId = req.headers['x-unit-id'] || req.body.unitId;
+        const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
         const campaign = await marketingService.createDirectMail(data, req.tenantId);
         res.status(201).json(campaign);
     } catch (error) {
@@ -149,7 +155,8 @@ exports.deleteDirectMail = async (req, res) => {
 exports.getAudienceCount = async (req, res) => {
     try {
         const { audience } = req.query;
-        const count = await marketingService.getAudienceCount(req.tenantId, audience);
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const count = await marketingService.getAudienceCount(req.tenantId, audience, unitId);
         res.json({ success: true, count });
     } catch (error) {
         res.status(500).json({ error: error.message });

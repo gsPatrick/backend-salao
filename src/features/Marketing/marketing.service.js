@@ -2,9 +2,13 @@ const { Campaign, AcquisitionChannel, MarketingCampaign } = require('../../model
 
 class MarketingService {
     // --- Campaigns ---
-    async listCampaigns(tenantId) {
+    async listCampaigns(tenantId, unitId = null) {
+        const where = { tenant_id: tenantId };
+        if (unitId) {
+            where.unit_id = unitId;
+        }
         return Campaign.findAll({
-            where: { tenant_id: tenantId },
+            where,
             order: [['created_at', 'DESC']]
         });
     }
@@ -12,7 +16,8 @@ class MarketingService {
     async createCampaign(data, tenantId) {
         return Campaign.create({
             ...data,
-            tenant_id: tenantId
+            tenant_id: tenantId,
+            unit_id: data.unit_id
         });
     }
 
@@ -33,9 +38,13 @@ class MarketingService {
     }
 
     // --- Acquisition Channels ---
-    async listChannels(tenantId) {
+    async listChannels(tenantId, unitId = null) {
+        const where = { tenant_id: tenantId };
+        if (unitId) {
+            where.unit_id = unitId;
+        }
         return AcquisitionChannel.findAll({
-            where: { tenant_id: tenantId },
+            where,
             order: [['created_at', 'DESC']]
         });
     }
@@ -43,7 +52,8 @@ class MarketingService {
     async createChannel(data, tenantId) {
         return AcquisitionChannel.create({
             ...data,
-            tenant_id: tenantId
+            tenant_id: tenantId,
+            unit_id: data.unit_id
         });
     }
 
@@ -58,9 +68,13 @@ class MarketingService {
     }
 
     // --- Direct Mail Campaigns (MarketingCampaign) ---
-    async listDirectMail(tenantId) {
+    async listDirectMail(tenantId, unitId = null) {
+        const where = { tenant_id: tenantId };
+        if (unitId) {
+            where.unit_id = unitId;
+        }
         return MarketingCampaign.findAll({
-            where: { tenant_id: tenantId },
+            where,
             order: [['created_at', 'DESC']]
         });
     }
@@ -68,7 +82,8 @@ class MarketingService {
     async createDirectMail(data, tenantId) {
         return MarketingCampaign.create({
             ...data,
-            tenant_id: tenantId
+            tenant_id: tenantId,
+            unit_id: data.unit_id
         });
     }
 
@@ -88,21 +103,26 @@ class MarketingService {
         });
     }
 
-    async getAudienceCount(tenantId, audience) {
+    async getAudienceCount(tenantId, audience, unitId = null) {
         const { Client, Appointment } = require('../../models');
         const sequelize = require('../../config/db');
         const { Op } = require('sequelize');
         const today = new Date().toISOString().split('T')[0];
 
+        const baseWhere = { tenant_id: tenantId };
+        if (unitId) {
+            baseWhere.unit_id = unitId;
+        }
+
         switch (audience) {
             case 'Novos Clientes':
                 return Client.count({
-                    where: { tenant_id: tenantId, crm_stage: 'new' }
+                    where: { ...baseWhere, crm_stage: 'new' }
                 });
             case 'Agendados Hoje':
                 const appointments = await Appointment.findAll({
                     where: {
-                        tenant_id: tenantId,
+                        ...baseWhere,
                         date: today,
                         status: { [Op.in]: ['agendado', 'confirmado'] }
                     },
@@ -114,7 +134,7 @@ class MarketingService {
             case 'Faltantes':
                 const missed = await Appointment.findAll({
                     where: {
-                        tenant_id: tenantId,
+                        ...baseWhere,
                         status: 'faltou'
                     },
                     attributes: ['client_id'],
@@ -126,7 +146,7 @@ class MarketingService {
                 const [_, month, day] = today.split('-');
                 return Client.count({
                     where: {
-                        tenant_id: tenantId,
+                        ...baseWhere,
                         [Op.and]: [
                             sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('MONTH FROM birth_date')), parseInt(month)),
                             sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('DAY FROM birth_date')), parseInt(day))
@@ -135,7 +155,7 @@ class MarketingService {
                 });
             default:
                 // If it's a list of IDs or something else, handle accordingly or return total
-                return Client.count({ where: { tenant_id: tenantId } });
+                return Client.count({ where: baseWhere });
         }
     }
 

@@ -9,6 +9,8 @@ class AppointmentService {
         if (filters.professional_id) where.professional_id = filters.professional_id;
         if (filters.client_id) where.client_id = filters.client_id;
         if (filters.status) where.status = filters.status;
+        if (filters.unitId) where.unit_id = filters.unitId; // Add unit filter
+
         if (filters.dateFrom && filters.dateTo) {
             where.date = { [Op.between]: [filters.dateFrom, filters.dateTo] };
         }
@@ -126,6 +128,7 @@ class AppointmentService {
             const appointment = await Appointment.create({
                 ...data,
                 tenant_id: tenantId,
+                unit_id: data.unit_id,
                 created_by_user_id: userId,
             }, { transaction: t });
 

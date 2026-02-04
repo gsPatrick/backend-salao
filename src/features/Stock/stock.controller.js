@@ -3,7 +3,8 @@ const auditLogService = require('../../services/auditLog.service');
 
 exports.listProducts = async (req, res) => {
     try {
-        const products = await stockService.listProducts(req.tenantId);
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const products = await stockService.listProducts(req.tenantId, unitId);
         res.json({ success: true, data: products });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -21,7 +22,8 @@ exports.getProduct = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
     try {
-        const data = { ...req.body, tenant_id: req.tenantId };
+        const unitId = req.headers['x-unit-id'] || req.body.unitId;
+        const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
         const product = await stockService.createProduct(data, req.tenantId);
 
         await auditLogService.record(

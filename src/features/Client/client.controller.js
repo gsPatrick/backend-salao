@@ -3,7 +3,8 @@ const clientService = require('./client.service');
 class ClientController {
     async getAll(req, res) {
         try {
-            const clients = await clientService.getAll(req.tenantId);
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+            const clients = await clientService.getAll(req.tenantId, unitId);
             res.json({ success: true, data: clients });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -21,8 +22,9 @@ class ClientController {
 
     async create(req, res) {
         try {
-            const data = { ...req.body, tenant_id: req.tenantId };
-            const client = await clientService.create(data, req.tenantId);
+            const unitId = req.headers['x-unit-id'] || req.body.unitId;
+            const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
+            const client = await clientService.create(data, req.tenantId, unitId);
             res.status(201).json({ success: true, data: client });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -31,7 +33,8 @@ class ClientController {
 
     async update(req, res) {
         try {
-            const client = await clientService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
+            const unitId = req.headers['x-unit-id'] || req.body.unitId;
+            const client = await clientService.update(req.params.id, { ...req.body, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
             res.json({ success: true, data: client });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -58,7 +61,8 @@ class ClientController {
 
     async search(req, res) {
         try {
-            const clients = await clientService.search(req.query.q, req.tenantId);
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+            const clients = await clientService.search(req.query.q, req.tenantId, unitId);
             res.json({ success: true, data: clients });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

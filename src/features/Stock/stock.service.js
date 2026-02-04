@@ -1,10 +1,12 @@
 const { Product, StockTransaction } = require('../../models');
 
 class StockService {
-    async listProducts(tenantId) {
-        return Product.findAll({
-            where: { tenant_id: tenantId, is_active: true }
-        });
+    async listProducts(tenantId, unitId = null) {
+        const where = { tenant_id: tenantId, is_active: true };
+        if (unitId) {
+            where.unit_id = unitId;
+        }
+        return Product.findAll({ where });
     }
 
     async getProduct(id, tenantId) {
@@ -16,7 +18,7 @@ class StockService {
     }
 
     async createProduct(data, tenantId) {
-        return Product.create({ ...data, tenant_id: tenantId });
+        return Product.create({ ...data, tenant_id: tenantId, unit_id: data.unit_id });
     }
 
     async updateProduct(id, data, tenantId) {
@@ -46,6 +48,7 @@ class StockService {
 
         const transaction = await StockTransaction.create({
             tenant_id: tenantId,
+            unit_id: product.unit_id,
             product_id: productId,
             type,
             quantity,
@@ -83,6 +86,7 @@ class StockService {
 
         await StockTransaction.create({
             tenant_id: tenantId,
+            unit_id: product.unit_id,
             product_id: id,
             type: change > 0 ? 'in' : 'out',
             quantity: Math.abs(change),

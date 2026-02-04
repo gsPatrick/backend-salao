@@ -1,10 +1,13 @@
 const professionalService = require('./professional.service');
+const { Unit } = require('../../models');
 
 class ProfessionalController {
     async getAll(req, res) {
         try {
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
             const filters = {
-                open_schedule: req.query.open_schedule
+                open_schedule: req.query.open_schedule,
+                unitId: unitId
             };
             const professionals = await professionalService.getAll(req.tenantId, filters);
             res.json({ success: true, data: professionals });
@@ -24,7 +27,24 @@ class ProfessionalController {
 
     async create(req, res) {
         try {
-            const data = { ...req.body, tenant_id: req.tenantId };
+            const currentUnitId = req.headers['x-unit-id'];
+            const formUnitName = req.body.unit;
+            let targetUnitIds = [];
+
+            if (formUnitName === 'Ambas' || formUnitName === 'Ambas as unidades') {
+                const units = await Unit.findAll({ where: { tenant_id: req.tenantId } });
+                targetUnitIds = units.map(u => u.id);
+            } else if (formUnitName) {
+                const unit = await Unit.findOne({ where: { tenant_id: req.tenantId, name: formUnitName } });
+                if (unit) targetUnitIds = [unit.id];
+            }
+
+            // Fallback to current header unit if no specific target found from form
+            if (targetUnitIds.length === 0 && currentUnitId) {
+                targetUnitIds = [currentUnitId];
+            }
+
+            const data = { ...req.body, tenant_id: req.tenantId, targetUnitIds };
             const professional = await professionalService.create(data, req.tenantId);
             res.status(201).json({ success: true, data: professional });
         } catch (error) {
@@ -34,7 +54,8 @@ class ProfessionalController {
 
     async update(req, res) {
         try {
-            const professional = await professionalService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
+            const unitId = req.headers['x-unit-id'] || req.body.unitId;
+            const professional = await professionalService.update(req.params.id, { ...req.body, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
             res.json({ success: true, data: professional });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -90,8 +111,9 @@ class ProfessionalController {
     async getRanking(req, res) {
         try {
             const limit = req.query.limit ? parseInt(req.query.limit) : 5;
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
             const unit = req.query.unit;
-            const rankings = await professionalService.getRanking(req.tenantId, limit, unit);
+            const rankings = await professionalService.getRanking(req.tenantId, limit, unit, unitId);
             res.json({ success: true, data: rankings });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
