@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "sequelize-cli db:migrate && node server.js",
-    "dev": "nodemon server.js",
+    "dev": "npm run db:migrate && nodemon server.js",
     "db:migrate": "sequelize-cli db:migrate",
     "db:seed": "sequelize-cli db:seed:all",
     "db:reset": "sequelize-cli db:migrate:undo:all && sequelize-cli db:migrate && sequelize-cli db:seed:all"

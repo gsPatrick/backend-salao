@@ -12,11 +12,15 @@ async function startServer() {
         await sequelize.authenticate();
         console.log('✅ Database connection established successfully');
 
-        // Sync database (in development)
+        // ⚠️ DISABLING sequelize.sync({ alter: true })
+        // We now rely on migrations (npm run db:migrate) for database schema changes.
+        // This avoids errors with complex type changes like converted columns to JSONB.
+        /*
         if (process.env.NODE_ENV === 'development') {
             await sequelize.sync({ alter: true });
             console.log('✅ Database synchronized (with alter: true)');
         }
+        */
 
         // Start server
         const server = app.listen(PORT, () => {
