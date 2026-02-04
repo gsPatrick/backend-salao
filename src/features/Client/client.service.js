@@ -3,7 +3,11 @@ const { Client } = require('../../models');
 class ClientService {
     async getAll(tenantId) {
         return Client.findAll({
-            where: { tenant_id: tenantId, is_active: true },
+            where: {
+                tenant_id: tenantId,
+                is_active: true,
+                is_complete_registration: true
+            },
             order: [['created_at', 'DESC']],
         });
     }
@@ -70,6 +74,10 @@ class ClientService {
             sanitized.procedure_photos = sanitized.procedurePhotos;
             delete sanitized.procedurePhotos;
         }
+        if (sanitized.isCompleteRegistration !== undefined) {
+            sanitized.is_complete_registration = sanitized.isCompleteRegistration;
+            delete sanitized.isCompleteRegistration;
+        }
 
         // Clean up date fields with invalid values
         const dateFields = ['birth_date', 'last_visit'];
@@ -103,7 +111,8 @@ class ClientService {
             ...sanitizedData,
             tenant_id: tenantId,
             registration_date: sanitizedData.registration_date || new Date(),
-            is_active: true
+            is_active: true,
+            is_complete_registration: sanitizedData.is_complete_registration !== undefined ? sanitizedData.is_complete_registration : true
         });
 
         // Real-time CRM hook

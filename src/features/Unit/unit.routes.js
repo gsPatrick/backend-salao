@@ -7,5 +7,6 @@ router.get('/', authenticate, unitController.getAll);
 router.post('/', authenticate, unitController.create);
 router.put('/:id', authenticate, unitController.update);
 router.delete('/:id', authenticate, unitController.delete);
+router.get('/:id/checkin-qr', authenticate, unitController.getCheckinQr);
 
 module.exports = router;

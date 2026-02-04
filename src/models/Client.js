@@ -145,6 +145,11 @@ const Client = sequelize.define('client', {
         type: DataTypes.JSONB,
         allowNull: true,
         defaultValue: []
+    },
+    is_complete_registration: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+        allowNull: false
     }
 }, {
     tableName: 'clients',

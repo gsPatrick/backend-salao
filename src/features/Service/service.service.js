@@ -3,7 +3,7 @@ const { Service, Professional } = require('../../models');
 class ServiceService {
     async getAll(tenantId) {
         return Service.findAll({
-            where: { tenant_id: tenantId },
+            where: { tenant_id: tenantId, is_suspended: false },
             include: [{ model: Professional, as: 'professionals' }],
             order: [['name', 'ASC']],
         });

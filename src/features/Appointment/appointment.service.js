@@ -287,6 +287,22 @@ class AppointmentService {
             ? tenant.business_hours
             : defaultHours;
 
+        // --- NEW: Unit Specific Hours ---
+        let unitOpening = null;
+        let unitClosing = null;
+        if (professional && professional.unit) {
+            const { Unit: UnitModel } = require('../../models');
+            const unit = await UnitModel.findOne({
+                where: { tenant_id: tenantId, name: professional.unit }
+            });
+            if (unit) {
+                unitOpening = unit.opening_time;
+                unitClosing = unit.closing_time;
+                console.log(`[Availability] Using Unit (${unit.name}) hours: ${unitOpening} - ${unitClosing}`);
+            }
+        }
+        // -------------------------------
+
         const availabilityDate = new Date(date + 'T00:00:00');
         const dayOfWeekIndex = availabilityDate.getDay();
         const daysMap = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
@@ -301,20 +317,14 @@ class AppointmentService {
             return []; // Salon is closed or day not found
         }
 
-        // Get service duration (default 30 min)
-        let serviceDuration = 30;
-        if (serviceId) {
-            const service = await Service.findByPk(serviceId);
-            if (service) {
-                serviceDuration = service.duration || 30;
-            }
-        }
-
-        // Parse professional schedule times
+        // --- Intersect with Unit Hours if specified ---
         let startTime = professional.start_time || '09:00';
         let endTime = professional.end_time || '18:00';
         let lunchStart = professional.lunch_start || '12:00';
         let lunchEnd = professional.lunch_end || '13:00';
+
+        if (unitOpening) startTime = startTime > unitOpening ? startTime : unitOpening;
+        if (unitClosing) endTime = endTime < unitClosing ? endTime : unitClosing;
 
         // Override/Intersect with Salon Business Hours if present
         if (salonDay && salonDay.start && salonDay.end) {
@@ -326,6 +336,16 @@ class AppointmentService {
             if (salonDay.lunchStart && salonDay.lunchEnd) {
                 lunchStart = salonDay.lunchStart;
                 lunchEnd = salonDay.lunchEnd;
+            }
+        }
+        // --------------------------------------------
+
+        // Get service duration (default 30 min)
+        let serviceDuration = 30;
+        if (serviceId) {
+            const service = await Service.findByPk(serviceId);
+            if (service) {
+                serviceDuration = service.duration || 30;
             }
         }
 

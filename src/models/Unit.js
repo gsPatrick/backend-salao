@@ -78,6 +78,22 @@ module.exports = (sequelize) => {
             allowNull: true,
             defaultValue: {},
         },
+        opening_time: {
+            type: DataTypes.TIME,
+            allowNull: true,
+            defaultValue: '08:00',
+        },
+        closing_time: {
+            type: DataTypes.TIME,
+            allowNull: true,
+            defaultValue: '18:00',
+        },
+        checkin_id: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            unique: true,
+            allowNull: true,
+        },
     }, {
         tableName: 'units',
         timestamps: true,

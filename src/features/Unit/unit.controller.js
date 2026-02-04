@@ -52,6 +52,20 @@ class UnitController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async getCheckinQr(req, res) {
+        try {
+            const unit = await Unit.findOne({
+                where: { id: req.params.id, tenant_id: req.tenantId },
+                attributes: ['id', 'name', 'checkin_id']
+            });
+            if (!unit) throw new Error('Unidade não encontrada');
+
+            res.json({ success: true, data: unit });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new UnitController();
