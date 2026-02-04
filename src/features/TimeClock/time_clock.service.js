@@ -1,14 +1,35 @@
-const { TimeRecord, Professional } = require('../../models');
+const { TimeRecord, Professional, Unit } = require('../../models');
 
 class TimeClockService {
     async punch(data, tenantId) {
         const { professionalId, type, time, photo, location } = data;
-        const date = new Date().toISOString().split('T')[0];
-        const punchTime = time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-        let record = await TimeRecord.findOne({
-            where: { tenant_id: tenantId, professional_id: professionalId, date }
+        const professional = await Professional.findOne({
+            where: { id: professionalId, tenant_id: tenantId }
         });
+
+        if (!professional) throw new Error('Profissional não encontrado');
+
+        // Strict Overtime Blocking Logic
+        if (!professional.allow_overtime && (type === 'saida' || type === 'saida_pausa')) {
+            const unit = await Unit.findOne({
+                where: { name: professional.unit, tenant_id: tenantId }
+            });
+
+            if (unit && unit.closing_time) {
+                const now = new Date();
+                const [closeH, closeM] = unit.closing_time.split(':').map(Number);
+                const closingDateTime = new Date();
+                closingDateTime.setHours(closeH, closeM, 0, 0);
+
+                // If current time is past closing time, block the punch
+                if (now > closingDateTime) {
+                    throw new Error(`Ponto bloqueado: horas extras não permitidas para este profissional. Horário de fechamento da unidade (${professional.unit}): ${unit.closing_time}.`);
+                }
+            }
+        }
+
+        const date = new Date().toISOString().split('T')[0];
 
         const newPunch = {
             time: punchTime,

@@ -29,9 +29,15 @@ class ProfessionalService {
             return [];
         }
     }
-    async getAll(tenantId) {
+    async getAll(tenantId, filters = {}) {
+        const where = { tenant_id: tenantId };
+
+        if (filters.open_schedule !== undefined) {
+            where.open_schedule = filters.open_schedule === 'true' || filters.open_schedule === true;
+        }
+
         return Professional.findAll({
-            where: { tenant_id: tenantId },
+            where,
             include: [{ model: Service, as: 'services' }],
             order: [['name', 'ASC']],
         });
@@ -60,6 +66,12 @@ class ProfessionalService {
         const professional = await this.getById(id, tenantId);
         await professional.update({ is_archived: true });
         return { message: 'Profissional arquivado' };
+    }
+
+    async purge(id, tenantId) {
+        const professional = await this.getById(id, tenantId);
+        await professional.destroy();
+        return { message: 'Profissional excluído definitivamente' };
     }
 
     async suspend(id, tenantId) {

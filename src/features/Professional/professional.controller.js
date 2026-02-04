@@ -3,7 +3,10 @@ const professionalService = require('./professional.service');
 class ProfessionalController {
     async getAll(req, res) {
         try {
-            const professionals = await professionalService.getAll(req.tenantId);
+            const filters = {
+                open_schedule: req.query.open_schedule
+            };
+            const professionals = await professionalService.getAll(req.tenantId, filters);
             res.json({ success: true, data: professionals });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -41,6 +44,15 @@ class ProfessionalController {
     async delete(req, res) {
         try {
             const result = await professionalService.delete(req.params.id, req.tenantId);
+            res.json({ success: true, message: result.message });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async purge(req, res) {
+        try {
+            const result = await professionalService.purge(req.params.id, req.tenantId);
             res.json({ success: true, message: result.message });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

@@ -32,16 +32,16 @@ const storage = multer.diskStorage({
     },
 });
 
-// File filter - only allow images
+// File filter - allow images and PDF
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
+    const allowedTypes = /jpeg|jpg|png|gif|webp|svg|pdf/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (extname && mimetype) {
         cb(null, true);
     } else {
-        cb(new Error('Apenas imagens são permitidas (jpeg, jpg, png, gif, webp, svg)'), false);
+        cb(new Error('Formato de arquivo não permitido. Apenas imagens (jpeg, jpg, png, gif, webp, svg) e PDF são aceitos.'), false);
     }
 };
 
@@ -56,7 +56,7 @@ const upload = multer({
 
 /**
  * POST /api/upload
- * Upload a single image file
+ * Upload a single image/pdf file
  * Query params:
  *   - type: subdirectory (avatar, banner, professional, service, etc.)
  */
@@ -94,7 +94,7 @@ router.post('/', authenticate, upload.single('file'), (req, res) => {
 
 /**
  * POST /api/upload/multiple
- * Upload multiple image files (max 10)
+ * Upload multiple image/pdf files (max 10)
  */
 router.post('/multiple', authenticate, upload.array('files', 10), (req, res) => {
     try {
@@ -179,15 +179,35 @@ router.delete('/', authenticate, (req, res) => {
 // Error handling middleware for multer
 router.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {
-        if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({
-                success: false,
-                message: 'Arquivo muito grande. Máximo permitido: 5MB',
-            });
+        let message = 'Erro no upload do arquivo';
+
+        switch (error.code) {
+            case 'LIMIT_FILE_SIZE':
+                message = 'Arquivo muito grande. Máximo permitido: 5MB';
+                break;
+            case 'LIMIT_FILE_COUNT':
+                message = 'Muitos arquivos enviados. O limite foi excedido.';
+                break;
+            case 'LIMIT_UNEXPECTED_FILE':
+                message = 'Campo de arquivo inesperado ou formato inválido.';
+                break;
+            case 'LIMIT_FIELD_COUNT':
+                message = 'Muitos campos de formulário.';
+                break;
+            case 'LIMIT_FIELD_KEY':
+                message = 'Nome do campo muito longo.';
+                break;
+            case 'LIMIT_FIELD_VALUE':
+                message = 'Valor do campo muito longo.';
+                break;
+            case 'LIMIT_PART_COUNT':
+                message = 'Muitas partes no formulário.';
+                break;
         }
+
         return res.status(400).json({
             success: false,
-            message: error.message,
+            message: message,
         });
     }
 
