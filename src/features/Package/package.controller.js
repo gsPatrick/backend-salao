@@ -26,7 +26,10 @@ exports.listPackages = async (req, res) => {
             suspended: p.is_suspended,
             isFavorite: p.is_favorite,
             usageType: p.usage_type,
-            createdAt: p.created_at
+            createdAt: p.created_at,
+            sessions: p.sessions,
+            category: p.category,
+            unit: p.unit
         }));
 
         res.json(formatted);
@@ -41,16 +44,26 @@ exports.createPackage = async (req, res) => {
         const tenantId = req.tenantId;
         const data = req.body;
 
+        // Sanitize duration to ensure integer (prevent "teste123" error)
+        let duration = 1;
+        if (data.duration) {
+            const parsed = parseInt(data.duration, 10);
+            if (!isNaN(parsed)) duration = parsed;
+        }
+
         const pkg = await MonthlyPackage.create({
             tenant_id: tenantId,
             name: data.name,
             price: data.price,
             description: data.description,
-            duration: data.duration,
+            duration: duration,
             active: data.isActive !== undefined ? data.isActive : data.active !== undefined ? data.active : true,
             is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended !== undefined ? data.is_suspended : false,
             is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite !== undefined ? data.is_favorite : false,
-            usage_type: data.usageType || 'Serviços'
+            usage_type: data.usageType || 'Serviços',
+            sessions: data.sessions || null,
+            category: data.category || null,
+            unit: data.unit || null
         });
 
         console.log('Package created:', pkg.id);
@@ -72,7 +85,10 @@ function formatPackage(p) {
         suspended: p.is_suspended,
         isFavorite: p.is_favorite,
         usageType: p.usage_type,
-        createdAt: p.created_at
+        createdAt: p.created_at,
+        sessions: p.sessions,
+        category: p.category,
+        unit: p.unit
     };
 }
 
@@ -98,15 +114,24 @@ exports.updatePackage = async (req, res) => {
 };
 
 async function updateAndSend(pkg, data, res) {
+    let duration = pkg.duration;
+    if (data.duration !== undefined) {
+        const parsed = parseInt(data.duration, 10);
+        if (!isNaN(parsed)) duration = parsed;
+    }
+
     await pkg.update({
         name: data.name,
         price: data.price,
         description: data.description,
-        duration: data.duration,
+        duration: duration,
         active: data.isActive !== undefined ? data.isActive : data.active,
         is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended,
         is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite,
-        usage_type: data.usageType !== undefined ? data.usageType : pkg.usage_type
+        usage_type: data.usageType !== undefined ? data.usageType : pkg.usage_type,
+        sessions: data.sessions !== undefined ? data.sessions : pkg.sessions,
+        category: data.category !== undefined ? data.category : pkg.category,
+        unit: data.unit !== undefined ? data.unit : pkg.unit
     });
     return res.json(formatPackage(pkg));
 }
