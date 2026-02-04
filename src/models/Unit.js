@@ -39,7 +39,7 @@ module.exports = (sequelize) => {
             defaultValue: [],
         },
         logo_url: {
-            type: DataTypes.STRING(500),
+            type: DataTypes.STRING(2048), // Increased for safety
             allowNull: true,
         },
         primary_color: {
@@ -54,6 +54,23 @@ module.exports = (sequelize) => {
         checkin_message: {
             type: DataTypes.TEXT,
             allowNull: true,
+        },
+        cnpj_cpf: {
+            type: DataTypes.STRING(20),
+            allowNull: true,
+        },
+        admin_name: {
+            type: DataTypes.STRING(200),
+            allowNull: true,
+        },
+        admin_phone: {
+            type: DataTypes.STRING(20),
+            allowNull: true,
+        },
+        settings: {
+            type: DataTypes.JSONB,
+            allowNull: true,
+            defaultValue: {},
         },
     }, {
         tableName: 'units',
