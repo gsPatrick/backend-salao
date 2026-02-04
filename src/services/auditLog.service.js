@@ -1,4 +1,4 @@
-const AuditLog = require('../models/AuditLog');
+const { AuditLog, User } = require('../models');
 
 class AuditLogService {
     /**
@@ -46,7 +46,7 @@ class AuditLogService {
             order: [['created_at', 'DESC']],
             include: [
                 {
-                    model: require('../models/User'),
+                    model: User,
                     as: 'user',
                     attributes: ['id', 'name', 'avatar_url', 'email']
                 }
