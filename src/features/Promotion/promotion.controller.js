@@ -99,20 +99,24 @@ exports.update = async (req, res) => {
         const promotion = await Promotion.findOne({ where: { id, tenant_id: tenantId } });
         if (!promotion) return res.status(404).json({ error: 'Promoção não encontrada' });
 
-        await promotion.update({
-            type: data.type || promotion.type,
-            title: data.title,
-            description: data.description,
-            call_to_action: data.callToAction,
-            image_url: data.image || data.bannerImage,
-            mobile_image_url: data.mobileImage || data.mobile_image_url,
-            link_url: data.promotionUrl || data.bannerLink,
-            target_area: data.targetArea,
-            action_button: data.actionButton,
-            start_date: data.startDate,
-            end_date: data.endDate,
-            active: data.isActive
-        });
+        const updateData = {};
+        if (data.type !== undefined) updateData.type = data.type;
+        if (data.title !== undefined) updateData.title = data.title;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.callToAction !== undefined) updateData.call_to_action = data.callToAction;
+        if (data.image !== undefined) updateData.image_url = data.image;
+        if (data.bannerImage !== undefined && data.image === undefined) updateData.image_url = data.bannerImage;
+        if (data.mobileImage !== undefined) updateData.mobile_image_url = data.mobileImage;
+        if (data.mobile_image_url !== undefined && data.mobileImage === undefined) updateData.mobile_image_url = data.mobile_image_url;
+        if (data.promotionUrl !== undefined) updateData.link_url = data.promotionUrl;
+        if (data.bannerLink !== undefined && data.promotionUrl === undefined) updateData.link_url = data.bannerLink;
+        if (data.targetArea !== undefined) updateData.target_area = data.targetArea;
+        if (data.actionButton !== undefined) updateData.action_button = data.actionButton;
+        if (data.startDate !== undefined) updateData.start_date = data.startDate;
+        if (data.endDate !== undefined) updateData.end_date = data.endDate;
+        if (data.isActive !== undefined) updateData.active = data.isActive;
+
+        await promotion.update(updateData);
 
 
         res.json(promotion);

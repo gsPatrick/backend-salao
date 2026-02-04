@@ -1,4 +1,5 @@
 const serviceService = require('./service.service');
+const auditLogService = require('../../services/auditLog.service');
 
 class ServiceController {
     async getAll(req, res) {
@@ -23,6 +24,16 @@ class ServiceController {
         try {
             const data = { ...req.body, tenant_id: req.tenantId };
             const service = await serviceService.create(data, req.tenantId);
+
+            await auditLogService.record(
+                req.tenantId,
+                req.user.id,
+                'cadastro',
+                'Servico',
+                service.id,
+                `cadastrou o serviço "${service.name}"`
+            );
+
             res.status(201).json({ success: true, data: service });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -32,6 +43,16 @@ class ServiceController {
     async update(req, res) {
         try {
             const service = await serviceService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
+
+            await auditLogService.record(
+                req.tenantId,
+                req.user.id,
+                'edicao',
+                'Servico',
+                service.id,
+                `editou o serviço "${service.name}"`
+            );
+
             res.json({ success: true, data: service });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -41,6 +62,16 @@ class ServiceController {
     async delete(req, res) {
         try {
             const result = await serviceService.delete(req.params.id, req.tenantId);
+
+            await auditLogService.record(
+                req.tenantId,
+                req.user.id,
+                'exclusao',
+                'Servico',
+                req.params.id,
+                `excluiu um serviço`
+            );
+
             res.json({ success: true, message: result.message });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

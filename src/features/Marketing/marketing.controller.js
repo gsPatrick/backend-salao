@@ -1,4 +1,5 @@
 const marketingService = require('./marketing.service');
+const auditLogService = require('../../services/auditLog.service');
 
 // --- Campaigns ---
 exports.listCampaigns = async (req, res) => {
@@ -14,6 +15,16 @@ exports.createCampaign = async (req, res) => {
     try {
         const data = { ...req.body, tenant_id: req.tenantId };
         const campaign = await marketingService.createCampaign(data, req.tenantId);
+
+        await auditLogService.record(
+            req.tenantId,
+            req.user.id,
+            'cadastro',
+            'Campanha',
+            campaign.id,
+            `criou a campanha de marketing "${campaign.name}"`
+        );
+
         res.status(201).json(campaign);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -24,6 +35,14 @@ exports.updateCampaign = async (req, res) => {
     try {
         const updatedCampaign = await marketingService.updateCampaign(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
         if (updatedCampaign) {
+            await auditLogService.record(
+                req.tenantId,
+                req.user.id,
+                'edicao',
+                'Campanha',
+                updatedCampaign.id,
+                `editou a campanha de marketing "${updatedCampaign.name}"`
+            );
             res.json(updatedCampaign);
         } else {
             res.status(404).json({ error: 'Campaign not found' });
@@ -36,6 +55,16 @@ exports.updateCampaign = async (req, res) => {
 exports.deleteCampaign = async (req, res) => {
     try {
         await marketingService.deleteCampaign(req.params.id, req.tenantId);
+
+        await auditLogService.record(
+            req.tenantId,
+            req.user.id,
+            'exclusao',
+            'Campanha',
+            req.params.id,
+            `excluiu uma campanha de marketing`
+        );
+
         res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });

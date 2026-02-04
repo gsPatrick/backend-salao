@@ -34,7 +34,8 @@ const models = {
     Unit: require('./Unit'),
     ChatMessage: require('../features/Chat/chat.model'),
     WhatsAppSession: require('./WhatsAppSession'),
-    ScheduleBlock: require('./ScheduleBlock')
+    ScheduleBlock: require('./ScheduleBlock'),
+    AuditLog: require('./AuditLog')
 };
 
 // Initialize models
@@ -58,7 +59,7 @@ const {
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
     Lead, MarketingCampaign, SalonPlan, Unit, ChatMessage, WhatsAppSession,
-    ScheduleBlock
+    ScheduleBlock, AuditLog
 } = db;
 
 // Call associate for all models
@@ -213,6 +214,13 @@ ChatMessage.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
 
 User.hasMany(ChatMessage, { foreignKey: 'receiver_id', as: 'receivedMessages' });
 ChatMessage.belongsTo(User, { foreignKey: 'receiver_id', as: 'receiver' });
+
+// AuditLog associations
+Tenant.hasMany(AuditLog, { foreignKey: 'tenant_id' });
+AuditLog.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+
+User.hasMany(AuditLog, { foreignKey: 'user_id' });
+AuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 db.sequelize = sequelize;
 

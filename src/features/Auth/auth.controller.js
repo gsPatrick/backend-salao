@@ -1,4 +1,5 @@
 const authService = require('./auth.service');
+const auditLogService = require('../../services/auditLog.service');
 
 class AuthController {
     /**
@@ -16,6 +17,17 @@ class AuthController {
             }
 
             const result = await authService.login(email, password);
+
+
+            await auditLogService.record(
+                result.user.tenant_id,
+                result.user.id,
+                'login',
+                null,
+                null,
+                'acessou o sistema',
+                { ip: req.ip, userAgent: req.get('User-Agent') }
+            );
 
             res.json({
                 success: true,
@@ -162,8 +174,21 @@ class AuthController {
      * POST /api/auth/logout
      */
     async logout(req, res) {
-        // Since we use JWT, logout is primarily a frontend concern.
-        // We return success to satisfy standard logout flows.
+        try {
+            if (req.userId && req.user?.tenant_id) {
+                await auditLogService.record(
+                    req.user.tenant_id,
+                    req.userId,
+                    'logout',
+                    null,
+                    null,
+                    'saiu do sistema'
+                );
+            }
+        } catch (error) {
+            console.error('Logout logging error:', error);
+        }
+
         res.json({
             success: true,
             message: 'Logout realizado com sucesso',
