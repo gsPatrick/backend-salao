@@ -59,86 +59,74 @@ class ServiceController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
-                req.tenantId,
-                req.user.id,
-    'cadastro',
-    'Servico',
-                service.id,
-                `cadastrou o serviço "${service.name}"`
-            );
 
-res.status(201).json({ success: true, data: service });
-        } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-}
-    }
 
     async update(req, res) {
-    try {
-        const service = await serviceService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
+        try {
+            const service = await serviceService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
 
-        await auditLogService.record(
-            req.tenantId,
-            req.user.id,
-            'edicao',
-            'Servico',
-            service.id,
-            `editou o serviço "${service.name}"`
-        );
+            await auditLogService.record(
+                req.tenantId,
+                req.user.id,
+                'edicao',
+                'Servico',
+                service.id,
+                `editou o serviço "${service.name}"`
+            );
 
-        res.json({ success: true, data: service });
-    } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+            res.json({ success: true, data: service });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
     }
-}
 
-    async delete (req, res) {
-    try {
-        const result = await serviceService.delete(req.params.id, req.tenantId);
+    async delete(req, res) {
+        try {
+            const result = await serviceService.delete(req.params.id, req.tenantId);
 
-        await auditLogService.record(
-            req.tenantId,
-            req.user.id,
-            'exclusao',
-            'Servico',
-            req.params.id,
-            `excluiu um serviço`
-        );
+            await auditLogService.record(
+                req.tenantId,
+                req.user.id,
+                'exclusao',
+                'Servico',
+                req.params.id,
+                `excluiu um serviço`
+            );
 
-        res.json({ success: true, message: result.message });
-    } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+            res.json({ success: true, message: result.message });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
     }
-}
 
     async assignProfessionals(req, res) {
-    try {
-        const service = await serviceService.assignProfessionals(
-            req.params.id, req.body.professionalIds, req.tenantId
-        );
-        res.json({ success: true, data: service });
-    } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        try {
+            const service = await serviceService.assignProfessionals(
+                req.params.id, req.body.professionalIds, req.tenantId
+            );
+            res.json({ success: true, data: service });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
     }
-}
 
     async toggleSuspend(req, res) {
-    try {
-        const service = await serviceService.toggleSuspend(req.params.id, req.tenantId);
-        res.json({ success: true, data: service });
-    } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        try {
+            const service = await serviceService.toggleSuspend(req.params.id, req.tenantId);
+            res.json({ success: true, data: service });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
     }
-}
 
     async toggleFavorite(req, res) {
-    try {
-        const service = await serviceService.toggleFavorite(req.params.id, req.tenantId);
-        res.json({ success: true, data: service });
-    } catch (error) {
-        res.status(400).json({ success: false, message: error.message });
+        try {
+            const service = await serviceService.toggleFavorite(req.params.id, req.tenantId);
+            res.json({ success: true, data: service });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
     }
-}
 }
 
 module.exports = new ServiceController();
