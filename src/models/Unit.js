@@ -20,8 +20,9 @@ module.exports = (sequelize) => {
             allowNull: false,
         },
         phone: {
-            type: DataTypes.STRING(20),
+            type: DataTypes.JSONB,
             allowNull: true,
+            defaultValue: [],
         },
         address: {
             type: DataTypes.JSONB,
@@ -66,6 +67,11 @@ module.exports = (sequelize) => {
         admin_phone: {
             type: DataTypes.STRING(20),
             allowNull: true,
+        },
+        smtp_settings: {
+            type: DataTypes.JSONB,
+            allowNull: true,
+            defaultValue: {},
         },
         settings: {
             type: DataTypes.JSONB,

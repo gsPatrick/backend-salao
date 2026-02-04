@@ -145,3 +145,22 @@ exports.deleteDirectMail = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+exports.getAudienceCount = async (req, res) => {
+    try {
+        const { audience } = req.query;
+        const count = await marketingService.getAudienceCount(req.tenantId, audience);
+        res.json({ success: true, count });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.testSMTP = async (req, res) => {
+    try {
+        const result = await marketingService.testSMTP(req.tenantId, req.body);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

@@ -20,4 +20,10 @@ router.post('/direct-mail', authMiddleware.authenticate, marketingController.cre
 router.put('/direct-mail/:id', authMiddleware.authenticate, marketingController.updateDirectMail);
 router.delete('/direct-mail/:id', authMiddleware.authenticate, marketingController.deleteDirectMail);
 
+// Audience
+router.get('/audience-count', authMiddleware.authenticate, marketingController.getAudienceCount);
+
+// SMTP
+router.post('/test-smtp', authMiddleware.authenticate, marketingController.testSMTP);
+
 module.exports = router;

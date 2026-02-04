@@ -67,6 +67,16 @@ const Campaign = sequelize.define('campaign', {
     archived: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
+    },
+    attachmentUrl: {
+        type: DataTypes.STRING(2048),
+        allowNull: true,
+        field: 'attachment_url'
+    },
+    attachments: {
+        type: DataTypes.JSONB,
+        defaultValue: [],
+        allowNull: true
     }
 }, {
     tableName: 'campaigns',
