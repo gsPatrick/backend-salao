@@ -66,6 +66,23 @@ class UserService {
             throw new Error('Email já cadastrado');
         }
 
+        // Check user limit based on plan
+        const tenant = await Tenant.findByPk(data.tenant_id, {
+            include: [{ model: Plan, as: 'plan' }]
+        });
+
+        if (!tenant) throw new Error('Tenant não encontrado');
+
+        const userCount = await User.count({ where: { tenant_id: data.tenant_id } });
+
+        // Limits: Individual (1)=1, Essencial (2)=5, Pro (3)=10, Premium/Vitalicio (4/5)=Unlimited
+        const limits = { 1: 1, 2: 5, 3: 10 };
+        const maxUsers = limits[tenant.plan_id];
+
+        if (maxUsers && userCount >= maxUsers) {
+            throw new Error(`Limite de usuários atingido para o seu plano (${maxUsers} usuários). Faça um upgrade para adicionar mais.`);
+        }
+
         const user = await User.create({
             ...data,
             email: data.email.toLowerCase(),

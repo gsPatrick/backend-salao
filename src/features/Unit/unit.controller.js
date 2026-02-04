@@ -15,6 +15,18 @@ class UnitController {
 
     async create(req, res) {
         try {
+            const { Tenant, Plan } = require('../../models');
+            const tenant = await Tenant.findByPk(req.tenantId, {
+                include: [{ model: Plan, as: 'plan' }]
+            });
+
+            if (tenant && tenant.plan && tenant.plan.max_units !== null) {
+                const count = await Unit.count({ where: { tenant_id: req.tenantId } });
+                if (count >= tenant.plan.max_units) {
+                    throw new Error(`Limite de unidades atingido para o seu plano (${tenant.plan.max_units}). Faça um upgrade para adicionar mais.`);
+                }
+            }
+
             const unit = await Unit.create({
                 ...req.body,
                 tenant_id: req.tenantId

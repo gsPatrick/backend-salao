@@ -55,6 +55,19 @@ class ProfessionalService {
     }
 
     async create(data, tenantId) {
+        // Check limits
+        const { Tenant, Plan } = require('../../models');
+        const tenant = await Tenant.findByPk(tenantId, {
+            include: [{ model: Plan, as: 'plan' }]
+        });
+
+        if (tenant && tenant.plan && tenant.plan.max_professionals !== null) {
+            const count = await Professional.count({ where: { tenant_id: tenantId, is_archived: false } });
+            if (count >= tenant.plan.max_professionals) {
+                throw new Error(`Limite de profissionais atingido para o seu plano (${tenant.plan.max_professionals}). Faça um upgrade para adicionar mais.`);
+            }
+        }
+
         const unitIds = (data.targetUnitIds && data.targetUnitIds.length > 0)
             ? data.targetUnitIds
             : [data.unit_id];
