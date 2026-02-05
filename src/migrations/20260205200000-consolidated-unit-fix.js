@@ -72,10 +72,11 @@ module.exports = {
                         // Double check column existence before updating to be ultra safe
                         const tableInfo = await queryInterface.describeTable(tableName);
                         if (tableInfo.unit_id) {
+                            // Move ALL records to Piedade, regardless of current value
                             await queryInterface.sequelize.query(
-                                `UPDATE ${tableName} SET unit_id = ${piedadeId} WHERE unit_id IS NULL;`
+                                `UPDATE ${tableName} SET unit_id = ${piedadeId};`
                             );
-                            console.log(`[DATA] Updated ${tableName}`);
+                            console.log(`[DATA] Moved all records in ${tableName} to Piedade`);
                         }
                     } catch (err) {
                         console.error(`[DATA ERROR] Failed to update ${tableName}:`, err.message);
