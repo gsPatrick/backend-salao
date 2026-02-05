@@ -24,7 +24,8 @@ module.exports = {
             'schedule_blocks',
             'professional_reviews',
             'acquisition_channels',
-            'whatsapp_sessions'
+            'whatsapp_sessions',
+            'contract_templates'
         ];
 
         console.log("--- STARTING UNIT ISOLATION MIGRATION ---");
@@ -35,16 +36,17 @@ module.exports = {
                 if (!tableInfo.unit_id) {
                     const isWhatsAppSession = tableName === 'whatsapp_sessions';
                     const isAIAgentConfig = tableName === 'ai_agent_configs';
+                    const isContractTemplate = tableName === 'contract_templates'; // Added for contract_templates
 
                     await queryInterface.addColumn(tableName, 'unit_id', {
                         type: Sequelize.INTEGER,
-                        allowNull: (isWhatsAppSession || isAIAgentConfig) ? false : true,
+                        allowNull: true, // Set to true for all during migration to avoid crashes with existing data
                         references: {
                             model: 'units',
                             key: 'id',
                         },
                         onUpdate: 'CASCADE',
-                        onDelete: (isWhatsAppSession) ? 'CASCADE' : 'SET NULL',
+                        onDelete: (tableName === 'whatsapp_sessions' || tableName === 'contract_templates') ? 'CASCADE' : 'SET NULL',
                     });
                     console.log(`[OK] Added unit_id column to ${tableName}`);
                 } else {

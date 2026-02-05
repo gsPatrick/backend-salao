@@ -11,6 +11,14 @@ const ContractTemplate = sequelize.define('ContractTemplate', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
+    unit_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'units',
+            key: 'id'
+        }
+    },
     title: { // Maps to 'name' in frontend, but title is better DB name. will map in controller.
         type: DataTypes.STRING,
         allowNull: false
