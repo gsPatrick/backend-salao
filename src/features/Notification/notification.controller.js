@@ -4,13 +4,17 @@ class NotificationController {
     async list(req, res) {
         try {
             const { id: user_id, tenant_id } = req.user;
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+
+            const where = {
+                user_id,
+                tenant_id,
+                is_read: false
+            };
+            if (unitId) where.unit_id = unitId;
 
             const notifications = await Notification.findAll({
-                where: {
-                    user_id,
-                    tenant_id,
-                    is_read: false
-                },
+                where,
                 order: [['created_at', 'DESC']]
             });
 

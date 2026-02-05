@@ -4,8 +4,15 @@ const { Op, Sequelize } = require('sequelize');
 exports.getFinancial = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
-        const { startDate, endDate } = req.query;
+        const { startDate, endDate, unitId: queryUnitId } = req.query;
+        const headerUnitId = req.headers['x-unit-id'];
+        const unitId = queryUnitId || headerUnitId;
+
         const where = { tenant_id: tenantId };
+
+        if (unitId) {
+            where.unit_id = unitId;
+        }
 
         if (startDate && endDate) {
             where.date = { [Op.between]: [startDate, endDate] };
@@ -52,8 +59,16 @@ exports.getFinancial = async (req, res) => {
 exports.getOperational = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
-        const { startDate, endDate } = req.query;
+        const { startDate, endDate, unitId: queryUnitId } = req.query;
+        const headerUnitId = req.headers['x-unit-id'];
+        const unitId = queryUnitId || headerUnitId;
+
         const where = { tenant_id: tenantId };
+
+        if (unitId) {
+            where.unit_id = unitId;
+        }
+
         if (startDate && endDate) {
             where.date = { [Op.between]: [startDate, endDate] };
         }
@@ -82,11 +97,18 @@ exports.getOperational = async (req, res) => {
 exports.getSales = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
-        const { startDate, endDate } = req.query;
+        const { startDate, endDate, unitId: queryUnitId } = req.query;
+        const headerUnitId = req.headers['x-unit-id'];
+        const unitId = queryUnitId || headerUnitId;
+
         const where = {
             tenant_id: tenantId,
             type: 'out'
         }; // Outgoing stock
+
+        if (unitId) {
+            where.unit_id = unitId;
+        }
 
         if (startDate && endDate) {
             where.created_at = { [Op.between]: [startDate, endDate] };

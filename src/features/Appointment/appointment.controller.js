@@ -88,7 +88,8 @@ class AppointmentController {
 
     async getByDate(req, res) {
         try {
-            const appointments = await appointmentService.getByDate(req.params.date, req.tenantId);
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+            const appointments = await appointmentService.getByDate(req.params.date, req.tenantId, unitId);
             res.json({ success: true, data: appointments });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -97,8 +98,9 @@ class AppointmentController {
 
     async getByProfessional(req, res) {
         try {
+            const unitId = req.headers['x-unit-id'] || req.query.unitId;
             const appointments = await appointmentService.getByProfessional(
-                req.params.professionalId, req.query.date, req.tenantId
+                req.params.professionalId, req.query.date, req.tenantId, unitId
             );
             res.json({ success: true, data: appointments });
         } catch (error) {

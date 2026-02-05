@@ -10,12 +10,13 @@ class AuditLogService {
      * @param {string} entity - The unit/feature affected (Product, Marketing, etc).
      * @param {number} entityId - ID of the record affected.
      * @param {string} details - Human readable description.
-     * @param {object} metadata - Optional info (req object for IP/UA).
+     * @param {object} metadata - Optional info (req object for IP/UA, unitId).
      */
     async record(tenantId, userId, action, entity, entityId, details, metadata = {}) {
         try {
             const logData = {
                 tenant_id: tenantId,
+                unit_id: metadata.unitId || null,
                 user_id: userId,
                 action,
                 entity,
@@ -37,10 +38,12 @@ class AuditLogService {
      * Gets logs for a specific tenant.
      */
     async getLogs(tenantId, filters = {}) {
-        const { limit = 50, offset = 0 } = filters;
+        const { limit = 50, offset = 0, unitId } = filters;
+        const where = { tenant_id: tenantId };
+        if (unitId) where.unit_id = unitId;
 
         return await AuditLog.findAll({
-            where: { tenant_id: tenantId },
+            where,
             limit,
             offset,
             order: [['created_at', 'DESC']],

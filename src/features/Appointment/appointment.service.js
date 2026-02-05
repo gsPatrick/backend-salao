@@ -233,12 +233,12 @@ class AppointmentService {
         return this.updateStatus(id, 'cancelado', tenantId);
     }
 
-    async getByDate(date, tenantId) {
-        return this.getAll(tenantId, { date });
+    async getByDate(date, tenantId, unitId = null) {
+        return this.getAll(tenantId, { date, unitId });
     }
 
-    async getByProfessional(professionalId, date, tenantId) {
-        return this.getAll(tenantId, { professional_id: professionalId, date });
+    async getByProfessional(professionalId, date, tenantId, unitId = null) {
+        return this.getAll(tenantId, { professional_id: professionalId, date, unitId });
     }
 
     /**

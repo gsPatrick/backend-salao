@@ -41,6 +41,7 @@ class TimeClockService {
         if (!record) {
             record = await TimeRecord.create({
                 tenant_id: tenantId,
+                unit_id: data.unit_id,
                 professional_id: professionalId,
                 date,
                 punches: [newPunch]
@@ -53,9 +54,10 @@ class TimeClockService {
         return record;
     }
 
-    async getHistory(tenantId, professionalId) {
+    async getHistory(tenantId, professionalId, unitId = null) {
         const where = { tenant_id: tenantId };
         if (professionalId) where.professional_id = professionalId;
+        if (unitId) where.unit_id = unitId;
 
         return TimeRecord.findAll({
             where,

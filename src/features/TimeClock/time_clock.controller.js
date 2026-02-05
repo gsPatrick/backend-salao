@@ -12,7 +12,8 @@ exports.punch = async (req, res) => {
         if (!professionalId) {
             return res.status(400).json({ error: 'professionalId é obrigatório' });
         }
-        const data = { ...req.body, professionalId, tenant_id: req.tenantId };
+        const unitId = req.headers['x-unit-id'] || req.body.unit_id || req.body.unitId;
+        const data = { ...req.body, professionalId, tenant_id: req.tenantId, unit_id: unitId };
         const record = await timeClockService.punch(data, req.tenantId);
         res.json(record);
     } catch (error) {
@@ -22,7 +23,8 @@ exports.punch = async (req, res) => {
 
 exports.getHistory = async (req, res) => {
     try {
-        const history = await timeClockService.getHistory(req.tenantId, req.query.professionalId);
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const history = await timeClockService.getHistory(req.tenantId, req.query.professionalId, unitId);
         res.json(history);
     } catch (error) {
         res.status(500).json({ error: error.message });

@@ -20,9 +20,12 @@ exports.list = async (req, res) => {
 exports.create = async (req, res) => {
     try {
         const data = req.body;
+        const unitId = data.unit_id || data.unitId || req.headers['x-unit-id'];
+
         const plan = await SalonPlan.create({
             ...data,
             tenant_id: req.tenantId,
+            unit_id: unitId,
             is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended,
             is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite
         });

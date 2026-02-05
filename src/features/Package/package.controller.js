@@ -61,6 +61,7 @@ exports.createPackage = async (req, res) => {
 
         const pkg = await MonthlyPackage.create({
             tenant_id: tenantId,
+            unit_id: data.unit_id || data.unitId || req.headers['x-unit-id'],
             name: data.name,
             price: data.price,
             description: data.description,
@@ -208,8 +209,12 @@ exports.toggleFavoritePackage = async (req, res) => {
 exports.listSubscriptions = async (req, res) => {
     try {
         const tenantId = req.tenantId;
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const where = { tenant_id: tenantId };
+        if (unitId) where.unit_id = unitId;
+
         const subscriptions = await PackageSubscription.findAll({
-            where: { tenant_id: tenantId },
+            where,
             include: [{ model: MonthlyPackage, as: 'package' }],
             order: [['created_at', 'DESC']]
         });
@@ -251,8 +256,11 @@ exports.createSubscription = async (req, res) => {
         }
         const data = req.body;
 
+        const unitId = req.headers['x-unit-id'] || data.unitId;
+
         const s = await PackageSubscription.create({
             tenant_id: tenantId,
+            unit_id: unitId,
             package_id: data.packageId,
             client_name: data.clientName,
             client_email: data.email,

@@ -6,10 +6,13 @@ class AuditLogController {
      */
     async getLogs(req, res) {
         try {
-            const { limit, offset } = req.query;
+            const { limit, offset, unitId: queryUnitId } = req.query;
+            const unitId = queryUnitId || req.headers['x-unit-id'];
+
             const logs = await auditLogService.getLogs(req.tenantId, {
                 limit: parseInt(limit) || 50,
-                offset: parseInt(offset) || 0
+                offset: parseInt(offset) || 0,
+                unitId
             });
 
             res.json({

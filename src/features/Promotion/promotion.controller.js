@@ -3,7 +3,9 @@ const { Promotion, Tenant } = require('../../models');
 exports.list = async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const { salon_name } = req.query;
+        const { salon_name, unitId: queryUnitId } = req.query;
+        const headerUnitId = req.headers['x-unit-id'];
+        const unitId = queryUnitId || headerUnitId;
 
         const include = [{
             model: Tenant,
@@ -11,6 +13,9 @@ exports.list = async (req, res) => {
         }];
 
         const where = { tenant_id: tenantId };
+        if (unitId) {
+            where.unit_id = unitId;
+        }
 
         // If it's a super admin or we wanted to search all, we'd remove tenantId constraint
         // But for now let's assume if salon_name is provided, we might be searching across tenants 
@@ -64,10 +69,13 @@ exports.list = async (req, res) => {
 exports.create = async (req, res) => {
     try {
         const tenantId = req.tenantId;
+        const headerUnitId = req.headers['x-unit-id'];
         const data = req.body;
+        const unitId = data.unitId || data.unit_id || headerUnitId;
 
         const promotion = await Promotion.create({
             tenant_id: tenantId,
+            unit_id: unitId,
             type: data.type || 'standard',
             title: data.title,
             description: data.description,

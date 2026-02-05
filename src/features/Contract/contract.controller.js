@@ -4,8 +4,12 @@ const { Op } = require('sequelize');
 exports.listTemplates = async (req, res) => {
     try {
         const tenantId = req.tenantId;
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const where = { tenant_id: tenantId, active: true };
+        if (unitId) where.unit_id = unitId;
+
         const templates = await ContractTemplate.findAll({
-            where: { tenant_id: tenantId, active: true },
+            where,
             order: [['created_at', 'DESC']]
         });
 
@@ -28,10 +32,12 @@ exports.listTemplates = async (req, res) => {
 exports.createTemplate = async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const { title, type, content, logo } = req.body;
+        const { title, type, content, logo, unitId: bodyUnitId } = req.body;
+        const unitId = bodyUnitId || req.headers['x-unit-id'];
 
         const template = await ContractTemplate.create({
             tenant_id: tenantId,
+            unit_id: unitId,
             title,
             type,
             content,
