@@ -7,10 +7,14 @@ const AIAgentConfig = sequelize.define('ai_agent_config', {
         primaryKey: true,
         autoIncrement: true
     },
-    tenant_id: { // One config per tenant
+    tenant_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    unit_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        unique: true // Ensure 1:1
+        unique: 'tenant_unit_config'
     },
     active_plan: {
         type: DataTypes.ENUM('Básico', 'Avançada', 'Nenhum'),

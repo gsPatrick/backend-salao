@@ -11,6 +11,14 @@ module.exports = (sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: false,
         },
+        unit_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'units',
+                key: 'id'
+            }
+        },
         professional_id: {
             type: DataTypes.INTEGER,
             allowNull: false,
