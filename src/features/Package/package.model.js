@@ -11,6 +11,14 @@ const MonthlyPackage = sequelize.define('MonthlyPackage', {
         type: DataTypes.INTEGER,
         allowNull: true
     },
+    unit_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'units',
+            key: 'id'
+        }
+    },
     name: {
         type: DataTypes.STRING,
         allowNull: false

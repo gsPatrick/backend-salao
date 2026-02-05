@@ -3,8 +3,12 @@ const SalonPlan = require('./salon_plan.model');
 exports.list = async (req, res) => {
     try {
         const tenantId = req.tenantId;
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+        const where = { tenant_id: tenantId };
+        if (unitId) where.unit_id = unitId;
+
         const plans = await SalonPlan.findAll({
-            where: { tenant_id: tenantId },
+            where,
             order: [['created_at', 'DESC']]
         });
         res.json(plans.map(formatPlan));

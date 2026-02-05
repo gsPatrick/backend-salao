@@ -15,6 +15,14 @@ module.exports = (sequelize) => {
                 key: 'id',
             },
         },
+        unit_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'units',
+                key: 'id',
+            },
+        },
         name: {
             type: DataTypes.STRING(200),
             allowNull: false,

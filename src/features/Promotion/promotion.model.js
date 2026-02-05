@@ -11,6 +11,14 @@ const Promotion = sequelize.define('Promotion', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
+    unit_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'units',
+            key: 'id'
+        }
+    },
     type: {
         type: DataTypes.ENUM('standard', 'exclusive'),
         defaultValue: 'standard',

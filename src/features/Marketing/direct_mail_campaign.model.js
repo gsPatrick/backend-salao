@@ -11,6 +11,14 @@ const DirectMailCampaign = sequelize.define('direct_mail_campaign', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
+    unit_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'units',
+            key: 'id'
+        }
+    },
     unitName: {
         type: DataTypes.STRING,
         allowNull: true,

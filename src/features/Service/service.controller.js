@@ -25,22 +25,28 @@ class ServiceController {
     async create(req, res) {
         try {
             const currentUnitId = req.headers['x-unit-id'];
-            const formUnitName = req.body.unit;
+            const formUnitValue = req.body.unit_id || req.body.unit; // Can be ID or name
             let targetUnitIds = [];
 
-            if (formUnitName === 'Ambas' || formUnitName === 'Ambas as unidades') {
+            if (formUnitValue === 'Ambas' || formUnitValue === 'Ambas as unidades') {
                 const units = await Unit.findAll({ where: { tenant_id: req.tenantId } });
                 targetUnitIds = units.map(u => u.id);
-            } else if (formUnitName) {
-                const unit = await Unit.findOne({ where: { tenant_id: req.tenantId, name: formUnitName } });
-                if (unit) targetUnitIds = [unit.id];
+            } else if (formUnitValue) {
+                // Check if it's an ID first
+                if (!isNaN(parseInt(formUnitValue)) && String(parseInt(formUnitValue)) === String(formUnitValue)) {
+                    targetUnitIds = [parseInt(formUnitValue)];
+                } else {
+                    // Search by name
+                    const unit = await Unit.findOne({ where: { tenant_id: req.tenantId, name: formUnitValue } });
+                    if (unit) targetUnitIds = [unit.id];
+                }
             }
 
             if (targetUnitIds.length === 0 && currentUnitId) {
                 targetUnitIds = [currentUnitId];
             }
 
-            const data = { ...req.body, tenant_id: req.tenantId, targetUnitIds };
+            const data = { ...req.body, tenant_id: req.tenantId, unit_id: targetUnitIds[0], targetUnitIds };
             const service = await serviceService.create(data, req.tenantId);
 
             // Audit log only records the "primary" creation ID, or we could loop logs? 

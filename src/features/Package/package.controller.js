@@ -6,13 +6,21 @@ const { Op } = require('sequelize');
 exports.listPackages = async (req, res) => {
     try {
         const tenantId = req.tenantId;
+        const unitId = req.headers['x-unit-id'] || req.query.unitId;
+
+        const where = {
+            [Op.or]: [
+                { tenant_id: tenantId },
+                { tenant_id: null }
+            ]
+        };
+
+        if (unitId) {
+            where.unit_id = unitId;
+        }
+
         const packages = await MonthlyPackage.findAll({
-            where: {
-                [Op.or]: [
-                    { tenant_id: tenantId },
-                    { tenant_id: null }
-                ]
-            },
+            where,
             order: [['created_at', 'DESC']]
         });
 
