@@ -57,8 +57,8 @@ class FinanceService {
 
     async delete(id, tenantId) {
         const transaction = await this.getById(id, tenantId);
-        await transaction.update({ status: 'cancelada' });
-        return { message: 'Transação cancelada' };
+        await transaction.destroy();
+        return { message: 'Transação excluída com sucesso' };
     }
 
     async markAsPaid(id, tenantId) {
