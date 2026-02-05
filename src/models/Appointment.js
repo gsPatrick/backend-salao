@@ -101,6 +101,7 @@ module.exports = (sequelize) => {
     }, {
         tableName: 'appointments',
         timestamps: true,
+        underscored: true,
     });
 
 

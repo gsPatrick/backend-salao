@@ -83,6 +83,7 @@ module.exports = (sequelize) => {
     }, {
         tableName: 'financial_transactions',
         timestamps: true,
+        underscored: true,
     });
 
 
