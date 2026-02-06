@@ -102,8 +102,15 @@ class ProfessionalService {
 
     async purge(id, tenantId) {
         const professional = await this.getById(id, tenantId);
-        await professional.destroy();
-        return { message: 'Profissional excluído definitivamente' };
+        try {
+            await professional.destroy();
+            return { message: 'Profissional excluído definitivamente' };
+        } catch (error) {
+            if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new Error('Não é possível excluir este profissional permanentemente pois existem registros (agendamentos) vinculados a ele. Arquive-o em vez disso.');
+            }
+            throw error;
+        }
     }
 
     async suspend(id, tenantId) {
