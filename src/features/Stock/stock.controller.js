@@ -1,5 +1,6 @@
 const stockService = require('./stock.service');
 const auditLogService = require('../../services/auditLog.service');
+const { parseMonetaryValue } = require('../../utils/number');
 
 exports.listProducts = async (req, res) => {
     try {
@@ -23,7 +24,13 @@ exports.getProduct = async (req, res) => {
 exports.createProduct = async (req, res) => {
     try {
         const unitId = req.headers['x-unit-id'] || req.body.unitId;
-        const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
+
+        // Sanitize numeric inputs
+        const sanitizedBody = { ...req.body };
+        if (sanitizedBody.sale_price) sanitizedBody.sale_price = parseMonetaryValue(sanitizedBody.sale_price);
+        if (sanitizedBody.cost_price) sanitizedBody.cost_price = parseMonetaryValue(sanitizedBody.cost_price);
+
+        const data = { ...sanitizedBody, tenant_id: req.tenantId, unit_id: unitId };
         const product = await stockService.createProduct(data, req.tenantId);
 
         await auditLogService.record(
@@ -43,7 +50,12 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
     try {
-        const product = await stockService.updateProduct(req.params.id, req.body, req.tenantId);
+        // Sanitize numeric inputs
+        const sanitizedBody = { ...req.body };
+        if (sanitizedBody.sale_price) sanitizedBody.sale_price = parseMonetaryValue(sanitizedBody.sale_price);
+        if (sanitizedBody.cost_price) sanitizedBody.cost_price = parseMonetaryValue(sanitizedBody.cost_price);
+
+        const product = await stockService.updateProduct(req.params.id, sanitizedBody, req.tenantId);
 
         await auditLogService.record(
             req.tenantId,

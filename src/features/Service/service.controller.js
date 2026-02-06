@@ -1,6 +1,7 @@
 const serviceService = require('./service.service');
 const auditLogService = require('../../services/auditLog.service');
 const { Unit } = require('../../models');
+const { parseMonetaryValue } = require('../../utils/number');
 
 class ServiceController {
     async getAll(req, res) {
@@ -46,7 +47,13 @@ class ServiceController {
                 targetUnitIds = [currentUnitId];
             }
 
-            const data = { ...req.body, tenant_id: req.tenantId, unit_id: targetUnitIds[0], targetUnitIds };
+            // Sanitize numeric inputs
+            const sanitizedBody = { ...req.body };
+            if (sanitizedBody.price) sanitizedBody.price = parseMonetaryValue(sanitizedBody.price);
+            if (sanitizedBody.commission_percentage) sanitizedBody.commission_percentage = parseMonetaryValue(sanitizedBody.commission_percentage);
+            if (sanitizedBody.cost) sanitizedBody.cost = parseMonetaryValue(sanitizedBody.cost);
+
+            const data = { ...sanitizedBody, tenant_id: req.tenantId, unit_id: targetUnitIds[0], targetUnitIds };
             const service = await serviceService.create(data, req.tenantId);
 
             // Audit log only records the "primary" creation ID, or we could loop logs? 
@@ -69,7 +76,13 @@ class ServiceController {
 
     async update(req, res) {
         try {
-            const service = await serviceService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
+            // Sanitize numeric inputs
+            const sanitizedBody = { ...req.body };
+            if (sanitizedBody.price) sanitizedBody.price = parseMonetaryValue(sanitizedBody.price);
+            if (sanitizedBody.commission_percentage) sanitizedBody.commission_percentage = parseMonetaryValue(sanitizedBody.commission_percentage);
+            if (sanitizedBody.cost) sanitizedBody.cost = parseMonetaryValue(sanitizedBody.cost);
+
+            const service = await serviceService.update(req.params.id, { ...sanitizedBody, tenant_id: req.tenantId }, req.tenantId);
 
             await auditLogService.record(
                 req.tenantId,

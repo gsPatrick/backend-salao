@@ -297,11 +297,11 @@ class AppointmentService {
         if (!tenant) throw new Error('Tenant não encontrado');
 
         const defaultHours = [
-            { day: 'segunda-feira', open: true, start: '09:00', end: '18:00' },
-            { day: 'terça-feira', open: true, start: '09:00', end: '18:00' },
-            { day: 'quarta-feira', open: true, start: '09:00', end: '18:00' },
-            { day: 'quinta-feira', open: true, start: '09:00', end: '18:00' },
-            { day: 'sexta-feira', open: true, start: '09:00', end: '18:00' },
+            { day: 'segunda-feira', open: true, start: '09:00', end: '22:00' },
+            { day: 'terça-feira', open: true, start: '09:00', end: '22:00' },
+            { day: 'quarta-feira', open: true, start: '09:00', end: '22:00' },
+            { day: 'quinta-feira', open: true, start: '09:00', end: '22:00' },
+            { day: 'sexta-feira', open: true, start: '09:00', end: '22:00' },
             { day: 'sábado', open: false, start: '09:00', end: '13:00' },
             { day: 'domingo', open: false, start: '09:00', end: '12:00' }
         ];
@@ -342,7 +342,7 @@ class AppointmentService {
 
         // --- Intersect with Unit Hours if specified ---
         let startTime = professional.start_time || '09:00';
-        let endTime = professional.end_time || '18:00';
+        let endTime = professional.end_time || '22:00';
         let lunchStart = professional.lunch_start || '12:00';
         let lunchEnd = professional.lunch_end || '13:00';
 

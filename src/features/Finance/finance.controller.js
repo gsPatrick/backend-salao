@@ -1,4 +1,5 @@
 const financeService = require('./finance.service');
+const { parseMonetaryValue } = require('../../utils/number');
 
 class FinanceController {
     async getAll(req, res) {
@@ -25,7 +26,12 @@ class FinanceController {
     async create(req, res) {
         try {
             const unitId = req.headers['x-unit-id'] || req.body.unitId;
-            const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
+
+            // Sanitize numeric inputs
+            const sanitizedBody = { ...req.body };
+            if (sanitizedBody.amount) sanitizedBody.amount = parseMonetaryValue(sanitizedBody.amount);
+
+            const data = { ...sanitizedBody, tenant_id: req.tenantId, unit_id: unitId };
             const transaction = await financeService.create(data, req.tenantId);
             res.status(201).json({ success: true, data: transaction });
         } catch (error) {
@@ -36,7 +42,12 @@ class FinanceController {
     async update(req, res) {
         try {
             const unitId = req.headers['x-unit-id'] || req.body.unitId;
-            const transaction = await financeService.update(req.params.id, { ...req.body, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
+
+            // Sanitize numeric inputs
+            const sanitizedBody = { ...req.body };
+            if (sanitizedBody.amount) sanitizedBody.amount = parseMonetaryValue(sanitizedBody.amount);
+
+            const transaction = await financeService.update(req.params.id, { ...sanitizedBody, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
             res.json({ success: true, data: transaction });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

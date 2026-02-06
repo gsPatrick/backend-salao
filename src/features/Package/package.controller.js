@@ -1,5 +1,6 @@
 const { MonthlyPackage, PackageSubscription } = require('./package.model');
 const { Op } = require('sequelize');
+const { parseMonetaryValue } = require('../../utils/number');
 
 // --- Packages ---
 
@@ -51,6 +52,9 @@ exports.createPackage = async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const data = req.body;
+
+        // Sanitize numeric inputs
+        if (data.price) data.price = parseMonetaryValue(data.price);
 
         // Sanitize duration to ensure integer (prevent "teste123" error)
         let duration = 1;
@@ -128,6 +132,9 @@ async function updateAndSend(pkg, data, res) {
         const parsed = parseInt(data.duration, 10);
         if (!isNaN(parsed)) duration = parsed;
     }
+
+    // Sanitize numeric inputs
+    if (data.price) data.price = parseMonetaryValue(data.price);
 
     await pkg.update({
         name: data.name,
