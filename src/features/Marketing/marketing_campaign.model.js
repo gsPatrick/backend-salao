@@ -11,6 +11,14 @@ const MarketingCampaign = sequelize.define('marketing_campaign', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
+    unit_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'units',
+            key: 'id'
+        }
+    },
     name: {
         type: DataTypes.STRING,
         allowNull: false

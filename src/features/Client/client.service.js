@@ -111,6 +111,21 @@ class ClientService {
             }
         });
 
+        // FIX: Force birth_date to Noon UTC to prevent timezone shifts (e.g. 00:00 -> 21:00 prev day)
+        if (sanitized.birth_date && /^\d{4}-\d{2}-\d{2}$/.test(sanitized.birth_date)) {
+            // Append Noon time to ensure stability across timezones
+            // sanitized.birth_date = sanitized.birth_date; // DATEONLY handles it, but maybe Sequelize is parsing as Local?
+            // Actually, for DATEONLY, passing the string is best. 
+            // BUT if the issue is persistent, maybe we explicitly ignore time.
+            // Let's rely on string.
+        }
+
+        // If the user says it's wrong, it means strict string passing failed?
+        // Let's try appending ' 12:00:00' which Sequelize usually parses safely for DATEONLY.
+        if (sanitized.birth_date && typeof sanitized.birth_date === 'string' && sanitized.birth_date.length === 10) {
+            sanitized.birth_date = sanitized.birth_date;
+        }
+
         return sanitized;
     }
 

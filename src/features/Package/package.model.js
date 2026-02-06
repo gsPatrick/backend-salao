@@ -80,6 +80,14 @@ const PackageSubscription = sequelize.define('PackageSubscription', {
         type: DataTypes.INTEGER,
         allowNull: true
     },
+    unit_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'units',
+            key: 'id'
+        }
+    },
     package_id: {
         type: DataTypes.BIGINT,
         allowNull: false
