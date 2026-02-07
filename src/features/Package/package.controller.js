@@ -1,4 +1,4 @@
-const { MonthlyPackage, PackageSubscription } = require('./package.model');
+const { MonthlyPackage, PackageSubscription, Service, Appointment } = require('../../models');
 const { Op } = require('sequelize');
 const { parseMonetaryValue } = require('../../utils/number');
 
@@ -11,6 +11,8 @@ exports.listPackages = async (req, res) => {
 
         const where = {
             tenant_id: tenantId,
+            active: true,
+            is_suspended: false,
             [Op.or]: [
                 { unit_id: null },
                 { unit_id: unitId }

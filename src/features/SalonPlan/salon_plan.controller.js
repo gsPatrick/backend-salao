@@ -1,4 +1,5 @@
 const SalonPlan = require('./salon_plan.model');
+const { Op } = require('sequelize');
 
 exports.list = async (req, res) => {
     try {
@@ -6,6 +7,7 @@ exports.list = async (req, res) => {
         const unitId = req.headers['x-unit-id'] || req.query.unitId;
         const where = {
             tenant_id: tenantId,
+            is_suspended: false,
             [Op.or]: [
                 { unit_id: null },
                 { unit_id: unitId }
