@@ -173,8 +173,15 @@ exports.handleInternalMessage = async (tenantId, phone, messageText, isAudio, au
 exports.getChats = async (req, res) => {
     try {
         const tenantId = req.user.tenant_id;
+        const { unitId } = req.query;
+
+        const where = { tenant_id: tenantId };
+        if (unitId && unitId !== 'all') {
+            where.unit_id = unitId;
+        }
+
         const chats = await AIChat.findAll({
-            where: { tenant_id: tenantId },
+            where,
             order: [['updated_at', 'DESC']]
         });
         res.json(chats);

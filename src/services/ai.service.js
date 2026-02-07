@@ -38,17 +38,44 @@ class AIService {
         return !!(tenant.plan.ai_voice_response || tenant.plan.advanced_ai);
     }
 
-    async generateSystemPrompt(tenantId) {
-        const { AIAgentConfig } = require('../models');
+    async getUnitSelectionMenu(tenantId) {
+        const { Unit } = require('../models');
+        const units = await Unit.findAll({ where: { tenant_id: tenantId, is_suspended: false } });
+        if (units.length <= 1) return null;
+
+        let menu = "Olá! 👋 Seja bem-vindo ao nosso atendimento.\n\nPara começarmos, por favor, me diga em qual de nossas unidades você deseja falar:\n\n";
+        units.forEach((u, i) => {
+            menu += `${i + 1}. *${u.name}*\n`;
+        });
+        menu += "\nDigite apenas o *número* ou o *nome* da unidade.";
+        return { menu, units };
+    }
+
+    async generateSystemPrompt(tenantId, unitId = null) {
+        const { AIAgentConfig, Unit } = require('../models');
         const tenant = await Tenant.findByPk(tenantId, {
-            include: [{ model: Service, as: 'services' }, { model: Professional, as: 'professionals' }]
+            include: [
+                { model: Service, as: 'services' },
+                { model: Professional, as: 'professionals' },
+                { model: Unit, as: 'units' }
+            ]
         });
         const config = await AIAgentConfig.findOne({ where: { tenant_id: tenantId } });
 
+        const unitsList = tenant.units.filter(u => !u.is_suspended)
+            .map(u => `- Unidade ${u.name}: ${u.address?.street || ''}, ${u.address?.number || ''}, ${u.address?.neighborhood || ''}, ${u.address?.city || ''}`).join('\n');
+
         const servicesList = tenant.services.filter(s => !s.is_suspended)
-            .map(s => `- ${s.name} (ID: ${s.id}, R$ ${s.price}, ${s.duration}min)`).join('\n');
+            .map(s => {
+                const unit = tenant.units.find(u => u.id === s.unit_id);
+                return `- ${s.name} (${unit ? `Unidade ${unit.name}` : 'Geral'}) (ID: ${s.id}, R$ ${s.price}, ${s.duration}min)`;
+            }).join('\n');
+
         const professionalsList = tenant.professionals.filter(p => !p.is_suspended && !p.is_archived)
-            .map(p => `- ${p.name} (ID: ${p.id})`).join('\n');
+            .map(p => {
+                const unit = tenant.units.find(u => u.id === p.unit_id);
+                return `- ${p.name} (${unit ? `Unidade ${unit.name}` : 'Geral'}) (ID: ${p.id})`;
+            }).join('\n');
 
         const businessHours = (Array.isArray(tenant.business_hours) && tenant.business_hours.length > 0)
             ? JSON.stringify(tenant.business_hours)
@@ -56,24 +83,34 @@ class AIService {
 
         const customBehavior = config?.prompt_behavior || config?.personality || "Seja cordial, profissional e prestativa.";
 
+        const selectedUnit = unitId ? tenant.units.find(u => u.id === unitId) : null;
+
         return `
 Data de hoje: ${new Date().toISOString().split('T')[0]}
 Você é a recepcionista virtual do ${tenant.name}.
+${selectedUnit ? `VOCÊ ESTÁ ATENDENDO PARA A UNIDADE: ${selectedUnit.name}` : ''}
+
+## UNIDADES DISPONÍVEIS
+${unitsList}
 
 ## PERSONALIDADE
 - ${customBehavior}
 - Use português do Brasil amigável.
 - Seja CONCISA: no máximo 2 frases curtas.
 
+## REGRAS DE OURO (UNIDADES)
+1. **DIFERENCIAÇÃO DE UNIDADE**: Se o cliente perguntar por um serviço ou profissional, mencione a unidade correspondente.
+2. **POLIDEZ**: Se o cliente não especificar a unidade, pergunte gentilmente: "Em qual de nossas unidades você prefere ser atendido?"
+
 ## DICÇÃO DE VOZ (OBRIGATÓRIO)
 1. **NUNCA** use zero à esquerda. Fale "9 horas", jamais "08 horas" ou "09 horas".
 2. **12:00** deve ser escrito sempre como "meio dia".
 3. Sempre use o sufixo "horas" (ex: "14 horas", "15:30 horas").
 
-## REGRAS DE OURO
+## AGENDAMENTO
 1. **NOMES OBRIGATÓRIOS**: Você DEVE falar o nome do profissional (Wagner ou Carlos) em toda listagem de horários.
 2. **PROATIVIDADE**: Se o cliente perguntar horários, chame 'consultarDisponibilidade' e apresente as opções IMEDIATAMENTE com os nomes.
-3. **ZERO ERROS**: NUNCA diga frases como "estou com dificuldades técnicas" ou "não consigo acessar". Se a lista de horários vier vazia, diga: "Para hoje não temos mais vagas, mas posso ver para amanhã?".
+3. **ZERO ERROS**: NUNCA diga frases como "estou com dificuldades técnicas" ou "não consigo acessar". Se a lista de horários virem vazia, diga: "Para hoje não temos mais vagas, mas posso ver para amanhã?".
 
 ## SERVIÇOS
 ${servicesList}
@@ -81,7 +118,7 @@ ${servicesList}
 ## PROFISSIONAIS
 ${professionalsList}
 
-## AGENDAMENTO
+## REQUISITOS PARA BOOKING
 - Para 'bookAppointment', você PRECISA de: Data, Horário, ID do Serviço, ID do Profissional (Obrigatório) e Nome.
  `;
     }
@@ -98,7 +135,8 @@ ${professionalsList}
                         properties: {
                             data: { type: "string" },
                             serviceId: { type: "integer" },
-                            professionalId: { type: ["integer", "null"] }
+                            professionalId: { type: ["integer", "null"] },
+                            unitId: { type: ["integer", "null"] }
                         },
                         required: ["data", "serviceId"]
                     }
@@ -116,9 +154,10 @@ ${professionalsList}
                             time: { type: "string" },
                             serviceId: { type: "integer" },
                             professionalId: { type: "integer" },
+                            unitId: { type: "integer" },
                             customerName: { type: "string" }
                         },
-                        required: ["data", "time", "serviceId", "professionalId", "customerName"]
+                        required: ["data", "time", "serviceId", "professionalId", "unitId", "customerName"]
                     }
                 }
             }
@@ -132,7 +171,7 @@ ${professionalsList}
 
         if (name === 'consultarDisponibilidade') {
             try {
-                const result = await appointmentService.getAvailability(args.professionalId, args.data, args.serviceId, tenantId);
+                const result = await appointmentService.getAvailability(args.professionalId, args.data, args.serviceId, tenantId, args.unitId);
                 return {
                     status: "sucesso",
                     profissional: result.professional.name,
@@ -150,8 +189,13 @@ ${professionalsList}
                 let client = await Client.findOne({ where: { phone, tenant_id: tenantId } });
                 if (!client) client = await Client.create({ name: args.customerName, phone, tenant_id: tenantId });
                 await appointmentService.create({
-                    client_id: client.id, professional_id: args.professionalId, service_id: args.serviceId,
-                    date: args.data, time: args.time, status: 'confirmado'
+                    client_id: client.id,
+                    professional_id: args.professionalId,
+                    service_id: args.serviceId,
+                    unit_id: args.unitId,
+                    date: args.data,
+                    time: args.time,
+                    status: 'confirmado'
                 }, tenantId, null);
                 return { status: "sucesso", mensagem: "Agendado!" };
             } catch (error) { return { status: "erro", mensagem: error.message }; }
@@ -204,6 +248,33 @@ ${professionalsList}
         let chat = await AIChat.findOne({ where: { tenant_id: tenantId, customer_phone: phone } });
         if (!chat) chat = await AIChat.create({ tenant_id: tenantId, customer_phone: phone, history: [], status: 'active' });
 
+        // Unit Selection Menu Logic
+        if (!chat.unit_id) {
+            const menuData = await this.getUnitSelectionMenu(tenantId);
+            if (menuData) {
+                const { menu, units } = menuData;
+
+                // Check if user replied with a choice
+                const choice = messageText.trim().toLowerCase();
+                const matchedUnit = units.find((u, i) =>
+                    choice === (i + 1).toString() ||
+                    choice === u.name.toLowerCase() ||
+                    u.name.toLowerCase().includes(choice)
+                );
+
+                if (matchedUnit) {
+                    await chat.update({ unit_id: matchedUnit.id });
+                    // Continue to process as a normal message now that we have a unit
+                    messageText = `Olá, escolhi a unidade ${matchedUnit.name}. Como pode me ajudar?`;
+                } else {
+                    // If no match and it's not a generic greeting, just send the menu
+                    // We sync the user message first so it shows up in history
+                    await this.synchronizeUserMessage(tenantId, phone, messageText);
+                    return menu;
+                }
+            }
+        }
+
         if (chat.status === 'manual') {
             let h = [...(chat.history || [])];
             h.push({ role: "user", content: messageText });
@@ -214,7 +285,7 @@ ${professionalsList}
 
         let history = [...(chat.history || [])];
         history.push({ role: "user", content: messageText });
-        const systemPrompt = (await this.generateSystemPrompt(tenantId)) + '\n' + additionalContext;
+        const systemPrompt = (await this.generateSystemPrompt(tenantId, chat.unit_id)) + '\n' + additionalContext;
         const tools = this.getTools();
 
         try {

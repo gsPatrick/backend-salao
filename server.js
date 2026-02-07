@@ -49,6 +49,10 @@ async function startServer() {
             crmAutomation.runDailyChecks().catch(err => console.error('CRM Automation Error:', err));
         }, ONE_DAY);
 
+        // Initialize Marketing Dispatcher (Scheduled campaigns)
+        const marketingDispatcher = require('./src/services/marketing_dispatcher.service');
+        marketingDispatcher.start();
+
         // Run once on startup (checks for anything missed while server was down)
         setTimeout(() => {
             crmAutomation.runDailyChecks().catch(err => console.error('CRM Automation Startup Error:', err));

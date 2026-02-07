@@ -249,7 +249,7 @@ class AppointmentService {
      * @param {number} tenantId - Tenant ID
      * @returns {Promise<string[]>} Array of available time slots
      */
-    async getAvailability(professionalId, date, serviceId, tenantId) {
+    async getAvailability(professionalId, date, serviceId, tenantId, unitId = null) {
         let professional;
 
         if (professionalId) {
@@ -259,26 +259,25 @@ class AppointmentService {
                     tenant_id: tenantId,
                     is_suspended: false,
                     is_archived: false,
-                    // open_schedule: true  <-- Ignored to allow booking even if schedule marked closed
                 }
             });
         } else {
-            // Pick first professional if none specified
-            professional = await Professional.findOne({
-                where: {
-                    tenant_id: tenantId,
-                    is_suspended: false,
-                    is_archived: false,
-                    // open_schedule: true <-- Ignored
-                }
-            });
+            // Pick first professional of the specific unit if unitId is provided
+            const profWhere = {
+                tenant_id: tenantId,
+                is_suspended: false,
+                is_archived: false
+            };
+            if (unitId) profWhere.unit_id = unitId;
+
+            professional = await Professional.findOne({ where: profWhere });
             if (professional) {
                 professionalId = professional.id;
             }
         }
 
         if (!professional) {
-            throw new Error('Profissional não encontrado');
+            throw new Error('Profissional não disponível para esta unidade ou serviço');
         }
 
         // Fetch blocks for this professional
