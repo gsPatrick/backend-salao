@@ -7,6 +7,7 @@ exports.list = async (req, res) => {
         const unitId = req.headers['x-unit-id'] || req.query.unitId;
         const where = {
             tenant_id: tenantId,
+            active: true,
             is_suspended: false,
             [Op.or]: [
                 { unit_id: null },
@@ -34,8 +35,10 @@ exports.create = async (req, res) => {
             ...data,
             tenant_id: req.tenantId,
             unit_id: unitId,
-            is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended,
-            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite
+            active: data.isActive !== undefined ? data.isActive : data.active !== undefined ? data.active : true,
+            is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended !== undefined ? data.is_suspended : false,
+            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite !== undefined ? data.is_favorite : false,
+            usage_type: data.usageType || 'Serviços'
         });
         res.status(201).json(formatPlan(plan));
     } catch (error) {
@@ -52,8 +55,10 @@ exports.update = async (req, res) => {
         const data = req.body;
         await plan.update({
             ...data,
-            is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended,
-            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite
+            active: data.isActive !== undefined ? data.isActive : data.active !== undefined ? data.active : plan.active,
+            is_suspended: data.suspended !== undefined ? data.suspended : data.is_suspended !== undefined ? data.is_suspended : plan.is_suspended,
+            is_favorite: data.isFavorite !== undefined ? data.isFavorite : data.is_favorite !== undefined ? data.is_favorite : plan.is_favorite,
+            usage_type: data.usageType !== undefined ? data.usageType : plan.usage_type
         });
         res.json(formatPlan(plan));
     } catch (error) {
@@ -115,8 +120,10 @@ function formatPlan(p) {
         sessions: p.sessions,
         category: p.category,
         unit: p.unit,
+        isActive: p.active,
         suspended: p.is_suspended,
         isFavorite: p.is_favorite,
+        usageType: p.usage_type,
         createdAt: p.created_at
     };
 }

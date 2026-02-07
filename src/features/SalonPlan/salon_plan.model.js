@@ -47,6 +47,10 @@ const SalonPlan = sequelize.define('SalonPlan', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    active: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
     is_suspended: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
@@ -54,6 +58,11 @@ const SalonPlan = sequelize.define('SalonPlan', {
     is_favorite: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
+    },
+    usage_type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'Serviços'
     }
 }, {
     tableName: 'salon_plans',
