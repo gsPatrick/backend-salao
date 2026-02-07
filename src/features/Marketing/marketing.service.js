@@ -4,9 +4,12 @@ class MarketingService {
     // --- Campaigns ---
     async listCampaigns(tenantId, unitId = null) {
         const where = { tenant_id: tenantId };
-        if (unitId) {
-            where.unit_id = unitId;
+        // Parse unitId to ensure proper filtering (could be string from header)
+        const parsedUnitId = unitId ? parseInt(unitId, 10) : null;
+        if (parsedUnitId && !isNaN(parsedUnitId)) {
+            where.unit_id = parsedUnitId;
         }
+        console.log('[Marketing] listCampaigns - tenantId:', tenantId, 'unitId:', unitId, 'parsedUnitId:', parsedUnitId, 'where:', where);
         return Campaign.findAll({
             where,
             order: [['created_at', 'DESC']]
@@ -40,9 +43,11 @@ class MarketingService {
     // --- Acquisition Channels ---
     async listChannels(tenantId, unitId = null) {
         const where = { tenant_id: tenantId };
-        if (unitId) {
-            where.unit_id = unitId;
+        const parsedUnitId = unitId ? parseInt(unitId, 10) : null;
+        if (parsedUnitId && !isNaN(parsedUnitId)) {
+            where.unit_id = parsedUnitId;
         }
+        console.log('[Marketing] listChannels - tenantId:', tenantId, 'unitId:', unitId, 'parsedUnitId:', parsedUnitId, 'where:', where);
         return AcquisitionChannel.findAll({
             where,
             order: [['created_at', 'DESC']]
@@ -70,9 +75,11 @@ class MarketingService {
     // --- Direct Mail Campaigns (MarketingCampaign) ---
     async listDirectMail(tenantId, unitId = null) {
         const where = { tenant_id: tenantId };
-        if (unitId) {
-            where.unit_id = unitId;
+        const parsedUnitId = unitId ? parseInt(unitId, 10) : null;
+        if (parsedUnitId && !isNaN(parsedUnitId)) {
+            where.unit_id = parsedUnitId;
         }
+        console.log('[Marketing] listDirectMail - tenantId:', tenantId, 'unitId:', unitId, 'parsedUnitId:', parsedUnitId, 'where:', where);
         return MarketingCampaign.findAll({
             where,
             order: [['created_at', 'DESC']]
