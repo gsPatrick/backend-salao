@@ -142,10 +142,12 @@ class AppointmentService {
                 throw error;
             }
 
-            const [hours, minutes] = data.time.split(':').map(Number);
-            const endDate = new Date();
-            endDate.setHours(hours, minutes + duration);
-            data.end_time = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+            if (!data.end_time) {
+                const [hours, minutes] = data.time.split(':').map(Number);
+                const endDate = new Date();
+                endDate.setHours(hours, minutes + duration);
+                data.end_time = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+            }
             data.price = data.price || price;
 
             const appointment = await Appointment.create({
