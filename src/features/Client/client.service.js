@@ -1,4 +1,4 @@
-const { Client } = require('../../models');
+const { Client, Appointment, Service, Professional } = require('../../models');
 
 class ClientService {
     async getAll(tenantId, unitId) {
@@ -19,27 +19,44 @@ class ClientService {
     }
 
     async getById(id, tenantId) {
-        const client = await Client.findOne({ where: { id, tenant_id: tenantId } });
+        const client = await Client.findOne({
+            where: { id, tenant_id: tenantId },
+            include: [
+                {
+                    model: Appointment,
+                    as: 'Appointments',
+                    include: [
+                        { model: Service, as: 'service', attributes: ['id', 'name', 'price', 'duration'] },
+                        { model: Professional, as: 'professional', attributes: ['id', 'name', 'photo', 'occupation'] }
+                    ],
+                    order: [['date', 'DESC'], ['time', 'DESC']]
+                }
+            ]
+        });
         if (!client) throw new Error('Cliente não encontrado');
-        return client;
-    }
 
-    sanitizeClientData(data) {
-        // ... (sanitize logic unchanged, handled by ...req.body in controller mostly but method is helper)
-        // I will keep the original sanitize logic if I can, but I need to be careful with replace_file_content limit.
-        // Actually, the previous view_file showed lines 1-165. I'll just replace the methods I need to change.
-        // Since I'm replacing a specific chunk, I need to be careful.
-        // I'll assume sanitizeClientData is fine.
-        return this._sanitizeClientData(data); // Using internal helper or just keeping the valid logic from before
-    }
+        // Transform appointments to history format for frontend compatibility
+        const clientData = client.toJSON();
+        if (clientData.Appointments && clientData.Appointments.length > 0) {
+            const appointmentHistory = clientData.Appointments.map(apt => ({
+                id: apt.id,
+                name: apt.service?.name || 'Serviço',
+                date: apt.date,
+                time: apt.time,
+                professional: apt.professional?.name || 'Profissional',
+                professionalId: apt.professional?.id,
+                professionalPhoto: apt.professional?.photo,
+                status: apt.status,
+                price: apt.service?.price || '0',
+                reviewed: apt.reviewed || false,
+                rating: apt.rating
+            }));
+            // Merge with existing history (if any) or replace
+            clientData.history = appointmentHistory;
+            delete clientData.Appointments;
+        }
 
-    // Helper to keep the file clean, but for this tool call I need to replace specific functions.
-    // I will use multi_replace to target specific methods.
-
-    async getById(id, tenantId) {
-        const client = await Client.findOne({ where: { id, tenant_id: tenantId } });
-        if (!client) throw new Error('Cliente não encontrado');
-        return client;
+        return clientData;
     }
 
     sanitizeClientData(data) {
