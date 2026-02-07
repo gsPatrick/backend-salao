@@ -88,6 +88,14 @@ const PackageSubscription = sequelize.define('PackageSubscription', {
             key: 'id'
         }
     },
+    client_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'clients',
+            key: 'id'
+        }
+    },
     package_id: {
         type: DataTypes.BIGINT,
         allowNull: false

@@ -189,6 +189,10 @@ MonthlyPackage.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 Tenant.hasMany(PackageSubscription, { foreignKey: 'tenant_id' });
 PackageSubscription.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
+// Client-PackageSubscription associations
+Client.hasMany(PackageSubscription, { foreignKey: 'client_id', as: 'subscriptions' });
+PackageSubscription.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+
 // Lead associations
 Tenant.hasMany(Lead, { foreignKey: 'tenant_id' });
 Lead.belongsTo(Tenant, { foreignKey: 'tenant_id' });

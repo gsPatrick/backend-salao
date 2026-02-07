@@ -1,4 +1,4 @@
-const { Client, Appointment, Service, Professional } = require('../../models');
+const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage } = require('../../models');
 
 class ClientService {
     async getAll(tenantId, unitId) {
@@ -30,6 +30,15 @@ class ClientService {
                         { model: Professional, as: 'professional', attributes: ['id', 'name', 'photo', 'occupation'] }
                     ],
                     order: [['date', 'DESC'], ['time', 'DESC']]
+                },
+                {
+                    model: PackageSubscription,
+                    as: 'subscriptions',
+                    where: { status: 'active' },
+                    required: false,
+                    include: [
+                        { model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions', 'price'] }
+                    ]
                 }
             ]
         });
@@ -54,6 +63,22 @@ class ClientService {
             // Merge with existing history (if any) or replace
             clientData.history = appointmentHistory;
             delete clientData.Appointments;
+        }
+
+        // Transform subscriptions to packages format for frontend compatibility
+        if (clientData.subscriptions && clientData.subscriptions.length > 0) {
+            clientData.packages = clientData.subscriptions.map(sub => ({
+                id: sub.id,
+                name: sub.package?.name || 'Pacote',
+                total_sessions: sub.package?.sessions || 0,
+                used_sessions: sub.clicks || 0,
+                sessions: sub.package?.sessions || 0,
+                price: sub.package?.price || '0',
+                start_date: sub.start_date,
+                end_date: sub.end_date,
+                status: sub.status
+            }));
+            delete clientData.subscriptions;
         }
 
         return clientData;
