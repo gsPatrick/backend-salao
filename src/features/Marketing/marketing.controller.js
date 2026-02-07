@@ -14,7 +14,9 @@ exports.listCampaigns = async (req, res) => {
 
 exports.createCampaign = async (req, res) => {
     try {
-        const unitId = req.headers['x-unit-id'] || req.body.unitId;
+        const rawUnitId = req.headers['x-unit-id'] || req.body.unitId;
+        const unitId = rawUnitId ? parseInt(rawUnitId, 10) : null;
+        console.log('[Marketing] createCampaign - rawUnitId:', rawUnitId, 'parsedUnitId:', unitId, 'tenantId:', req.tenantId);
         const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
         const campaign = await marketingService.createCampaign(data, req.tenantId);
 
@@ -86,7 +88,9 @@ exports.listChannels = async (req, res) => {
 
 exports.createChannel = async (req, res) => {
     try {
-        const unitId = req.headers['x-unit-id'] || req.body.unitId;
+        const rawUnitId = req.headers['x-unit-id'] || req.body.unitId;
+        const unitId = rawUnitId ? parseInt(rawUnitId, 10) : null;
+        console.log('[Marketing] createChannel - rawUnitId:', rawUnitId, 'parsedUnitId:', unitId, 'tenantId:', req.tenantId);
         const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
         const channel = await marketingService.createChannel(data, req.tenantId);
         res.status(201).json(channel);
@@ -121,7 +125,9 @@ exports.listDirectMail = async (req, res) => {
 
 exports.createDirectMail = async (req, res) => {
     try {
-        const unitId = req.headers['x-unit-id'] || req.body.unitId;
+        const rawUnitId = req.headers['x-unit-id'] || req.body.unitId;
+        const unitId = rawUnitId ? parseInt(rawUnitId, 10) : null;
+        console.log('[Marketing] createDirectMail - rawUnitId:', rawUnitId, 'parsedUnitId:', unitId, 'tenantId:', req.tenantId);
         const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
         const campaign = await marketingService.createDirectMail(data, req.tenantId);
         res.status(201).json(campaign);
