@@ -41,9 +41,25 @@ module.exports = (sequelize) => {
         },
         service_id: {
             type: DataTypes.INTEGER,
-            allowNull: false,
+            allowNull: true,
             references: {
                 model: 'services',
+                key: 'id',
+            },
+        },
+        package_id: {
+            type: DataTypes.BIGINT,
+            allowNull: true,
+            references: {
+                model: 'monthly_packages',
+                key: 'id',
+            },
+        },
+        salon_plan_id: {
+            type: DataTypes.BIGINT,
+            allowNull: true,
+            references: {
+                model: 'salon_plans',
                 key: 'id',
             },
         },

@@ -10,14 +10,15 @@ exports.listPackages = async (req, res) => {
         const unitId = req.headers['x-unit-id'] || req.query.unitId;
 
         const where = {
+            tenant_id: tenantId,
             [Op.or]: [
-                { tenant_id: tenantId },
-                { tenant_id: null }
+                { unit_id: null },
+                { unit_id: unitId }
             ]
         };
 
-        if (unitId) {
-            where.unit_id = unitId;
+        if (!unitId) {
+            delete where[Op.or];
         }
 
         const packages = await MonthlyPackage.findAll({

@@ -1,4 +1,4 @@
-const { Appointment, Client, Professional, Service, sequelize } = require('../../models');
+const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, sequelize } = require('../../models');
 const { Op, Transaction } = require('sequelize');
 
 class AppointmentService {
@@ -78,9 +78,9 @@ class AppointmentService {
                 data.status = 'agendado';
             }
 
-            // Validate Service Presence
-            if (!data.service_id) {
-                const error = new Error('O campo service_id é obrigatório para criar um agendamento');
+            // Validate Item Presence (at least one of Service, Package, or Plan)
+            if (!data.service_id && !data.package_id && !data.salon_plan_id) {
+                const error = new Error('É necessário selecionar um Serviço, Pacote ou Plano para criar um agendamento');
                 error.status = 400;
                 throw error;
             }
@@ -111,19 +111,42 @@ class AppointmentService {
                 }
             }
 
-            // Calculate end time based on service duration
-            const service = await Service.findByPk(data.service_id, { transaction: t });
-            if (!service) {
-                const error = new Error('Serviço não encontrado');
+            // Calculate end time based on item duration
+            let item = null;
+            let duration = 60; // Default duration
+            let price = 0;
+
+            if (data.service_id) {
+                item = await Service.findByPk(data.service_id, { transaction: t });
+                if (item) {
+                    duration = item.duration || 60;
+                    price = item.price;
+                }
+            } else if (data.package_id) {
+                item = await MonthlyPackage.findByPk(data.package_id, { transaction: t });
+                if (item) {
+                    duration = 60; // Packages don't have duration in mins, default 60
+                    price = item.price;
+                }
+            } else if (data.salon_plan_id) {
+                item = await SalonPlan.findByPk(data.salon_plan_id, { transaction: t });
+                if (item) {
+                    duration = 60; // Plans don't have duration in mins, default 60
+                    price = item.price;
+                }
+            }
+
+            if (!item) {
+                const error = new Error('Item (Serviço/Pacote/Plano) não encontrado');
                 error.status = 404;
                 throw error;
             }
 
             const [hours, minutes] = data.time.split(':').map(Number);
             const endDate = new Date();
-            endDate.setHours(hours, minutes + service.duration);
+            endDate.setHours(hours, minutes + duration);
             data.end_time = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
-            data.price = data.price || service.price;
+            data.price = data.price || price;
 
             const appointment = await Appointment.create({
                 ...data,

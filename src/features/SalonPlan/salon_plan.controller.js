@@ -4,8 +4,14 @@ exports.list = async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const unitId = req.headers['x-unit-id'] || req.query.unitId;
-        const where = { tenant_id: tenantId };
-        if (unitId) where.unit_id = unitId;
+        const where = {
+            tenant_id: tenantId,
+            [Op.or]: [
+                { unit_id: null },
+                { unit_id: unitId }
+            ]
+        };
+        if (!unitId) delete where[Op.or];
 
         const plans = await SalonPlan.findAll({
             where,
