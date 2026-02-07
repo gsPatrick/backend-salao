@@ -258,6 +258,15 @@ class AppointmentService {
         return this.updateStatus(id, 'cancelado', tenantId);
     }
 
+    async delete(id, tenantId) {
+        const appointment = await Appointment.findOne({
+            where: { id, tenant_id: tenantId }
+        });
+        if (!appointment) throw new Error('Agendamento não encontrado');
+        await appointment.destroy();
+        return { id, deleted: true };
+    }
+
     async getByDate(date, tenantId, unitId = null) {
         return this.getAll(tenantId, { date, unitId });
     }

@@ -19,5 +19,6 @@ router.post('/', appointmentController.create);
 router.put('/:id', appointmentController.update);
 router.patch('/:id/cancel', appointmentController.cancel);
 router.patch('/:id/status', appointmentController.updateStatus);
+router.delete('/:id', appointmentController.delete);
 
 module.exports = router;

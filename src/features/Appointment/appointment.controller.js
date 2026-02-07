@@ -86,6 +86,15 @@ class AppointmentController {
         }
     }
 
+    async delete(req, res) {
+        try {
+            const result = await appointmentService.delete(req.params.id, req.tenantId);
+            res.json({ success: true, data: result });
+        } catch (error) {
+            res.status(404).json({ success: false, message: error.message });
+        }
+    }
+
     async getByDate(req, res) {
         try {
             const unitId = req.headers['x-unit-id'] || req.query.unitId;
