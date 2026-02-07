@@ -26,4 +26,7 @@ router.get('/audience-count', authMiddleware.authenticate, marketingController.g
 // SMTP
 router.post('/test-smtp', authMiddleware.authenticate, marketingController.testSMTP);
 
+// WhatsApp Status
+router.get('/whatsapp/status', authMiddleware.authenticate, marketingController.getWhatsAppStatus);
+
 module.exports = router;

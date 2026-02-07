@@ -177,3 +177,13 @@ exports.testSMTP = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+exports.getWhatsAppStatus = async (req, res) => {
+    try {
+        const whatsappProvider = require('../../services/whatsapp.provider');
+        const info = whatsappProvider.getWhatsAppInfo(req.tenantId);
+        res.json(info);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

@@ -204,10 +204,23 @@ const getStatus = (tenantId) => {
     return session ? 'connected' : 'disconnected';
 };
 
+const getWhatsAppInfo = (tenantId) => {
+    const session = sessions.get(tenantId);
+    if (!session) return { status: 'disconnected', phone: null };
+
+    // Extract phone from session user id (jid)
+    const phone = session.user?.id?.split(':')[0]?.split('@')[0] || null;
+    return {
+        status: 'connected',
+        phone: phone
+    };
+};
+
 module.exports = {
     connectToWhatsApp,
     getSession,
     sendMessage,
     deleteSession,
-    getStatus
+    getStatus,
+    getWhatsAppInfo
 };
