@@ -8,12 +8,24 @@ class ClientService {
         };
 
         if (unitId) {
-            // where.unit_id = unitId; // COMENTADO: Permitir visualização global de clientes (sincronização entre unidades)
+            where.unit_id = unitId;
         }
 
-        return Client.findAll({
+        const clients = await Client.findAll({
             where,
             order: [['created_at', 'DESC']],
+        });
+
+        // Apply Social Name logic
+        return clients.map(client => {
+            const data = client.toJSON();
+            if (data.preferences?.useSocialName && data.social_name) {
+                data.legal_name = data.name; // Preserve legal name
+                data.name = data.social_name; // Swap display name
+            } else {
+                data.legal_name = data.name; // Consistency
+            }
+            return data;
         });
     }
 
@@ -45,6 +57,15 @@ class ClientService {
 
         // Transform appointments to history format for frontend compatibility
         const clientData = client.toJSON();
+
+        // Apply Social Name logic
+        if (clientData.preferences?.useSocialName && clientData.social_name) {
+            clientData.legal_name = clientData.name;
+            clientData.name = clientData.social_name;
+        } else {
+            clientData.legal_name = clientData.name;
+        }
+
         if (clientData.Appointments && clientData.Appointments.length > 0) {
             const appointmentHistory = clientData.Appointments.map(apt => ({
                 id: apt.id,
@@ -241,9 +262,20 @@ class ClientService {
             // where.unit_id = unitId; // COMENTADO: Permitir busca global de clientes
         }
 
-        return Client.findAll({
+        const clients = await Client.findAll({
             where,
             limit: 20,
+        });
+
+        return clients.map(client => {
+            const data = client.toJSON();
+            if (data.preferences?.useSocialName && data.social_name) {
+                data.legal_name = data.name;
+                data.name = data.social_name;
+            } else {
+                data.legal_name = data.name;
+            }
+            return data;
         });
     }
 }
