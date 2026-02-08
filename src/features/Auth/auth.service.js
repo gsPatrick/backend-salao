@@ -83,11 +83,115 @@ class AuthService {
 
     async getClientByEmail(email) {
         const sanitizedEmail = email.trim().toLowerCase();
+        // Check both email and login_email fields
         return Client.findOne({
-            where: { email: sanitizedEmail },
+            where: {
+                [require('sequelize').Op.or]: [
+                    { email: sanitizedEmail },
+                    { login_email: sanitizedEmail }
+                ]
+            },
             order: [['is_active', 'DESC']],
             include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
         });
+    }
+
+    /**
+     * Register client by CPF (sync with existing pre-registered client)
+     * Only allows registration if CPF already exists in the system
+     */
+    async clientRegisterByCpf(data) {
+        const { cpf, loginEmail, password } = data;
+
+        if (!cpf || !loginEmail || !password) {
+            throw new Error('CPF, email e senha são obrigatórios');
+        }
+
+        const sanitizedCpf = cpf.replace(/\D/g, '');
+        const sanitizedEmail = loginEmail.trim().toLowerCase();
+
+        // Check if login_email is already in use
+        const emailInUse = await Client.findOne({
+            where: {
+                login_email: sanitizedEmail,
+                cpf: { [require('sequelize').Op.ne]: sanitizedCpf }
+            }
+        });
+
+        if (emailInUse) {
+            throw new Error('Este email já está em uso por outro cliente');
+        }
+
+        // Find client by CPF
+        const client = await Client.findOne({
+            where: { cpf: sanitizedCpf },
+            include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
+        });
+
+        if (!client) {
+            throw new Error('CPF não encontrado. Você precisa estar cadastrado em um de nossos salões para criar sua conta.');
+        }
+
+        if (!client.is_active) {
+            throw new Error('Cliente desativado');
+        }
+
+        // Check if client already has login credentials
+        if (client.login_email && client.password !== '123') {
+            throw new Error('Este CPF já possui uma conta. Por favor, faça login com seu email.');
+        }
+
+        // Update client with login credentials
+        await client.update({
+            login_email: sanitizedEmail,
+            password: password
+        });
+
+        // Reload client with relationships
+        const fullClient = await Client.findByPk(client.id, {
+            include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
+        });
+
+        // Generate token
+        const token = this.generateToken({
+            id: client.id,
+            email: sanitizedEmail,
+            tenant_id: client.tenant_id,
+            is_super_admin: false,
+            role: 'cliente'
+        });
+
+        return {
+            token,
+            user: this.formatClientResponse(fullClient),
+            linkedClient: {
+                name: client.name,
+                unit_id: client.unit_id,
+                tenant_id: client.tenant_id
+            }
+        };
+    }
+
+    /**
+     * Check if CPF exists in the system
+     */
+    async checkCpfExists(cpf) {
+        const sanitizedCpf = cpf.replace(/\D/g, '');
+        const client = await Client.findOne({
+            where: { cpf: sanitizedCpf },
+            include: [{ model: Tenant, as: 'tenant' }],
+        });
+
+        if (!client) {
+            return { exists: false };
+        }
+
+        return {
+            exists: true,
+            clientName: client.name,
+            hasLoginCredentials: !!(client.login_email && client.password !== '123'),
+            tenantName: client.tenant?.name
+        };
     }
 
     /**

@@ -144,6 +144,11 @@ const Client = sequelize.define('client', {
         type: DataTypes.STRING,
         defaultValue: '123'
     },
+    login_email: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'Email used by client to login to the app (different from visual email)'
+    },
     reminders: {
         type: DataTypes.JSONB,
         allowNull: true,

@@ -4,11 +4,11 @@
   "description": "Backend API for Salão24h - Multi-tenant SaaS for beauty salons",
   "main": "server.js",
   "scripts": {
-    "start": "sequelize-cli db:migrate && node server.js",
+    "start": "sequelize-cli db:migrate --migrations-path=./src/migrations && node server.js",
     "dev": "npm run db:migrate && nodemon server.js",
-    "db:migrate": "sequelize-cli db:migrate",
+    "db:migrate": "sequelize-cli db:migrate --migrations-path=./src/migrations",
     "db:seed": "sequelize-cli db:seed:all",
-    "db:reset": "sequelize-cli db:migrate:undo:all && sequelize-cli db:migrate && sequelize-cli db:seed:all"
+    "db:reset": "sequelize-cli db:migrate:undo:all --migrations-path=./src/migrations && sequelize-cli db:migrate --migrations-path=./src/migrations && sequelize-cli db:seed:all"
   },
   "keywords": [
     "salon",

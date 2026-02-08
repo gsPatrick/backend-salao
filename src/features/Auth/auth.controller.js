@@ -91,6 +91,71 @@ class AuthController {
     }
 
     /**
+     * POST /api/auth/client-register
+     * Register/link client by CPF (sync with existing pre-registered client)
+     */
+    async clientRegisterByCpf(req, res) {
+        try {
+            const { cpf, loginEmail, password } = req.body;
+
+            if (!cpf || !loginEmail || !password) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'CPF, email e senha são obrigatórios',
+                });
+            }
+
+            const result = await authService.clientRegisterByCpf({
+                cpf,
+                loginEmail,
+                password,
+            });
+
+            res.status(201).json({
+                success: true,
+                message: 'Conta criada com sucesso! Você foi vinculado ao seu cadastro.',
+                data: result,
+            });
+        } catch (error) {
+            console.error('Client register by CPF error:', error);
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Erro ao criar conta',
+            });
+        }
+    }
+
+    /**
+     * GET /api/auth/check-cpf/:cpf
+     * Check if CPF exists in the system
+     */
+    async checkCpf(req, res) {
+        try {
+            const { cpf } = req.params;
+
+            if (!cpf) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'CPF é obrigatório',
+                });
+            }
+
+            const result = await authService.checkCpfExists(cpf);
+
+            res.json({
+                success: true,
+                data: result,
+            });
+        } catch (error) {
+            console.error('Check CPF error:', error);
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Erro ao verificar CPF',
+            });
+        }
+    }
+
+    /**
      * POST /api/auth/refresh
      */
     async refreshToken(req, res) {
