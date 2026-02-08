@@ -9,7 +9,8 @@
     "db:migrate": "sequelize-cli db:migrate --migrations-path=./src/migrations",
     "db:seed": "sequelize-cli db:seed:all",
     "db:reset": "sequelize-cli db:migrate:undo:all --migrations-path=./src/migrations && sequelize-cli db:migrate --migrations-path=./src/migrations && sequelize-cli db:seed:all",
-    "check-dupes": "node check_duplicates.js"
+    "check-dupes": "node check_duplicates.js",
+    "reset-appointments": "node reset_appointments.js"
   },
   "keywords": [
     "salon",
