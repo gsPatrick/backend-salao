@@ -8,7 +8,8 @@
     "dev": "npm run db:migrate && nodemon server.js",
     "db:migrate": "sequelize-cli db:migrate --migrations-path=./src/migrations",
     "db:seed": "sequelize-cli db:seed:all",
-    "db:reset": "sequelize-cli db:migrate:undo:all --migrations-path=./src/migrations && sequelize-cli db:migrate --migrations-path=./src/migrations && sequelize-cli db:seed:all"
+    "db:reset": "sequelize-cli db:migrate:undo:all --migrations-path=./src/migrations && sequelize-cli db:migrate --migrations-path=./src/migrations && sequelize-cli db:seed:all",
+    "check-dupes": "node check_duplicates.js"
   },
   "keywords": [
     "salon",
