@@ -4,8 +4,7 @@ class ClientService {
     async getAll(tenantId, unitId) {
         const where = {
             tenant_id: tenantId,
-            is_active: true,
-            is_complete_registration: true
+            is_active: true
         };
 
         if (unitId) {
