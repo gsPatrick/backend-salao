@@ -8,7 +8,7 @@ class ClientService {
         };
 
         if (unitId) {
-            where.unit_id = unitId;
+            // where.unit_id = unitId; // COMENTADO: Permitir visualização global de clientes (sincronização entre unidades)
         }
 
         return Client.findAll({
@@ -238,7 +238,7 @@ class ClientService {
         };
 
         if (unitId) {
-            where.unit_id = unitId;
+            // where.unit_id = unitId; // COMENTADO: Permitir busca global de clientes
         }
 
         return Client.findAll({
