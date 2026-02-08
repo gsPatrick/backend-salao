@@ -259,11 +259,17 @@ class AppointmentService {
     }
 
     async delete(id, tenantId) {
+        console.log(`[AppointmentService] DELETE called for id=${id}, tenantId=${tenantId}`);
         const appointment = await Appointment.findOne({
             where: { id, tenant_id: tenantId }
         });
-        if (!appointment) throw new Error('Agendamento não encontrado');
+        if (!appointment) {
+            console.log(`[AppointmentService] Appointment id=${id} NOT FOUND`);
+            throw new Error('Agendamento não encontrado');
+        }
+        console.log(`[AppointmentService] Found appointment id=${id}, destroying...`);
         await appointment.destroy();
+        console.log(`[AppointmentService] Appointment id=${id} DESTROYED successfully`);
         return { id, deleted: true };
     }
 
