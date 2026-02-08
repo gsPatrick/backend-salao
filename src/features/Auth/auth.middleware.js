@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
-const { User, Tenant, Plan } = require('../../models');
+const { User, Tenant, Plan, Client } = require('../../models');
 
 /**
  * Authentication middleware
@@ -36,21 +36,42 @@ const authenticate = async (req, res, next) => {
             });
         }
 
-        // Fetch user with tenant and plan
-        const user = await User.findByPk(decoded.userId, {
-            include: [
-                {
-                    model: Tenant,
-                    as: 'tenant',
-                    include: [
-                        {
-                            model: Plan,
-                            as: 'plan',
-                        },
-                    ],
-                },
-            ],
-        });
+        let user;
+        const role = decoded.role;
+
+        // Check if user is a Client
+        if (role === 'cliente') {
+            user = await Client.findByPk(decoded.userId || decoded.id, {
+                include: [
+                    {
+                        model: Tenant,
+                        as: 'tenant',
+                        include: [
+                            {
+                                model: Plan,
+                                as: 'plan',
+                            },
+                        ],
+                    },
+                ],
+            });
+        } else {
+            // Fetch staff user with tenant and plan
+            user = await User.findByPk(decoded.userId, {
+                include: [
+                    {
+                        model: Tenant,
+                        as: 'tenant',
+                        include: [
+                            {
+                                model: Plan,
+                                as: 'plan',
+                            },
+                        ],
+                    },
+                ],
+            });
+        }
 
         if (!user) {
             return res.status(401).json({
@@ -69,9 +90,9 @@ const authenticate = async (req, res, next) => {
         // Attach to request - KEY: tenant_id and user_id for all queries
         req.user = user;
         req.userId = user.id;
-        req.tenantId = user.tenant_id; // null for Super Admin
-        req.isSuperAdmin = user.is_super_admin;
-        req.userRole = user.role;
+        req.tenantId = user.tenant_id; // null for Super Admin (if staff)
+        req.isSuperAdmin = user.is_super_admin || false;
+        req.userRole = role || user.role;
         req.plan = user.tenant?.plan || null;
 
         next();
