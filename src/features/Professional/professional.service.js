@@ -111,13 +111,58 @@ class ProfessionalService {
             });
             if (!createdProfessional) createdProfessional = professional;
         }
-        return createdProfessional;
+        const sanitizedData = this.sanitizeProfessionalData(data);
+        return Professional.create({ ...sanitizedData, tenant_id: tenantId });
     }
 
     async update(id, data, tenantId) {
         const professional = await this.getById(id, tenantId);
-        await professional.update(data);
-        return professional;
+        const sanitizedData = this.sanitizeProfessionalData(data);
+        await professional.update(sanitizedData);
+        return this.getById(id, tenantId);
+    }
+
+    sanitizeProfessionalData(data) {
+        const sanitized = { ...data };
+
+        if (sanitized.useSocialName !== undefined && sanitized.use_social_name === undefined) {
+            sanitized.use_social_name = sanitized.useSocialName;
+            delete sanitized.useSocialName;
+        }
+
+        if (sanitized.socialName !== undefined && sanitized.social_name === undefined) {
+            sanitized.social_name = sanitized.socialName;
+            delete sanitized.socialName;
+        }
+
+        if (sanitized.maritalStatus !== undefined && sanitized.marital_status === undefined) {
+            sanitized.marital_status = sanitized.maritalStatus;
+            delete sanitized.maritalStatus;
+        }
+
+        // Add other mappings if necessary (start_time, end_time, etc. are already snake_case from frontend in some places but camelCase in others)
+        const timeFields = ['startTime', 'endTime', 'lunchStart', 'lunchEnd'];
+        const snakeTimeFields = ['start_time', 'end_time', 'lunch_start', 'lunch_end'];
+
+        timeFields.forEach((field, index) => {
+            const snakeField = snakeTimeFields[index];
+            if (sanitized[field] !== undefined && sanitized[snakeField] === undefined) {
+                sanitized[snakeField] = sanitized[field];
+                delete sanitized[field];
+            }
+        });
+
+        if (sanitized.allowOvertime !== undefined && sanitized.allow_overtime === undefined) {
+            sanitized.allow_overtime = sanitized.allowOvertime;
+            delete sanitized.allowOvertime;
+        }
+
+        if (sanitized.openSchedule !== undefined && sanitized.open_schedule === undefined) {
+            sanitized.open_schedule = sanitized.openSchedule;
+            delete sanitized.openSchedule;
+        }
+
+        return sanitized;
     }
 
     async delete(id, tenantId) {

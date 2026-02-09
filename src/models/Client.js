@@ -27,6 +27,10 @@ const Client = sequelize.define('client', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    use_social_name: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
     email: {
         type: DataTypes.STRING,
         allowNull: true

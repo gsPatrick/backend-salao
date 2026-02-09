@@ -40,6 +40,11 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING(200),
             allowNull: true,
         },
+        use_social_name: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
         photo: {
             type: DataTypes.TEXT,
             allowNull: true,
