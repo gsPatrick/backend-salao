@@ -7,6 +7,7 @@ router.use(authenticate, requireTenant);
 
 router.get('/', clientController.getAll);
 router.get('/search', clientController.search);
+router.get('/reminders', clientController.getReminders);
 router.get('/:id', clientController.getById);
 router.post('/', clientController.create);
 router.put('/:id', clientController.update);

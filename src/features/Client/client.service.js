@@ -104,6 +104,38 @@ class ClientService {
         return clientData;
     }
 
+    async getActiveReminders(tenantId) {
+        const { Op } = require('sequelize');
+        // Check if reminders is not null and not empty array/json
+        // For JSONB in Postgres, we can check not equal to '[]'
+        const clients = await Client.findAll({
+            where: {
+                tenant_id: tenantId,
+                is_active: true,
+                reminders: {
+                    [Op.and]: [
+                        { [Op.ne]: null },
+                        // In some DBs emptiness check varies, but assuming standard JSON array
+                    ]
+                }
+            },
+            attributes: ['id', 'name', 'social_name', 'reminders', 'updated_at']
+        });
+
+        // Filter in JS to be safe about "active" or "future" reminders if needed, 
+        // or just return clients that have *any* reminders.
+        // Assuming we return all clients who have a non-empty reminders array.
+        return clients.filter(c => c.reminders && Array.isArray(c.reminders) && c.reminders.length > 0).map(client => {
+            const data = client.toJSON();
+            // Apply Social Name
+            if (data.preferences?.useSocialName && data.social_name) {
+                data.legal_name = data.name;
+                data.name = data.social_name;
+            }
+            return data;
+        });
+    }
+
     sanitizeClientData(data) {
         const sanitized = { ...data };
 
@@ -163,6 +195,18 @@ class ClientService {
         if (sanitized.isCompleteRegistration !== undefined) {
             sanitized.is_complete_registration = sanitized.isCompleteRegistration;
             delete sanitized.isCompleteRegistration;
+        }
+        // Map observations (frontend) to observation (db)
+        if (sanitized.observations !== undefined && sanitized.observation === undefined) {
+            sanitized.observation = sanitized.observations;
+            delete sanitized.observations;
+        }
+        // Ensure team and kinship are passed through (no camel/snake conversion needed as they are one word)
+        if (sanitized.team !== undefined) {
+            sanitized.team = sanitized.team;
+        }
+        if (sanitized.kinship !== undefined) {
+            sanitized.kinship = sanitized.kinship;
         }
 
         // Clean up date fields with invalid values

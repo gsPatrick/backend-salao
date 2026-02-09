@@ -35,7 +35,36 @@ class ClientController {
         try {
             const unitId = req.headers['x-unit-id'] || req.body.unitId;
             const client = await clientService.update(req.params.id, { ...req.body, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
+
+            // Emit socket event for real-time updates
+            try {
+                const { getIo } = require('../../Chat/chat.socket');
+                const io = getIo();
+                if (io) {
+                    io.to(`tenant:${req.tenantId}`).emit('client:update', client);
+                    // Specifically for reminders if they changed
+                    if (req.body.reminders) {
+                        io.to(`tenant:${req.tenantId}`).emit('reminder:update', {
+                            clientId: client.id,
+                            reminders: req.body.reminders,
+                            clientName: client.name
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Socket emit error:', err);
+            }
+
             res.json({ success: true, data: client });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async getReminders(req, res) {
+        try {
+            const reminders = await clientService.getActiveReminders(req.tenantId);
+            res.json({ success: true, data: reminders });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
