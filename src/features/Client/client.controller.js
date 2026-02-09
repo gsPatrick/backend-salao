@@ -38,7 +38,7 @@ class ClientController {
 
             // Emit socket event for real-time updates
             try {
-                const { getIo } = require('../../Chat/chat.socket');
+                const { getIo } = require('../Chat/chat.socket');
                 const io = getIo();
                 if (io) {
                     io.to(`tenant:${req.tenantId}`).emit('client:update', client);
