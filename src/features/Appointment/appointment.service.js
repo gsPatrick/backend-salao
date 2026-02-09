@@ -15,7 +15,7 @@ class AppointmentService {
             where.date = { [Op.between]: [filters.dateFrom, filters.dateTo] };
         }
 
-        return Appointment.findAll({
+        const appointments = await Appointment.findAll({
             where,
             include: [
                 { model: Client, as: 'client' },
@@ -23,6 +23,32 @@ class AppointmentService {
                 { model: Service, as: 'service' },
             ],
             order: [['date', 'ASC'], ['time', 'ASC']],
+        });
+
+        // Apply Social Name mapping for associations
+        return appointments.map(apt => {
+            const data = apt.toJSON();
+            if (data.client) {
+                const useSocial = data.client.use_social_name || data.client.preferences?.useSocialName;
+                if (useSocial && data.client.social_name) {
+                    data.client.legal_name = data.client.name;
+                    data.client.name = data.client.social_name;
+                } else {
+                    data.client.legal_name = data.client.name;
+                }
+                data.client.use_social_name = !!useSocial;
+            }
+            if (data.professional) {
+                const useSocial = data.professional.use_social_name;
+                if (useSocial && data.professional.social_name) {
+                    data.professional.legal_name = data.professional.name;
+                    data.professional.name = data.professional.social_name;
+                } else {
+                    data.professional.legal_name = data.professional.name;
+                }
+                data.professional.use_social_name = !!useSocial;
+            }
+            return data;
         });
     }
 
@@ -36,7 +62,29 @@ class AppointmentService {
             ],
         });
         if (!appointment) throw new Error('Agendamento não encontrado');
-        return appointment;
+
+        const data = appointment.toJSON();
+        if (data.client) {
+            const useSocial = data.client.use_social_name || data.client.preferences?.useSocialName;
+            if (useSocial && data.client.social_name) {
+                data.client.legal_name = data.client.name;
+                data.client.name = data.client.social_name;
+            } else {
+                data.client.legal_name = data.client.name;
+            }
+            data.client.use_social_name = !!useSocial;
+        }
+        if (data.professional) {
+            const useSocial = data.professional.use_social_name;
+            if (useSocial && data.professional.social_name) {
+                data.professional.legal_name = data.professional.name;
+                data.professional.name = data.professional.social_name;
+            } else {
+                data.professional.legal_name = data.professional.name;
+            }
+            data.professional.use_social_name = !!useSocial;
+        }
+        return data;
     }
 
     /**
