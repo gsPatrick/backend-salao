@@ -57,7 +57,21 @@ class CRMService {
         const where = { tenant_id: tenantId };
         if (filters.status) where.status = filters.status;
 
-        return Lead.findAll({ where });
+        const leads = await Lead.findAll({ where });
+
+        return leads.map(lead => {
+            const data = lead.toJSON();
+            // Map Social Name if exists in preferences or top-level (matching Client/Professional logic)
+            const useSocialName = data.use_social_name || data.preferences?.useSocialName;
+            if (useSocialName && data.social_name) {
+                data.legal_name = data.name;
+                data.name = data.social_name;
+            } else {
+                data.legal_name = data.name;
+            }
+            data.use_social_name = !!useSocialName;
+            return data;
+        });
     }
 
     async createLead(data, tenantId) {

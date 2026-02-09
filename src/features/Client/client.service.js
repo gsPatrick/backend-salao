@@ -19,12 +19,15 @@ class ClientService {
         // Apply Social Name logic
         return clients.map(client => {
             const data = client.toJSON();
-            if (data.preferences?.useSocialName && data.social_name) {
+            const useSocialName = data.use_social_name || data.preferences?.useSocialName;
+            if (useSocialName && data.social_name) {
                 data.legal_name = data.name; // Preserve legal name
                 data.name = data.social_name; // Swap display name
             } else {
                 data.legal_name = data.name; // Consistency
             }
+            // Ensure use_social_name is returned for frontend mapping
+            data.use_social_name = !!useSocialName;
             return data;
         });
     }
@@ -59,12 +62,14 @@ class ClientService {
         const clientData = client.toJSON();
 
         // Apply Social Name logic
-        if (clientData.preferences?.useSocialName && clientData.social_name) {
+        const useSocialName = clientData.use_social_name || clientData.preferences?.useSocialName;
+        if (useSocialName && clientData.social_name) {
             clientData.legal_name = clientData.name;
             clientData.name = clientData.social_name;
         } else {
             clientData.legal_name = clientData.name;
         }
+        clientData.use_social_name = !!useSocialName;
 
         if (clientData.Appointments && clientData.Appointments.length > 0) {
             const appointmentHistory = clientData.Appointments.map(apt => ({
@@ -128,10 +133,14 @@ class ClientService {
         return clients.filter(c => c.reminders && Array.isArray(c.reminders) && c.reminders.length > 0).map(client => {
             const data = client.toJSON();
             // Apply Social Name
-            if (data.preferences?.useSocialName && data.social_name) {
+            const useSocialName = data.use_social_name || data.preferences?.useSocialName;
+            if (useSocialName && data.social_name) {
                 data.legal_name = data.name;
                 data.name = data.social_name;
+            } else {
+                data.legal_name = data.name;
             }
+            data.use_social_name = !!useSocialName;
             return data;
         });
     }
@@ -155,6 +164,10 @@ class ClientService {
         if (sanitized.socialName !== undefined && sanitized.social_name === undefined) {
             sanitized.social_name = sanitized.socialName;
             delete sanitized.socialName;
+        }
+        if (sanitized.useSocialName !== undefined && sanitized.use_social_name === undefined) {
+            sanitized.use_social_name = sanitized.useSocialName;
+            delete sanitized.useSocialName;
         }
         if (sanitized.howTheyFoundUs !== undefined && sanitized.how_found_us === undefined) {
             sanitized.how_found_us = sanitized.howTheyFoundUs;
@@ -317,12 +330,14 @@ class ClientService {
 
         return clients.map(client => {
             const data = client.toJSON();
-            if (data.preferences?.useSocialName && data.social_name) {
+            const useSocialName = data.use_social_name || data.preferences?.useSocialName;
+            if (useSocialName && data.social_name) {
                 data.legal_name = data.name;
                 data.name = data.social_name;
             } else {
                 data.legal_name = data.name;
             }
+            data.use_social_name = !!useSocialName;
             return data;
         });
     }

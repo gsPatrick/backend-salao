@@ -38,10 +38,24 @@ class ProfessionalService {
 
         if (filters.unitId) where.unit_id = filters.unitId;
 
-        return Professional.findAll({
+        const professionals = await Professional.findAll({
             where,
             include: [{ model: Service, as: 'services' }],
             order: [['name', 'ASC']],
+        });
+
+        // Apply Social Name logic
+        return professionals.map(prof => {
+            const data = prof.toJSON();
+            const useSocialName = data.use_social_name; // Professionals usually don't have preferences JSON yet
+            if (useSocialName && data.social_name) {
+                data.legal_name = data.name;
+                data.name = data.social_name;
+            } else {
+                data.legal_name = data.name;
+            }
+            data.use_social_name = !!useSocialName;
+            return data;
         });
     }
 
@@ -51,7 +65,19 @@ class ProfessionalService {
             include: [{ model: Service, as: 'services' }],
         });
         if (!professional) throw new Error('Profissional não encontrado');
-        return professional;
+
+        const data = professional.toJSON();
+        // Apply Social Name logic
+        const useSocialName = data.use_social_name;
+        if (useSocialName && data.social_name) {
+            data.legal_name = data.name;
+            data.name = data.social_name;
+        } else {
+            data.legal_name = data.name;
+        }
+        data.use_social_name = !!useSocialName;
+
+        return data;
     }
 
     async create(data, tenantId) {
