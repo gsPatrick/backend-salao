@@ -272,10 +272,14 @@ class ClientService {
 
 
     async update(id, data, tenantId) {
-        const client = await this.getById(id, tenantId);
+        const client = await Client.findOne({ where: { id, tenant_id: tenantId } });
+        if (!client) throw new Error('Cliente não encontrado');
+
         const sanitizedData = this.sanitizeClientData(data);
         await client.update(sanitizedData);
-        return client;
+
+        // Return the full formatted object using getById
+        return this.getById(id, tenantId);
     }
 
     async delete(id, tenantId) {
