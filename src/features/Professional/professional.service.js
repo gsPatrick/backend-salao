@@ -48,12 +48,10 @@ class ProfessionalService {
         return professionals.map(prof => {
             const data = prof.toJSON();
             const useSocialName = data.use_social_name; // Professionals usually don't have preferences JSON yet
-            if (useSocialName && data.social_name) {
-                data.legal_name = data.name;
-                data.name = data.social_name;
-            } else {
-                data.legal_name = data.name;
-            }
+
+            // Keep legal_name for consistency/legacy, but DO NOT swap data.name
+            data.legal_name = data.name;
+
             data.use_social_name = !!useSocialName;
             return data;
         });
@@ -69,12 +67,8 @@ class ProfessionalService {
         const data = professional.toJSON();
         // Apply Social Name logic
         const useSocialName = data.use_social_name;
-        if (useSocialName && data.social_name) {
-            data.legal_name = data.name;
-            data.name = data.social_name;
-        } else {
-            data.legal_name = data.name;
-        }
+        // Keep legal_name for compatibility, but DO NOT swap name
+        data.legal_name = data.name;
         data.use_social_name = !!useSocialName;
 
         return data;

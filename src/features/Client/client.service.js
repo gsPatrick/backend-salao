@@ -20,12 +20,10 @@ class ClientService {
         return clients.map(client => {
             const data = client.toJSON();
             const useSocialName = data.use_social_name || data.preferences?.useSocialName;
-            if (useSocialName && data.social_name) {
-                data.legal_name = data.name; // Preserve legal name
-                data.name = data.social_name; // Swap display name
-            } else {
-                data.legal_name = data.name; // Consistency
-            }
+
+            // Keep legal_name for consistency/legacy, but DO NOT swap data.name
+            data.legal_name = data.name;
+
             // Ensure use_social_name is returned for frontend mapping
             data.use_social_name = !!useSocialName;
             return data;
@@ -63,12 +61,8 @@ class ClientService {
 
         // Apply Social Name logic
         const useSocialName = clientData.use_social_name || clientData.preferences?.useSocialName;
-        if (useSocialName && clientData.social_name) {
-            clientData.legal_name = clientData.name;
-            clientData.name = clientData.social_name;
-        } else {
-            clientData.legal_name = clientData.name;
-        }
+        // Keep legal_name for compatibility, but DO NOT swap name
+        clientData.legal_name = clientData.name;
         clientData.use_social_name = !!useSocialName;
 
         if (clientData.Appointments && clientData.Appointments.length > 0) {
