@@ -43,6 +43,10 @@ const Client = sequelize.define('client', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    rg: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     team: {
         type: DataTypes.STRING,
         allowNull: true
