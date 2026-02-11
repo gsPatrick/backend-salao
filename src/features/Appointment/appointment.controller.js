@@ -27,9 +27,17 @@ class AppointmentController {
 
     async create(req, res) {
         try {
-            const unitId = req.headers['x-unit-id'] || req.body.unitId;
+            const unitId = req.headers['x-unit-id'] || req.body.unitId || req.body.unit_id;
             const sanitizedBody = { ...req.body };
             if (sanitizedBody.price) sanitizedBody.price = parseMonetaryValue(sanitizedBody.price);
+
+            // Defensive mapping: accept both camelCase and snake_case field names
+            if (!sanitizedBody.client_id && sanitizedBody.clientId) sanitizedBody.client_id = sanitizedBody.clientId;
+            if (!sanitizedBody.professional_id && sanitizedBody.professionalId) sanitizedBody.professional_id = sanitizedBody.professionalId;
+            if (!sanitizedBody.service_id && sanitizedBody.serviceId) sanitizedBody.service_id = sanitizedBody.serviceId;
+            if (!sanitizedBody.end_time && sanitizedBody.endTime) sanitizedBody.end_time = sanitizedBody.endTime;
+            if (!sanitizedBody.package_id && sanitizedBody.packageId) sanitizedBody.package_id = sanitizedBody.packageId;
+            if (!sanitizedBody.salon_plan_id && sanitizedBody.salonPlanId) sanitizedBody.salon_plan_id = sanitizedBody.salonPlanId;
 
             const data = { ...sanitizedBody, tenant_id: req.tenantId, unit_id: unitId };
             const appointment = await appointmentService.create(data, req.tenantId, req.userId);
@@ -65,6 +73,12 @@ class AppointmentController {
         try {
             const sanitizedBody = { ...req.body };
             if (sanitizedBody.price) sanitizedBody.price = parseMonetaryValue(sanitizedBody.price);
+
+            // Defensive mapping: accept both camelCase and snake_case field names
+            if (!sanitizedBody.client_id && sanitizedBody.clientId) sanitizedBody.client_id = sanitizedBody.clientId;
+            if (!sanitizedBody.professional_id && sanitizedBody.professionalId) sanitizedBody.professional_id = sanitizedBody.professionalId;
+            if (!sanitizedBody.service_id && sanitizedBody.serviceId) sanitizedBody.service_id = sanitizedBody.serviceId;
+            if (!sanitizedBody.end_time && sanitizedBody.endTime) sanitizedBody.end_time = sanitizedBody.endTime;
 
             const appointment = await appointmentService.update(req.params.id, { ...sanitizedBody, tenant_id: req.tenantId }, req.tenantId);
             res.json({ success: true, data: appointment });
