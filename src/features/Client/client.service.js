@@ -467,12 +467,12 @@ class ClientService {
         const { Appointment, Service, MonthlyPackage, SalonPlan } = require('../../models');
         const { Op } = require('sequelize');
 
-        const completionStatuses = ['atendido', 'concluido', 'concluído'];
+        const completionStatuses = ['concluido'];
 
         const appointments = await Appointment.findAll({
             where: {
                 client_id: clientId,
-                status: { [Op.or]: completionStatuses.map(s => ({ [Op.iLike]: s })) }
+                status: { [Op.in]: completionStatuses }
             },
             include: [
                 { model: Service, as: 'service' },
