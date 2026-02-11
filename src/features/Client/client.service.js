@@ -180,8 +180,11 @@ class ClientService {
             delete clientData.Appointments;
         }
 
-        // Transform subscriptions to packages format for frontend compatibility
-        clientData.packages = [];
+        // Transform subscriptions to packages format for frontend compatibility (Merging with legacy JSONB packages)
+        if (!clientData.packages || !Array.isArray(clientData.packages)) {
+            clientData.packages = [];
+        }
+
         if (clientData.subscriptions && clientData.subscriptions.length > 0) {
             clientData.packages.push(...clientData.subscriptions.map(sub => {
                 const total = sub.total_sessions || parseInt(sub.package?.sessions) || 0;
@@ -217,6 +220,24 @@ class ClientService {
                 plan_id: sub.plan_id
             })));
             delete clientData.plan_subscriptions;
+        }
+
+        // Include direct package/plan if not already in the list
+        if (clientData.package && !clientData.packages.some(p => p.package_id == clientData.package_id)) {
+            clientData.packages.push({
+                id: `direct-pkg-${clientData.package_id}`,
+                name: clientData.package.name,
+                type: 'package',
+                package_id: clientData.package_id
+            });
+        }
+        if (clientData.salon_plan && !clientData.packages.some(p => p.plan_id == clientData.plan_id)) {
+            clientData.packages.push({
+                id: `direct-plan-${clientData.plan_id}`,
+                name: clientData.salon_plan.name,
+                type: 'plan',
+                plan_id: clientData.plan_id
+            });
         }
 
         // Include associated names for direct mapping

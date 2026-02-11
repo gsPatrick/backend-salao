@@ -413,10 +413,12 @@ class AppointmentService {
                     }
                 }
 
-                // If package/plan still has remaining sessions, keep as 'agendado'
-                // so the user can come back and conclude more sessions later
+                // If package/plan still has remaining sessions, we used to keep as 'agendado'
+                // so the user can come back and conclude more sessions later.
+                // REFINEMENT: Always keep as 'concluido' so it appears in history and statistics.
+                // The subscription counter tracks the overall progress.
                 if (!allSessionsConsumed) {
-                    updateData.status = 'agendado';
+                    // updateData.status = 'agendado'; // REMOVED: keep as concluído
                 }
             } catch (error) {
                 console.error('[Finance/Stats Hook Error]:', error);
