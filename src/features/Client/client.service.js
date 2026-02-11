@@ -49,8 +49,8 @@ class ClientService {
                     include: [
                         { model: Service, as: 'service', attributes: ['id', 'name', 'price', 'duration'] },
                         { model: Professional, as: 'professional', attributes: ['id', 'name', 'photo', 'occupation'] },
-                        { model: MonthlyPackage, as: 'package', attributes: ['id', 'name'] },
-                        { model: SalonPlan, as: 'salon_plan', attributes: ['id', 'name'] }
+                        { model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions'] },
+                        { model: SalonPlan, as: 'salon_plan', attributes: ['id', 'name', 'sessions'] }
                     ],
                     order: [['date', 'DESC'], ['time', 'DESC']]
                 },
@@ -94,23 +94,43 @@ class ClientService {
                 if (apt.package_id) {
                     type = 'Pacote';
                     name = apt.package?.name || 'Pacote';
-                    const sub = clientData.subscriptions?.find(s => s.package_id === apt.package_id);
+
+                    // Robust lookup using String() to avoid type mismatch
+                    const sub = clientData.subscriptions?.find(s => String(s.package_id) === String(apt.package_id));
+
                     if (sub) {
-                        // Estimate session number based on usage. 
-                        // Note: This is an approximation as we don't store "session #3" on the appointment itself yet.
-                        // We will show "Sessão X/Y" based on current usage for context.
                         const total = sub.package?.sessions || sub.total_sessions || 0;
                         const used = sub.clicks || 0;
                         sessionInfo = `${used}/${total} sessões`;
+                    } else if (apt.package?.sessions) {
+                        // Fallback: If no subscription, use total from package template
+                        const total = apt.package.sessions || 0;
+                        // Count previous completed sessions for this package in the full appointment list
+                        const previousSessions = clientData.Appointments.filter(a =>
+                            String(a.package_id) === String(apt.package_id) &&
+                            ['atendido', 'concluido', 'concluído'].includes((a.status || '').toLowerCase()) &&
+                            (new Date(a.date).getTime() < new Date(apt.date).getTime() || (a.date === apt.date && a.time <= apt.time))
+                        ).length;
+                        sessionInfo = `Sessão ${previousSessions} de ${total}`;
                     }
                 } else if (apt.salon_plan_id) {
                     type = 'Plano';
                     name = apt.salon_plan?.name || 'Plano';
-                    const sub = clientData.plan_subscriptions?.find(s => s.plan_id === apt.salon_plan_id);
+
+                    const sub = clientData.plan_subscriptions?.find(s => String(s.plan_id) === String(apt.salon_plan_id));
+
                     if (sub) {
                         const total = sub.plan?.sessions || sub.total_sessions || 0;
                         const used = sub.used_sessions || 0;
                         sessionInfo = `${used}/${total} sessões`;
+                    } else if (apt.salon_plan?.sessions) {
+                        const total = apt.salon_plan.sessions || 0;
+                        const previousSessions = clientData.Appointments.filter(a =>
+                            String(a.salon_plan_id) === String(apt.salon_plan_id) &&
+                            ['atendido', 'concluido', 'concluído'].includes((a.status || '').toLowerCase()) &&
+                            (new Date(a.date).getTime() < new Date(apt.date).getTime() || (a.date === apt.date && a.time <= apt.time))
+                        ).length;
+                        sessionInfo = `Sessão ${previousSessions} de ${total}`;
                     }
                 } else if (apt.service?.name) {
                     name = apt.service.name;
