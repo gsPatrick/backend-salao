@@ -282,8 +282,6 @@ class AppointmentService {
             }
         }
 
-        await appointmentInstance.update(updateData);
-
         const crmAutomationService = require('../../services/crm_automation.service');
 
         // Financial integration: Create transaction when completed
@@ -302,7 +300,7 @@ class AppointmentService {
                     date: appointmentInstance.date,
                     description: `Atendimento: ${appointmentInstance.client?.name || 'Cliente'} - ${appointmentInstance.service?.name || 'Serviço'}`,
                     status: 'pago',
-                    unit_id: appointmentInstance.unit_id || appointmentInstance.client?.preferred_unit || null, // Ensure Unit ID is passed!
+                    unit_id: appointmentInstance.unit_id || appointmentInstance.client?.preferred_unit || null,
                     appointment_id: appointmentInstance.id
                 };
 
@@ -310,6 +308,8 @@ class AppointmentService {
 
                 // Session Counter Increment
                 const sessionsToIncrement = parseInt(sessionsConsumed) || 1;
+
+                let allSessionsConsumed = true; // Default: fully concluded
 
                 if (appointmentInstance.package_id) {
                     const sub = await PackageSubscription.findOne({
@@ -321,6 +321,12 @@ class AppointmentService {
                     });
                     if (sub) {
                         await sub.increment('clicks', { by: sessionsToIncrement });
+                        await sub.reload();
+                        const pkg = await MonthlyPackage.findByPk(appointmentInstance.package_id);
+                        const totalSessions = pkg ? (pkg.sessions || 0) : 0;
+                        if (totalSessions > 0 && sub.clicks < totalSessions) {
+                            allSessionsConsumed = false;
+                        }
                     }
                 } else if (appointmentInstance.salon_plan_id) {
                     const sub = await SalonPlanSubscription.findOne({
@@ -332,12 +338,26 @@ class AppointmentService {
                     });
                     if (sub) {
                         await sub.increment('used_sessions', { by: sessionsToIncrement });
+                        await sub.reload();
+                        const plan = await SalonPlan.findByPk(appointmentInstance.salon_plan_id);
+                        const totalSessions = plan ? (plan.sessions || 0) : 0;
+                        if (totalSessions > 0 && sub.used_sessions < totalSessions) {
+                            allSessionsConsumed = false;
+                        }
                     }
+                }
+
+                // If package/plan still has remaining sessions, keep as 'agendado'
+                // so the user can come back and conclude more sessions later
+                if (!allSessionsConsumed) {
+                    updateData.status = 'agendado';
                 }
             } catch (error) {
                 console.error('[Finance/Stats Hook Error]:', error);
             }
         }
+
+        await appointmentInstance.update(updateData);
 
         // Update client status if faltante
         if (status === 'faltante') {
