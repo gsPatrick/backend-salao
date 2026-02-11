@@ -172,7 +172,8 @@ class ClientService {
                 start_date: sub.start_date,
                 end_date: sub.end_date,
                 status: sub.status,
-                type: 'package'
+                type: 'package',
+                package_id: sub.package_id
             })));
             delete clientData.subscriptions;
         }
@@ -188,7 +189,8 @@ class ClientService {
                 start_date: sub.start_date,
                 end_date: sub.end_date,
                 status: sub.status,
-                type: 'plan'
+                type: 'plan',
+                plan_id: sub.plan_id
             })));
             delete clientData.plan_subscriptions;
         }
