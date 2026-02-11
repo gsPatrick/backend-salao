@@ -198,11 +198,47 @@ class AppointmentService {
             }
             data.price = data.price || price;
 
+            // Snapshot session info and link unique subscription if applicable
+            let totalSessionsSnapshot = null;
+            let packageSubId = null;
+            let salonPlanSubId = null;
+
+            if (data.package_id) {
+                const pkg = item; // monthly package from previous block
+                const sessionsStr = pkg ? String(pkg.sessions || '') : '';
+                totalSessionsSnapshot = parseInt(sessionsStr, 10);
+                if (isNaN(totalSessionsSnapshot)) totalSessionsSnapshot = null;
+
+                // Find the oldest active subscription for this package to bind this appointment
+                const sub = await PackageSubscription.findOne({
+                    where: { client_id: data.client_id, package_id: data.package_id, status: 'active' },
+                    order: [['created_at', 'ASC']],
+                    transaction: t
+                });
+                if (sub) packageSubId = sub.id;
+            } else if (data.salon_plan_id) {
+                const plan = item;
+                const sessionsStr = plan ? String(plan.sessions || '') : '';
+                totalSessionsSnapshot = parseInt(sessionsStr, 10);
+                if (isNaN(totalSessionsSnapshot)) totalSessionsSnapshot = null;
+
+                const sub = await SalonPlanSubscription.findOne({
+                    where: { client_id: data.client_id, plan_id: data.salon_plan_id, status: 'active' },
+                    order: [['created_at', 'ASC']],
+                    transaction: t
+                });
+                if (sub) salonPlanSubId = sub.id;
+            }
+
             const appointment = await Appointment.create({
                 ...data,
                 tenant_id: tenantId,
                 unit_id: data.unit_id,
                 created_by_user_id: userId,
+                package_subscription_id: packageSubId,
+                salon_plan_subscription_id: salonPlanSubId,
+                total_sessions: totalSessionsSnapshot,
+                consumed_sessions: 0 // Always 0 on creation as per user request
             }, { transaction: t });
 
             // Real-time CRM hook (out of transaction to avoid blocking)
@@ -311,7 +347,24 @@ class AppointmentService {
 
                 let allSessionsConsumed = true; // Default: fully concluded
 
-                if (appointmentInstance.package_id) {
+                // Update snapshot on the appointment itself
+                appointmentInstance.consumed_sessions = (appointmentInstance.consumed_sessions || 0) + sessionsToIncrement;
+                // Note: increment on appointmentInstance happens via the final .update(updateData) or explicit .increment
+                updateData.consumed_sessions = appointmentInstance.consumed_sessions;
+
+                // Update the linked subscription (Instance-specific)
+                if (appointmentInstance.package_subscription_id) {
+                    const sub = await PackageSubscription.findByPk(appointmentInstance.package_subscription_id);
+                    if (sub) {
+                        await sub.increment('clicks', { by: sessionsToIncrement });
+                        await sub.reload();
+                        const total = appointmentInstance.total_sessions;
+                        if (total !== null && sub.clicks < total) {
+                            allSessionsConsumed = false;
+                        }
+                    }
+                } else if (appointmentInstance.package_id) {
+                    // Fallback for legacy appointments or if subscription_id is missing
                     const sub = await PackageSubscription.findOne({
                         where: {
                             client_id: appointmentInstance.client_id,
@@ -323,15 +376,24 @@ class AppointmentService {
                         await sub.increment('clicks', { by: sessionsToIncrement });
                         await sub.reload();
                         const pkg = await MonthlyPackage.findByPk(appointmentInstance.package_id);
-                        // sessions is a STRING field: "Ilimitadas", "10", etc.
                         const sessionsStr = pkg ? String(pkg.sessions || '') : '';
-                        const totalSessions = parseInt(sessionsStr, 10);
-                        // If sessions is "Ilimitadas" or not a number, always fully concluded
-                        if (!isNaN(totalSessions) && totalSessions > 0 && sub.clicks < totalSessions) {
+                        const total = parseInt(sessionsStr, 10);
+                        if (!isNaN(total) && total > 0 && sub.clicks < total) {
+                            allSessionsConsumed = false;
+                        }
+                    }
+                } else if (appointmentInstance.salon_plan_subscription_id) {
+                    const sub = await SalonPlanSubscription.findByPk(appointmentInstance.salon_plan_subscription_id);
+                    if (sub) {
+                        await sub.increment('used_sessions', { by: sessionsToIncrement });
+                        await sub.reload();
+                        const total = appointmentInstance.total_sessions;
+                        if (total !== null && sub.used_sessions < total) {
                             allSessionsConsumed = false;
                         }
                     }
                 } else if (appointmentInstance.salon_plan_id) {
+                    // Fallback for plans
                     const sub = await SalonPlanSubscription.findOne({
                         where: {
                             client_id: appointmentInstance.client_id,
@@ -343,11 +405,9 @@ class AppointmentService {
                         await sub.increment('used_sessions', { by: sessionsToIncrement });
                         await sub.reload();
                         const plan = await SalonPlan.findByPk(appointmentInstance.salon_plan_id);
-                        // sessions is a STRING field: "Ilimitadas", "10", etc.
                         const sessionsStr = plan ? String(plan.sessions || '') : '';
-                        const totalSessions = parseInt(sessionsStr, 10);
-                        // If sessions is "Ilimitadas" or not a number, always fully concluded
-                        if (!isNaN(totalSessions) && totalSessions > 0 && sub.used_sessions < totalSessions) {
+                        const total = parseInt(sessionsStr, 10);
+                        if (!isNaN(total) && total > 0 && sub.used_sessions < total) {
                             allSessionsConsumed = false;
                         }
                     }

@@ -95,44 +95,47 @@ class ClientService {
                     type = 'Pacote';
                     name = apt.package?.name || 'Pacote';
 
-                    // Robust lookup using String() to avoid type mismatch
-                    const sub = clientData.subscriptions?.find(s => String(s.package_id) === String(apt.package_id));
+                    const total = apt.total_sessions || parseInt(apt.package?.sessions) || 0;
+                    const consumed = apt.consumed_sessions || 0;
 
-                    if (sub) {
-                        const total = sub.package?.sessions || sub.total_sessions || 0;
-                        const used = sub.clicks || 0;
-                        sessionInfo = `${used}/${total} sessões`;
-                    } else if (apt.package?.sessions) {
-                        // Fallback: If no subscription, use total from package template
-                        const total = apt.package.sessions || 0;
-                        // Count previous completed sessions for this package in the full appointment list
-                        const previousSessions = clientData.Appointments.filter(a =>
-                            String(a.package_id) === String(apt.package_id) &&
-                            ['atendido', 'concluido', 'concluído'].includes((a.status || '').toLowerCase()) &&
-                            (new Date(a.date).getTime() < new Date(apt.date).getTime() || (a.date === apt.date && a.time <= apt.time))
-                        ).length;
-                        sessionInfo = `Sessão ${previousSessions} de ${total}`;
+                    if (total > 0) {
+                        sessionInfo = `Sessão ${consumed} de ${total}`;
+                    } else if (consumed > 0) {
+                        sessionInfo = `${consumed} sessões`;
+                    }
+
+                    // Fallback to current subscription counts only if snapshot is missing
+                    if (!sessionInfo) {
+                        const sub = clientData.subscriptions?.find(s => String(s.package_id) === String(apt.package_id));
+                        if (sub) {
+                            const subTotal = sub.package?.sessions || sub.total_sessions || 0;
+                            const used = sub.clicks || 0;
+                            sessionInfo = `${used}/${subTotal} sessões`;
+                        }
                     }
                 } else if (apt.salon_plan_id) {
                     type = 'Plano';
                     name = apt.salon_plan?.name || 'Plano';
 
-                    const sub = clientData.plan_subscriptions?.find(s => String(s.plan_id) === String(apt.salon_plan_id));
+                    const total = apt.total_sessions || parseInt(apt.salon_plan?.sessions) || 0;
+                    const consumed = apt.consumed_sessions || 0;
 
-                    if (sub) {
-                        const total = sub.plan?.sessions || sub.total_sessions || 0;
-                        const used = sub.used_sessions || 0;
-                        sessionInfo = `${used}/${total} sessões`;
-                    } else if (apt.salon_plan?.sessions) {
-                        const total = apt.salon_plan.sessions || 0;
-                        const previousSessions = clientData.Appointments.filter(a =>
-                            String(a.salon_plan_id) === String(apt.salon_plan_id) &&
-                            ['atendido', 'concluido', 'concluído'].includes((a.status || '').toLowerCase()) &&
-                            (new Date(a.date).getTime() < new Date(apt.date).getTime() || (a.date === apt.date && a.time <= apt.time))
-                        ).length;
-                        sessionInfo = `Sessão ${previousSessions} de ${total}`;
+                    if (total > 0) {
+                        sessionInfo = `Sessão ${consumed} de ${total}`;
+                    } else if (consumed > 0) {
+                        sessionInfo = `${consumed} sessões`;
                     }
-                } else if (apt.service?.name) {
+
+                    if (!sessionInfo) {
+                        const sub = clientData.plan_subscriptions?.find(s => String(s.plan_id) === String(apt.salon_plan_id));
+                        if (sub) {
+                            const subTotal = sub.plan?.sessions || sub.total_sessions || 0;
+                            const used = sub.used_sessions || 0;
+                            sessionInfo = `${used}/${subTotal} sessões`;
+                        }
+                    }
+                }
+                else if (apt.service?.name) {
                     name = apt.service.name;
                 }
 

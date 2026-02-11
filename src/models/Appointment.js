@@ -63,6 +63,31 @@ module.exports = (sequelize) => {
                 key: 'id',
             },
         },
+        package_subscription_id: {
+            type: DataTypes.BIGINT,
+            allowNull: true,
+            references: {
+                model: 'package_subscriptions',
+                key: 'id'
+            }
+        },
+        salon_plan_subscription_id: {
+            type: DataTypes.BIGINT,
+            allowNull: true,
+            references: {
+                model: 'salon_plan_subscriptions',
+                key: 'id'
+            }
+        },
+        total_sessions: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
+        consumed_sessions: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
         date: {
             type: DataTypes.DATEONLY,
             allowNull: true,
