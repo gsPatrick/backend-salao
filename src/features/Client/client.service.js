@@ -79,8 +79,24 @@ class ClientService {
                 reviewed: apt.reviewed || false,
                 rating: apt.rating
             }));
-            // Merge with existing history (if any) or replace
-            clientData.history = appointmentHistory;
+
+            // Merge JSONB history (Services of Interest) with real Appointment history
+            const jsonHistory = clientData.history || [];
+            const mergedHistory = [...appointmentHistory];
+
+            // Add items from JSON history if they are not already represented by a real appointment
+            // We check by name and date (if defined)
+            jsonHistory.forEach(jsonItem => {
+                const isDuplicate = appointmentHistory.some(aptItem =>
+                    aptItem.name === jsonItem.name &&
+                    (aptItem.date === jsonItem.date || jsonItem.date === 'Pendente')
+                );
+                if (!isDuplicate) {
+                    mergedHistory.push(jsonItem);
+                }
+            });
+
+            clientData.history = mergedHistory;
             delete clientData.Appointments;
         }
 
