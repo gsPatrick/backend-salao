@@ -119,10 +119,9 @@ class ClientService {
         return clientData;
     }
 
-    async getActiveReminders(tenantId) {
+    async getActiveReminders(tenantId, unitId) {
         const { Op } = require('sequelize');
         // Check if reminders is not null and not empty array/json
-        // For JSONB in Postgres, we can check not equal to '[]'
         const clients = await Client.findAll({
             where: {
                 tenant_id: tenantId,
@@ -130,18 +129,25 @@ class ClientService {
                 reminders: {
                     [Op.and]: [
                         { [Op.ne]: null },
-                        // In some DBs emptiness check varies, but assuming standard JSON array
                     ]
                 }
             },
-            attributes: ['id', 'name', 'social_name', 'reminders', 'updated_at']
+            attributes: ['id', 'name', 'social_name', 'photo_url', 'reminders', 'updated_at', 'use_social_name', 'preferences']
         });
 
-        // Filter in JS to be safe about "active" or "future" reminders if needed, 
-        // or just return clients that have *any* reminders.
-        // Assuming we return all clients who have a non-empty reminders array.
-        return clients.filter(c => c.reminders && Array.isArray(c.reminders) && c.reminders.length > 0).map(client => {
+        // Filter in JS to support unit isolation and formatting
+        return clients.map(client => {
             const data = client.toJSON();
+
+            // Filter reminders by unitId if provided
+            if (unitId && data.reminders && Array.isArray(data.reminders)) {
+                // Support both string "1" and number 1 for comparison
+                data.reminders = data.reminders.filter(r => !r.unitId || String(r.unitId) === String(unitId));
+            }
+
+            // If no reminders left for this unit after filtering, we'll filter the client out
+            if (!data.reminders || data.reminders.length === 0) return null;
+
             // Apply Social Name
             const useSocialName = data.use_social_name || data.preferences?.useSocialName;
             if (useSocialName && data.social_name) {
@@ -151,8 +157,12 @@ class ClientService {
                 data.legal_name = data.name;
             }
             data.use_social_name = !!useSocialName;
+
+            // Cleanup attributes
+            delete data.preferences;
+
             return data;
-        });
+        }).filter(c => c !== null);
     }
 
     sanitizeClientData(data) {
