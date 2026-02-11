@@ -274,12 +274,12 @@ class AppointmentService {
         const crmAutomationService = require('../../services/crm_automation.service');
 
         // Financial integration: Create transaction when completed
-        const completionStatuses = ['Atendido', 'realizado', 'concluído', 'Completed', 'concluido'];
+        const completionStatuses = ['concluido'];
         if (completionStatuses.includes(status) && !completionStatuses.includes(oldStatus)) {
             try {
-                // Update Client Statistics (Total Visits, Last Visit)
+                // Update Client Statistics (Total Visits, Last Visit) - Absolute Sync
                 const clientService = require('../Client/client.service');
-                await clientService.updateStatistics(appointmentInstance.client_id, appointmentInstance.date);
+                await clientService.updateStatistics(appointmentInstance.client_id);
 
                 const financeService = require('../Finance/finance.service');
                 await financeService.create({

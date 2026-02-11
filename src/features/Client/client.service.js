@@ -335,22 +335,29 @@ class ClientService {
             return data;
         });
     }
-    async updateStatistics(clientId, appointmentDate) {
-        const client = await Client.findByPk(clientId);
-        if (!client) return;
+    async updateStatistics(clientId) {
+        const { Appointment } = require('../../models');
+        const { Op } = require('sequelize');
 
-        const newTotalVisits = (client.total_visits || 0) + 1;
+        const completionStatuses = ['concluido'];
 
-        let lastVisit = client.last_visit;
-        // Update last_visit if appointmentDate is more recent
-        if (!lastVisit || new Date(appointmentDate) > new Date(lastVisit)) {
-            lastVisit = appointmentDate;
-        }
-
-        await client.update({
-            total_visits: newTotalVisits,
-            last_visit: lastVisit
+        const appointments = await Appointment.findAll({
+            where: {
+                client_id: clientId,
+                status: { [Op.in]: completionStatuses }
+            },
+            order: [['date', 'DESC'], ['time', 'DESC']]
         });
+
+        const totalVisits = appointments.length;
+        const lastVisit = appointments.length > 0 ? appointments[0].date : null;
+
+        await Client.update({
+            total_visits: totalVisits,
+            last_visit: lastVisit
+        }, { where: { id: clientId } });
+
+        console.log(`[Stats Update] Client ${clientId}: ${totalVisits} visits, last: ${lastVisit}`);
     }
 }
 
