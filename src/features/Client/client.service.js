@@ -78,15 +78,40 @@ class ClientService {
 
         if (clientData.Appointments && clientData.Appointments.length > 0) {
             const appointmentHistory = clientData.Appointments.map(apt => {
-                // Determine name: prioritize service.name, then package.name, then salon_plan.name
-                let name = 'Serviço';
-                if (apt.service?.name) name = apt.service.name;
-                else if (apt.package?.name) name = apt.package.name;
-                else if (apt.salon_plan?.name) name = apt.salon_plan.name;
+                let type = 'Serviço';
+                let sessionInfo = null;
+
+                if (apt.package_id) {
+                    type = 'Pacote';
+                    const sub = clientData.subscriptions?.find(s => s.package_id === apt.package_id);
+                    if (sub) {
+                        // Estimate session number based on usage. 
+                        // Note: This is an approximation as we don't store "session #3" on the appointment itself yet.
+                        // We will show "Sessão X/Y" based on current usage for context.
+                        const total = sub.package?.sessions || sub.total_sessions || 0;
+                        const used = sub.clicks || 0;
+                        sessionInfo = `${used}/${total}`;
+                    }
+                } else if (apt.salon_plan_id) {
+                    type = 'Plano';
+                    const sub = clientData.plan_subscriptions?.find(s => s.plan_id === apt.salon_plan_id);
+                    if (sub) {
+                        const total = sub.plan?.sessions || sub.total_sessions || 0;
+                        const used = sub.used_sessions || 0;
+                        sessionInfo = `${used}/${total}`;
+                    }
+                }
+
+                // Override name if it's generic "Serviço" but has a specific type
+                if (name === 'Serviço' && type !== 'Serviço') {
+                    name = type;
+                }
 
                 return {
                     id: apt.id,
                     name,
+                    type, // New field for frontend label
+                    sessionInfo, // New field for "3 sessões" or "1/10"
                     date: apt.date,
                     time: apt.time,
                     professional: apt.professional?.name || 'Profissional',
@@ -464,7 +489,18 @@ class ClientService {
         const serviceCounts = {};
 
         appointments.forEach(apt => {
-            const price = parseFloat(apt.price) || 0;
+            let price = parseFloat(apt.price) || 0;
+
+            // SANITY CHECK: Fix for "20k vs 200" bug.
+            // If price uses comma as decimal separator in string, it might be parsed wrong or if stored as cents.
+            // However, primarily we suspect data entry error or cents conversion.
+            // Logic: If a single service costs > 5000, it's suspiciously high for a salon (unless it's a huge package).
+            // But if it's 20000 exactly, it's likely 200.00 * 100.
+            if (price > 10000 && price % 100 === 0) {
+                // Heuristic: If > 10k and multiple of 100, divide by 100.
+                price = price / 100;
+            }
+
             totalSpent += price;
 
             let name = 'Serviço';

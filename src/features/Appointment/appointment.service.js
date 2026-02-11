@@ -302,7 +302,7 @@ class AppointmentService {
                     date: appointmentInstance.date,
                     description: `Atendimento: ${appointmentInstance.client?.name || 'Cliente'} - ${appointmentInstance.service?.name || 'Serviço'}`,
                     status: 'pago',
-                    unit_id: appointmentInstance.unit_id,
+                    unit_id: appointmentInstance.unit_id || appointmentInstance.client?.preferred_unit || null, // Ensure Unit ID is passed!
                     appointment_id: appointmentInstance.id
                 };
 
