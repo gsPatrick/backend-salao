@@ -295,16 +295,21 @@ class AppointmentService {
                 await clientService.updateStatistics(appointmentInstance.client_id);
 
                 const financeService = require('../Finance/finance.service');
-                await financeService.create({
+                const transactionData = {
                     type: 'receita',
                     category: 'Serviço',
-                    amount: appointmentInstance.price || 0,
+                    amount: appointmentInstance.price !== undefined && appointmentInstance.price !== null ? appointmentInstance.price : 0,
                     date: appointmentInstance.date,
                     description: `Atendimento: ${appointmentInstance.client?.name || 'Cliente'} - ${appointmentInstance.service?.name || 'Serviço'}`,
                     status: 'pago',
                     unit_id: appointmentInstance.unit_id,
                     appointment_id: appointmentInstance.id
-                }, tenantId);
+                };
+
+                //Log before creation for debugging
+                //console.log('[Finance Hook] Creating transaction:', transactionData);
+
+                await financeService.create(transactionData, tenantId);
 
                 // Session Counter Increment
                 if (appointmentInstance.package_id) {
@@ -386,7 +391,7 @@ class AppointmentService {
         // Revert Session Counter if it was previously concluded/atendido
         if (['concluido', 'atendido'].includes(oldStatus)) {
             try {
-                const { PackageSubscription, SalonPlanSubscription } = require('../../features/Package/package.model'); // Adjust if needed
+                // Models are already imported at top level, no need to re-require
 
                 if (appointment.package_id) {
                     const sub = await PackageSubscription.findOne({
@@ -394,7 +399,6 @@ class AppointmentService {
                     });
                     if (sub && sub.clicks > 0) await sub.decrement('clicks');
                 } else if (appointment.salon_plan_id) {
-                    const { SalonPlanSubscription } = require('../../features/SalonPlan/salon_plan.model');
                     const sub = await SalonPlanSubscription.findOne({
                         where: { client_id: appointment.client_id, plan_id: appointment.salon_plan_id, status: 'active' }
                     });
@@ -416,6 +420,8 @@ class AppointmentService {
 
             } catch (error) {
                 console.error('[Refund Hook Error]:', error);
+                // Throwing here might be good to alert the user, but partial success (cancel) is better than full fail
+                // For now, log is sufficient.
             }
         }
 
