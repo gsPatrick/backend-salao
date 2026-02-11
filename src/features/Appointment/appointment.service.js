@@ -290,6 +290,11 @@ class AppointmentService {
             }
         }
 
+        if (data.status === 'agendado' && appointmentInstance.consumed_sessions > 0) {
+            console.log(`[Status Safeguard] Appointment ${id} update blocking reversion to 'agendado' because consumed_sessions=${appointmentInstance.consumed_sessions}`);
+            data.status = 'concluido';
+        }
+
         await appointmentInstance.update(data);
         return this.getById(id, tenantId);
     }
@@ -425,9 +430,20 @@ class AppointmentService {
                 if (!allSessionsConsumed) {
                     // updateData.status = 'concluido'; // Already set by args
                 }
+
+                // --- SAFEGUARD: Prevent reversion to 'agendado' if sessions were consumed ---
+                if (appointmentInstance.consumed_sessions > 0 && status === 'agendado') {
+                    console.log(`[Status Safeguard] Appointment ${id} has ${appointmentInstance.consumed_sessions} consumed sessions. Forcing status to 'concluido' to prevent schedule reversion.`);
+                    updateData.status = 'concluido';
+                }
             } catch (error) {
                 console.error('[Session Progress Error]:', error);
             }
+        } else if (status === 'agendado' && appointmentInstance.consumed_sessions > 0) {
+            // Even if we are not "concluding" right now, if someone tries to set status to 'agendado'
+            // but there are already consumed sessions, we block it.
+            console.log(`[Status Safeguard] Appointment ${id} blocking reversion to 'agendado' because consumed_sessions=${appointmentInstance.consumed_sessions}`);
+            updateData.status = 'concluido';
         }
 
         await appointmentInstance.update(updateData);
