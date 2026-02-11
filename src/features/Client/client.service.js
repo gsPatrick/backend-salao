@@ -162,19 +162,22 @@ class ClientService {
         // Transform subscriptions to packages format for frontend compatibility
         clientData.packages = [];
         if (clientData.subscriptions && clientData.subscriptions.length > 0) {
-            clientData.packages.push(...clientData.subscriptions.map(sub => ({
-                id: sub.id,
-                name: sub.package?.name || 'Pacote',
-                total_sessions: sub.total_sessions || sub.package?.sessions || 0,
-                used_sessions: sub.clicks || 0,
-                sessions: sub.package?.sessions || 0,
-                price: sub.package?.price || '0',
-                start_date: sub.start_date,
-                end_date: sub.end_date,
-                status: sub.status,
-                type: 'package',
-                package_id: sub.package_id
-            })));
+            clientData.packages.push(...clientData.subscriptions.map(sub => {
+                const total = sub.total_sessions || parseInt(sub.package?.sessions) || 0;
+                return {
+                    id: sub.id,
+                    name: sub.package?.name || 'Pacote',
+                    total_sessions: total,
+                    used_sessions: sub.clicks || 0,
+                    sessions: sub.package?.sessions || 0,
+                    price: sub.package?.price || '0',
+                    start_date: sub.start_date,
+                    end_date: sub.end_date,
+                    status: sub.status,
+                    type: 'package',
+                    package_id: sub.package_id
+                };
+            }));
             delete clientData.subscriptions;
         }
 
@@ -460,6 +463,8 @@ class ClientService {
                 const endDate = new Date();
                 endDate.setMonth(endDate.getMonth() + (parseInt(pkg.duration) || 1));
 
+                const totalSessions = parseInt(pkg.sessions);
+
                 await PackageSubscription.create({
                     tenant_id: tenantId,
                     client_id: id,
@@ -471,7 +476,7 @@ class ClientService {
                     end_date: endDate,
                     status: 'active',
                     active: true,
-                    total_sessions: parseInt(pkg.sessions) || null,
+                    total_sessions: isNaN(totalSessions) ? null : totalSessions,
                     clicks: 0,
                     unit_id: unitId
                 });
