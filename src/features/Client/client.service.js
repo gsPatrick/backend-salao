@@ -12,12 +12,27 @@ class ClientService {
             where.unit_id = unitId;
         }
 
-        if (filters.startDate && filters.endDate) {
-            where.last_visit = { [Op.between]: [filters.startDate, filters.endDate] };
-        } else if (filters.startDate) {
-            where.last_visit = { [Op.gte]: filters.startDate };
-        } else if (filters.endDate) {
-            where.last_visit = { [Op.lte]: filters.endDate };
+        if (filters.startDate || filters.endDate) {
+            const appointmentWhere = { tenant_id: tenantId };
+            if (filters.startDate && filters.endDate) {
+                appointmentWhere.date = { [Op.between]: [filters.startDate, filters.endDate] };
+            } else if (filters.startDate) {
+                appointmentWhere.date = { [Op.gte]: filters.startDate };
+            } else if (filters.endDate) {
+                appointmentWhere.date = { [Op.lte]: filters.endDate };
+            }
+            const matchingAppointments = await Appointment.findAll({
+                where: appointmentWhere,
+                attributes: ['client_id'],
+                group: ['client_id'],
+                raw: true
+            });
+            const clientIds = matchingAppointments.map(a => a.client_id);
+            if (clientIds.length > 0) {
+                where.id = { [Op.in]: clientIds };
+            } else {
+                return []; // No appointments in range, return empty early
+            }
         }
 
         const clients = await Client.findAll({
