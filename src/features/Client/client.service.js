@@ -102,6 +102,12 @@ class ClientService {
                     }
                 }
 
+                // Initialize name from service, package, or plan
+                let name = 'Serviço';
+                if (apt.service?.name) name = apt.service.name;
+                else if (apt.package?.name) name = apt.package.name;
+                else if (apt.salon_plan?.name) name = apt.salon_plan.name;
+
                 // Override name if it's generic "Serviço" but has a specific type
                 if (name === 'Serviço' && type !== 'Serviço') {
                     name = type;
