@@ -1,7 +1,8 @@
 const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage, SalonPlan, SalonPlanSubscription } = require('../../models');
+const { Op } = require('sequelize');
 
 class ClientService {
-    async getAll(tenantId, unitId) {
+    async getAll(tenantId, unitId, filters = {}) {
         const where = {
             tenant_id: tenantId,
             is_active: true
@@ -9,6 +10,14 @@ class ClientService {
 
         if (unitId) {
             where.unit_id = unitId;
+        }
+
+        if (filters.startDate && filters.endDate) {
+            where.last_visit = { [Op.between]: [filters.startDate, filters.endDate] };
+        } else if (filters.startDate) {
+            where.last_visit = { [Op.gte]: filters.startDate };
+        } else if (filters.endDate) {
+            where.last_visit = { [Op.lte]: filters.endDate };
         }
 
         const clients = await Client.findAll({

@@ -4,7 +4,8 @@ class ClientController {
     async getAll(req, res) {
         try {
             const unitId = req.headers['x-unit-id'] || req.query.unitId;
-            const clients = await clientService.getAll(req.tenantId, unitId);
+            const { startDate, endDate } = req.query;
+            const clients = await clientService.getAll(req.tenantId, unitId, { startDate, endDate });
             res.json({ success: true, data: clients });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
