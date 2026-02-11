@@ -206,6 +206,11 @@ PackageSubscription.belongsTo(Client, { foreignKey: 'client_id', as: 'client' })
 Tenant.hasMany(Lead, { foreignKey: 'tenant_id' });
 Lead.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
+// Client-SalonPlanSubscription associations
+Client.hasMany(SalonPlanSubscription, { foreignKey: 'client_id', as: 'plan_subscriptions' });
+SalonPlanSubscription.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+
+
 // MarketingCampaign associations
 Tenant.hasMany(MarketingCampaign, { foreignKey: 'tenant_id' });
 MarketingCampaign.belongsTo(Tenant, { foreignKey: 'tenant_id' });
