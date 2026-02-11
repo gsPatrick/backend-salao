@@ -355,8 +355,71 @@ class AppointmentService {
         return this.getById(id, tenantId);
     }
 
-    async cancel(id, tenantId) {
+    async cancel(id, tenantId, reason = null) {
+        const appointment = await this.getById(id, tenantId);
+        if (['concluido', 'atendido'].includes(appointment.status.toLowerCase())) {
+            return this.refund(id, reason || 'Cancelado pelo administrador', tenantId);
+        }
         return this.updateStatus(id, 'cancelado', tenantId);
+    }
+
+    async refund(id, reason, tenantId) {
+        const appointment = await Appointment.findOne({
+            where: { id, tenant_id: tenantId },
+            include: [
+                { model: Client, as: 'client' },
+                { model: Service, as: 'service' }
+            ]
+        });
+
+        if (!appointment) throw new Error('Agendamento não encontrado');
+
+        const oldStatus = appointment.status.toLowerCase();
+
+        // Update appointment status and reason
+        await appointment.update({
+            status: 'cancelado',
+            cancellation_reason: reason,
+            canceled_at: new Date()
+        });
+
+        // Revert Session Counter if it was previously concluded/atendido
+        if (['concluido', 'atendido'].includes(oldStatus)) {
+            try {
+                const { PackageSubscription, SalonPlanSubscription } = require('../../features/Package/package.model'); // Adjust if needed
+
+                if (appointment.package_id) {
+                    const sub = await PackageSubscription.findOne({
+                        where: { client_id: appointment.client_id, package_id: appointment.package_id, status: 'active' }
+                    });
+                    if (sub && sub.clicks > 0) await sub.decrement('clicks');
+                } else if (appointment.salon_plan_id) {
+                    const { SalonPlanSubscription } = require('../../features/SalonPlan/salon_plan.model');
+                    const sub = await SalonPlanSubscription.findOne({
+                        where: { client_id: appointment.client_id, plan_id: appointment.salon_plan_id, status: 'active' }
+                    });
+                    if (sub && sub.used_sessions > 0) await sub.decrement('used_sessions');
+                }
+
+                // Create Reversal Transaction (Estorno)
+                const financeService = require('../Finance/finance.service');
+                await financeService.create({
+                    type: 'despesa',
+                    category: 'Estorno',
+                    amount: appointment.price || 0,
+                    date: new Date().toISOString().split('T')[0],
+                    description: `Estorno: ${appointment.client?.name || 'Cliente'} - ${appointment.service?.name || 'Serviço'} (Motivo: ${reason})`,
+                    status: 'pago',
+                    unit_id: appointment.unit_id,
+                    appointment_id: appointment.id
+                }, tenantId);
+
+            } catch (error) {
+                console.error('[Refund Hook Error]:', error);
+            }
+        }
+
+        return this.getById(id, tenantId);
     }
 
     async delete(id, tenantId) {

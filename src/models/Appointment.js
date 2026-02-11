@@ -110,6 +110,14 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: false,
         },
+        canceled_at: {
+            type: DataTypes.DATE,
+            allowNull: true,
+        },
+        cancellation_reason: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
         created_by_user_id: {
             type: DataTypes.INTEGER,
             allowNull: true,

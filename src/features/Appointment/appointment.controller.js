@@ -86,7 +86,18 @@ class AppointmentController {
 
     async cancel(req, res) {
         try {
-            const appointment = await appointmentService.cancel(req.params.id, req.tenantId);
+            const { reason } = req.body;
+            const appointment = await appointmentService.cancel(req.params.id, req.tenantId, reason);
+            res.json({ success: true, data: appointment });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async refund(req, res) {
+        try {
+            const { reason } = req.body;
+            const appointment = await appointmentService.refund(req.params.id, reason, req.tenantId);
             res.json({ success: true, data: appointment });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

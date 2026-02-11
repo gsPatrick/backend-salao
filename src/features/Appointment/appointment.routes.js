@@ -18,6 +18,7 @@ router.get('/:id', appointmentController.getById);
 router.post('/', appointmentController.create);
 router.put('/:id', appointmentController.update);
 router.patch('/:id/cancel', appointmentController.cancel);
+router.patch('/:id/refund', appointmentController.refund);
 router.patch('/:id/status', appointmentController.updateStatus);
 router.delete('/:id', appointmentController.delete);
 
