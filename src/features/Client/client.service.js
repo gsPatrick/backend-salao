@@ -95,7 +95,9 @@ class ClientService {
                     status: apt.status,
                     price: apt.price || apt.service?.price || '0',
                     reviewed: apt.reviewed || false,
-                    rating: apt.rating
+                    rating: apt.rating,
+                    package_id: apt.package_id,
+                    salon_plan_id: apt.salon_plan_id
                 };
             });
 

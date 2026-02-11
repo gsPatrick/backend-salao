@@ -302,7 +302,7 @@ class AppointmentService {
                     date: appointmentInstance.date,
                     description: `Atendimento: ${appointmentInstance.client?.name || 'Cliente'} - ${appointmentInstance.service?.name || 'Serviço'}`,
                     status: 'pago',
-                    unit: appointmentInstance.unit,
+                    unit_id: appointmentInstance.unit_id,
                     appointment_id: appointmentInstance.id
                 }, tenantId);
 
@@ -368,6 +368,21 @@ class AppointmentService {
             console.log(`[AppointmentService] Appointment id=${id} NOT FOUND`);
             throw new Error('Agendamento não encontrado');
         }
+
+        // Handle dependent records
+        const { FinancialTransaction, ProfessionalReview } = require('../../models');
+
+        // Nullify appointment_id in financial transactions to preserve them but allow deletion
+        await FinancialTransaction.update(
+            { appointment_id: null },
+            { where: { appointment_id: id, tenant_id: tenantId } }
+        );
+
+        // Delete related reviews
+        await ProfessionalReview.destroy({
+            where: { appointment_id: id, tenant_id: tenantId }
+        });
+
         console.log(`[AppointmentService] Found appointment id=${id}, destroying...`);
         await appointment.destroy();
         console.log(`[AppointmentService] Appointment id=${id} DESTROYED successfully`);
