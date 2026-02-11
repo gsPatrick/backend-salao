@@ -39,7 +39,9 @@ class ClientService {
                     as: 'Appointments',
                     include: [
                         { model: Service, as: 'service', attributes: ['id', 'name', 'price', 'duration'] },
-                        { model: Professional, as: 'professional', attributes: ['id', 'name', 'photo', 'occupation'] }
+                        { model: Professional, as: 'professional', attributes: ['id', 'name', 'photo', 'occupation'] },
+                        { model: MonthlyPackage, as: 'package', attributes: ['id', 'name'] },
+                        { model: SalonPlan, as: 'salon_plan', attributes: ['id', 'name'] }
                     ],
                     order: [['date', 'DESC'], ['time', 'DESC']]
                 },
@@ -80,9 +82,11 @@ class ClientService {
             const appointmentHistory = clientData.Appointments.map(apt => {
                 let type = 'Serviço';
                 let sessionInfo = null;
+                let name = 'Serviço';
 
                 if (apt.package_id) {
                     type = 'Pacote';
+                    name = apt.package?.name || 'Pacote';
                     const sub = clientData.subscriptions?.find(s => s.package_id === apt.package_id);
                     if (sub) {
                         // Estimate session number based on usage. 
@@ -94,23 +98,15 @@ class ClientService {
                     }
                 } else if (apt.salon_plan_id) {
                     type = 'Plano';
+                    name = apt.salon_plan?.name || 'Plano';
                     const sub = clientData.plan_subscriptions?.find(s => s.plan_id === apt.salon_plan_id);
                     if (sub) {
                         const total = sub.plan?.sessions || sub.total_sessions || 0;
                         const used = sub.used_sessions || 0;
                         sessionInfo = `${used}/${total}`;
                     }
-                }
-
-                // Initialize name from service, package, or plan
-                let name = 'Serviço';
-                if (apt.service?.name) name = apt.service.name;
-                else if (apt.package?.name) name = apt.package.name;
-                else if (apt.salon_plan?.name) name = apt.salon_plan.name;
-
-                // Override name if it's generic "Serviço" but has a specific type
-                if (name === 'Serviço' && type !== 'Serviço') {
-                    name = type;
+                } else if (apt.service?.name) {
+                    name = apt.service.name;
                 }
 
                 return {
