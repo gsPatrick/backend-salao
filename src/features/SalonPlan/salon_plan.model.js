@@ -70,4 +70,68 @@ const SalonPlan = sequelize.define('SalonPlan', {
     underscored: true
 });
 
-module.exports = SalonPlan;
+const SalonPlanSubscription = sequelize.define('SalonPlanSubscription', {
+    id: {
+        type: DataTypes.BIGINT,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    tenant_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    unit_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'units',
+            key: 'id'
+        }
+    },
+    client_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'clients',
+            key: 'id'
+        }
+    },
+    plan_id: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        references: {
+            model: 'salon_plans',
+            key: 'id'
+        }
+    },
+    start_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+    },
+    end_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('active', 'expired', 'archived'),
+        defaultValue: 'active'
+    },
+    used_sessions: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    total_sessions: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    }
+}, {
+    tableName: 'salon_plan_subscriptions',
+    timestamps: true,
+    underscored: true
+});
+
+// Relations
+SalonPlan.hasMany(SalonPlanSubscription, { foreignKey: 'plan_id', as: 'subscriptions' });
+SalonPlanSubscription.belongsTo(SalonPlan, { foreignKey: 'plan_id', as: 'plan' });
+
+module.exports = { SalonPlan, SalonPlanSubscription };

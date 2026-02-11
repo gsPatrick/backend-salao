@@ -1,4 +1,4 @@
-const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, sequelize } = require('../../models');
+const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription, sequelize } = require('../../models');
 const { Op, Transaction } = require('sequelize');
 
 class AppointmentService {
@@ -305,6 +305,31 @@ class AppointmentService {
                     unit: appointmentInstance.unit,
                     appointment_id: appointmentInstance.id
                 }, tenantId);
+
+                // Session Counter Increment
+                if (appointmentInstance.package_id) {
+                    const sub = await PackageSubscription.findOne({
+                        where: {
+                            client_id: appointmentInstance.client_id,
+                            package_id: appointmentInstance.package_id,
+                            status: 'active'
+                        }
+                    });
+                    if (sub) {
+                        await sub.increment('clicks');
+                    }
+                } else if (appointmentInstance.salon_plan_id) {
+                    const sub = await SalonPlanSubscription.findOne({
+                        where: {
+                            client_id: appointmentInstance.client_id,
+                            plan_id: appointmentInstance.salon_plan_id,
+                            status: 'active'
+                        }
+                    });
+                    if (sub) {
+                        await sub.increment('used_sessions');
+                    }
+                }
             } catch (error) {
                 console.error('[Finance/Stats Hook Error]:', error);
             }

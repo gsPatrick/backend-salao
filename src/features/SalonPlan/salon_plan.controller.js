@@ -1,4 +1,4 @@
-const SalonPlan = require('./salon_plan.model');
+const { SalonPlan } = require('./salon_plan.model');
 const { Op } = require('sequelize');
 
 exports.list = async (req, res) => {

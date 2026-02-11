@@ -143,6 +143,10 @@ const PackageSubscription = sequelize.define('PackageSubscription', {
     clicks: {
         type: DataTypes.INTEGER,
         defaultValue: 0
+    },
+    total_sessions: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     tableName: 'package_subscriptions',

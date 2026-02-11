@@ -268,10 +268,16 @@ exports.createSubscription = async (req, res) => {
 
         const unitId = req.headers['x-unit-id'] || data.unitId;
 
+        const pkg = await MonthlyPackage.findByPk(data.packageId);
+        if (!pkg) {
+            return res.status(404).json({ error: 'Pacote não encontrado.' });
+        }
+
         const s = await PackageSubscription.create({
             tenant_id: tenantId,
             unit_id: unitId,
             package_id: data.packageId,
+            client_id: data.clientId, // Ensure clientId is used if provided
             client_name: data.clientName,
             client_email: data.email,
             client_phone: data.phone,
@@ -281,7 +287,8 @@ exports.createSubscription = async (req, res) => {
             end_date: data.endDate,
             status: 'active',
             active: true,
-            notes: data.notes
+            notes: data.notes,
+            total_sessions: parseInt(pkg.sessions) || null
         });
 
         // Fetch again with include to match list format

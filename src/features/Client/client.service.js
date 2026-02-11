@@ -1,4 +1,4 @@
-const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage, SalonPlan } = require('../../models');
+const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage, SalonPlan, SalonPlanSubscription } = require('../../models');
 
 class ClientService {
     async getAll(tenantId, unitId) {
@@ -50,6 +50,15 @@ class ClientService {
                     required: false,
                     include: [
                         { model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions', 'price'] }
+                    ]
+                },
+                {
+                    model: SalonPlanSubscription,
+                    as: 'plan_subscriptions',
+                    where: { status: 'active' },
+                    required: false,
+                    include: [
+                        { model: SalonPlan, as: 'plan', attributes: ['id', 'name', 'sessions', 'price'] }
                     ]
                 },
                 { model: MonthlyPackage, as: 'package', attributes: ['name'] },
@@ -113,19 +122,37 @@ class ClientService {
         }
 
         // Transform subscriptions to packages format for frontend compatibility
+        clientData.packages = [];
         if (clientData.subscriptions && clientData.subscriptions.length > 0) {
-            clientData.packages = clientData.subscriptions.map(sub => ({
+            clientData.packages.push(...clientData.subscriptions.map(sub => ({
                 id: sub.id,
                 name: sub.package?.name || 'Pacote',
-                total_sessions: sub.package?.sessions || 0,
+                total_sessions: sub.total_sessions || sub.package?.sessions || 0,
                 used_sessions: sub.clicks || 0,
                 sessions: sub.package?.sessions || 0,
                 price: sub.package?.price || '0',
                 start_date: sub.start_date,
                 end_date: sub.end_date,
-                status: sub.status
-            }));
+                status: sub.status,
+                type: 'package'
+            })));
             delete clientData.subscriptions;
+        }
+
+        if (clientData.plan_subscriptions && clientData.plan_subscriptions.length > 0) {
+            clientData.packages.push(...clientData.plan_subscriptions.map(sub => ({
+                id: sub.id,
+                name: sub.plan?.name || 'Plano',
+                total_sessions: sub.total_sessions || sub.plan?.sessions || 0,
+                used_sessions: sub.used_sessions || 0,
+                sessions: sub.plan?.sessions || 0,
+                price: sub.plan?.price || '0',
+                start_date: sub.start_date,
+                end_date: sub.end_date,
+                status: sub.status,
+                type: 'plan'
+            })));
+            delete clientData.plan_subscriptions;
         }
 
         // Include associated names for direct mapping
@@ -332,8 +359,32 @@ class ClientService {
         const client = await Client.findOne({ where: { id, tenant_id: tenantId } });
         if (!client) throw new Error('Cliente não encontrado');
 
+        const oldPlanId = client.plan_id;
         const sanitizedData = this.sanitizeClientData(data);
         await client.update(sanitizedData);
+
+        // If plan changed, create a subscription for tracking sessions
+        if (sanitizedData.plan_id && sanitizedData.plan_id !== oldPlanId) {
+            const plan = await SalonPlan.findByPk(sanitizedData.plan_id);
+            if (plan) {
+                // Deactivate old plan subscriptions if any
+                await SalonPlanSubscription.update(
+                    { status: 'archived' },
+                    { where: { client_id: id, tenant_id: tenantId, status: 'active' } }
+                );
+
+                await SalonPlanSubscription.create({
+                    tenant_id: tenantId,
+                    client_id: id,
+                    plan_id: sanitizedData.plan_id,
+                    start_date: new Date(),
+                    status: 'active',
+                    total_sessions: parseInt(plan.sessions) || null,
+                    used_sessions: 0,
+                    unit_id: sanitizedData.unit_id || client.unit_id
+                });
+            }
+        }
 
         // Return the full formatted object using getById
         return this.getById(id, tenantId);
