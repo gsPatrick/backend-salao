@@ -323,8 +323,11 @@ class AppointmentService {
                         await sub.increment('clicks', { by: sessionsToIncrement });
                         await sub.reload();
                         const pkg = await MonthlyPackage.findByPk(appointmentInstance.package_id);
-                        const totalSessions = pkg ? (pkg.sessions || 0) : 0;
-                        if (totalSessions > 0 && sub.clicks < totalSessions) {
+                        // sessions is a STRING field: "Ilimitadas", "10", etc.
+                        const sessionsStr = pkg ? String(pkg.sessions || '') : '';
+                        const totalSessions = parseInt(sessionsStr, 10);
+                        // If sessions is "Ilimitadas" or not a number, always fully concluded
+                        if (!isNaN(totalSessions) && totalSessions > 0 && sub.clicks < totalSessions) {
                             allSessionsConsumed = false;
                         }
                     }
@@ -340,8 +343,11 @@ class AppointmentService {
                         await sub.increment('used_sessions', { by: sessionsToIncrement });
                         await sub.reload();
                         const plan = await SalonPlan.findByPk(appointmentInstance.salon_plan_id);
-                        const totalSessions = plan ? (plan.sessions || 0) : 0;
-                        if (totalSessions > 0 && sub.used_sessions < totalSessions) {
+                        // sessions is a STRING field: "Ilimitadas", "10", etc.
+                        const sessionsStr = plan ? String(plan.sessions || '') : '';
+                        const totalSessions = parseInt(sessionsStr, 10);
+                        // If sessions is "Ilimitadas" or not a number, always fully concluded
+                        if (!isNaN(totalSessions) && totalSessions > 0 && sub.used_sessions < totalSessions) {
                             allSessionsConsumed = false;
                         }
                     }
