@@ -94,7 +94,7 @@ class ClientService {
                         // We will show "Sessão X/Y" based on current usage for context.
                         const total = sub.package?.sessions || sub.total_sessions || 0;
                         const used = sub.clicks || 0;
-                        sessionInfo = `${used}/${total}`;
+                        sessionInfo = `${used}/${total} sessões`;
                     }
                 } else if (apt.salon_plan_id) {
                     type = 'Plano';
@@ -103,7 +103,7 @@ class ClientService {
                     if (sub) {
                         const total = sub.plan?.sessions || sub.total_sessions || 0;
                         const used = sub.used_sessions || 0;
-                        sessionInfo = `${used}/${total}`;
+                        sessionInfo = `${used}/${total} sessões`;
                     }
                 } else if (apt.service?.name) {
                     name = apt.service.name;
