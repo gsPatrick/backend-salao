@@ -1,4 +1,4 @@
-const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage } = require('../../models');
+const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage, SalonPlan } = require('../../models');
 
 class ClientService {
     async getAll(tenantId, unitId) {
@@ -51,7 +51,9 @@ class ClientService {
                     include: [
                         { model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions', 'price'] }
                     ]
-                }
+                },
+                { model: MonthlyPackage, as: 'package', attributes: ['name'] },
+                { model: SalonPlan, as: 'salon_plan', attributes: ['name'] }
             ]
         });
         if (!client) throw new Error('Cliente não encontrado');
@@ -66,19 +68,27 @@ class ClientService {
         clientData.use_social_name = !!useSocialName;
 
         if (clientData.Appointments && clientData.Appointments.length > 0) {
-            const appointmentHistory = clientData.Appointments.map(apt => ({
-                id: apt.id,
-                name: apt.service?.name || 'Serviço',
-                date: apt.date,
-                time: apt.time,
-                professional: apt.professional?.name || 'Profissional',
-                professionalId: apt.professional?.id,
-                professionalPhoto: apt.professional?.photo,
-                status: apt.status,
-                price: apt.service?.price || '0',
-                reviewed: apt.reviewed || false,
-                rating: apt.rating
-            }));
+            const appointmentHistory = clientData.Appointments.map(apt => {
+                // Determine name: prioritize service.name, then package.name, then salon_plan.name
+                let name = 'Serviço';
+                if (apt.service?.name) name = apt.service.name;
+                else if (apt.package?.name) name = apt.package.name;
+                else if (apt.salon_plan?.name) name = apt.salon_plan.name;
+
+                return {
+                    id: apt.id,
+                    name,
+                    date: apt.date,
+                    time: apt.time,
+                    professional: apt.professional?.name || 'Profissional',
+                    professionalId: apt.professional?.id,
+                    professionalPhoto: apt.professional?.photo,
+                    status: apt.status,
+                    price: apt.price || apt.service?.price || '0',
+                    reviewed: apt.reviewed || false,
+                    rating: apt.rating
+                };
+            });
 
             // Merge JSONB history (Services of Interest) with real Appointment history
             const jsonHistory = clientData.history || [];
@@ -92,6 +102,8 @@ class ClientService {
                     (aptItem.date === jsonItem.date || jsonItem.date === 'Pendente')
                 );
                 if (!isDuplicate) {
+                    // Ensure price is formatted for JSON history if missing
+                    if (jsonItem.price === undefined) jsonItem.price = '0';
                     mergedHistory.push(jsonItem);
                 }
             });
@@ -114,6 +126,14 @@ class ClientService {
                 status: sub.status
             }));
             delete clientData.subscriptions;
+        }
+
+        // Include associated names for direct mapping
+        if (clientData.package) {
+            clientData.packageName = clientData.package.name;
+        }
+        if (clientData.salon_plan) {
+            clientData.planName = clientData.salon_plan.name;
         }
 
         return clientData;
@@ -157,6 +177,10 @@ class ClientService {
                 data.legal_name = data.name;
             }
             data.use_social_name = !!useSocialName;
+
+            // Normalize Photo URL
+            data.photo = data.photo_url;
+            data.photoUrl = data.photo_url;
 
             // Cleanup attributes
             delete data.preferences;
@@ -362,28 +386,54 @@ class ClientService {
         });
     }
     async updateStatistics(clientId) {
-        const { Appointment } = require('../../models');
+        const { Appointment, Service, MonthlyPackage, SalonPlan } = require('../../models');
         const { Op } = require('sequelize');
 
-        const completionStatuses = ['concluido'];
+        const completionStatuses = ['atendido', 'concluido', 'concluído'];
 
         const appointments = await Appointment.findAll({
             where: {
                 client_id: clientId,
-                status: { [Op.in]: completionStatuses }
+                status: { [Op.or]: completionStatuses.map(s => ({ [Op.iLike]: s })) }
             },
+            include: [
+                { model: Service, as: 'service' },
+                { model: MonthlyPackage, as: 'package' },
+                { model: SalonPlan, as: 'salon_plan' }
+            ],
             order: [['date', 'DESC'], ['time', 'DESC']]
         });
 
         const totalVisits = appointments.length;
         const lastVisit = appointments.length > 0 ? appointments[0].date : null;
 
+        let totalSpent = 0;
+        const serviceCounts = {};
+
+        appointments.forEach(apt => {
+            const price = parseFloat(apt.price) || 0;
+            totalSpent += price;
+
+            let name = 'Serviço';
+            if (apt.service?.name) name = apt.service.name;
+            else if (apt.package?.name) name = apt.package.name;
+            else if (apt.salon_plan?.name) name = apt.salon_plan.name;
+
+            serviceCounts[name] = (serviceCounts[name] || 0) + 1;
+        });
+
+        const averageTicket = totalVisits > 0 ? totalSpent / totalVisits : 0;
+        const mostFrequentService = Object.keys(serviceCounts).reduce((a, b) => serviceCounts[a] > serviceCounts[b] ? a : b, null);
+
         await Client.update({
             total_visits: totalVisits,
-            last_visit: lastVisit
+            last_visit: lastVisit,
+            total_spent: totalSpent,
+            average_ticket: averageTicket,
+            most_frequent_service: mostFrequentService
         }, { where: { id: clientId } });
 
-        console.log(`[Stats Update] Client ${clientId}: ${totalVisits} visits, last: ${lastVisit}`);
+        console.log(`[Stats Update] Client ${clientId}: ${totalVisits} visits, total spent: ${totalSpent}, most freq: ${mostFrequentService}`);
     }
 }
 

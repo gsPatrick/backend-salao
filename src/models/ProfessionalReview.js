@@ -40,7 +40,7 @@ module.exports = (sequelize) => {
             },
         },
         appointment_id: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.BIGINT,
             allowNull: true,
             references: {
                 model: 'appointments',

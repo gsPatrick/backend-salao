@@ -179,6 +179,18 @@ const Client = sequelize.define('client', {
         type: DataTypes.BOOLEAN,
         defaultValue: true,
         allowNull: false
+    },
+    total_spent: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0
+    },
+    average_ticket: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0
+    },
+    most_frequent_service: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     tableName: 'clients',

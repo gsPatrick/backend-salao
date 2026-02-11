@@ -269,7 +269,20 @@ class AppointmentService {
         if (!appointmentInstance) throw new Error('Agendamento não encontrado');
 
         const oldStatus = appointmentInstance.status;
-        await appointmentInstance.update({ status });
+
+        // Auto-fill date/time if missing and concluding
+        const updateData = { status };
+        if (status === 'concluido' && (!appointmentInstance.date || !appointmentInstance.time)) {
+            const now = new Date();
+            if (!appointmentInstance.date) {
+                updateData.date = now.toISOString().split('T')[0];
+            }
+            if (!appointmentInstance.time) {
+                updateData.time = now.toTimeString().split(' ')[0].slice(0, 5);
+            }
+        }
+
+        await appointmentInstance.update(updateData);
 
         const crmAutomationService = require('../../services/crm_automation.service');
 

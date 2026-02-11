@@ -1,6 +1,7 @@
 const appointmentService = require('./appointment.service');
 const whatsappService = require('../../services/whatsapp.service');
 const { Tenant, Client, Service, Professional } = require('../../models');
+const { parseMonetaryValue } = require('../../utils/number');
 
 class AppointmentController {
     async getAll(req, res) {
@@ -27,7 +28,10 @@ class AppointmentController {
     async create(req, res) {
         try {
             const unitId = req.headers['x-unit-id'] || req.body.unitId;
-            const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
+            const sanitizedBody = { ...req.body };
+            if (sanitizedBody.price) sanitizedBody.price = parseMonetaryValue(sanitizedBody.price);
+
+            const data = { ...sanitizedBody, tenant_id: req.tenantId, unit_id: unitId };
             const appointment = await appointmentService.create(data, req.tenantId, req.userId);
 
             // --- Send Confirmation WhatsApp if Channel is Active ---
@@ -59,7 +63,10 @@ class AppointmentController {
 
     async update(req, res) {
         try {
-            const appointment = await appointmentService.update(req.params.id, { ...req.body, tenant_id: req.tenantId }, req.tenantId);
+            const sanitizedBody = { ...req.body };
+            if (sanitizedBody.price) sanitizedBody.price = parseMonetaryValue(sanitizedBody.price);
+
+            const appointment = await appointmentService.update(req.params.id, { ...sanitizedBody, tenant_id: req.tenantId }, req.tenantId);
             res.json({ success: true, data: appointment });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

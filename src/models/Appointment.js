@@ -3,7 +3,7 @@ const { DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
     const Appointment = sequelize.define('Appointment', {
         id: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.BIGINT,
             primaryKey: true,
             autoIncrement: true,
         },
@@ -65,11 +65,11 @@ module.exports = (sequelize) => {
         },
         date: {
             type: DataTypes.DATEONLY,
-            allowNull: false,
+            allowNull: true,
         },
         time: {
             type: DataTypes.TIME,
-            allowNull: false,
+            allowNull: true,
         },
         end_time: {
             type: DataTypes.TIME,

@@ -16,7 +16,9 @@ const parseMonetaryValue = (value) => {
     // 2. Remove all '.', assume they are thousand separators IF there is also a comma later?
     // Actually, safest generic approach for "R$ 1.200,50" or "1200.50":
 
-    const strVal = String(value).trim();
+    const strVal = String(value).trim()
+        .replace(/R\$/g, '')
+        .replace(/[^\d.,-]/g, '');
 
     // Check if it has comma as decimal separator
     if (strVal.includes(',')) {
