@@ -57,7 +57,6 @@ class ClientService {
                 {
                     model: PackageSubscription,
                     as: 'subscriptions',
-                    where: { status: 'active' },
                     required: false,
                     include: [
                         { model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions', 'price'] }
@@ -66,7 +65,6 @@ class ClientService {
                 {
                     model: SalonPlanSubscription,
                     as: 'plan_subscriptions',
-                    where: { status: 'active' },
                     required: false,
                     include: [
                         { model: SalonPlan, as: 'plan', attributes: ['id', 'name', 'sessions', 'price'] }
