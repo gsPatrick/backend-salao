@@ -322,7 +322,11 @@ class AppointmentService {
 
         // Financial integration: Create transaction when completed
         const completionStatuses = ['concluido'];
-        if (completionStatuses.includes(status) && !completionStatuses.includes(oldStatus)) {
+        const isConcluding = completionStatuses.includes(status);
+        const wasConcluding = completionStatuses.includes(oldStatus);
+
+        // 1. Financial/Stats integration: Only on FIRST completion
+        if (isConcluding && !wasConcluding) {
             try {
                 // Update Client Statistics (Total Visits, Last Visit) - Absolute Sync
                 const clientService = require('../Client/client.service');
@@ -341,15 +345,19 @@ class AppointmentService {
                 };
 
                 await financeService.create(transactionData, tenantId);
+            } catch (error) {
+                console.error('[Finance/Stats Hook Error]:', error);
+            }
+        }
 
-                // Session Counter Increment
+        // 2. Session Counter Increment: Every time it's "Concluded" (even if already concluded)
+        if (isConcluding) {
+            try {
                 const sessionsToIncrement = parseInt(sessionsConsumed) || 1;
-
                 let allSessionsConsumed = true; // Default: fully concluded
 
                 // Update snapshot on the appointment itself
                 appointmentInstance.consumed_sessions = (appointmentInstance.consumed_sessions || 0) + sessionsToIncrement;
-                // Note: increment on appointmentInstance happens via the final .update(updateData) or explicit .increment
                 updateData.consumed_sessions = appointmentInstance.consumed_sessions;
 
                 // Update the linked subscription (Instance-specific)
@@ -413,15 +421,12 @@ class AppointmentService {
                     }
                 }
 
-                // If package/plan still has remaining sessions, we used to keep as 'agendado'
-                // so the user can come back and conclude more sessions later.
-                // REFINEMENT: Always keep as 'concluido' so it appears in history and statistics.
-                // The subscription counter tracks the overall progress.
+                // If package/plan still has remaining sessions, always keep as 'concluido'
                 if (!allSessionsConsumed) {
-                    // updateData.status = 'agendado'; // REMOVED: keep as concluído
+                    // updateData.status = 'concluido'; // Already set by args
                 }
             } catch (error) {
-                console.error('[Finance/Stats Hook Error]:', error);
+                console.error('[Session Progress Error]:', error);
             }
         }
 

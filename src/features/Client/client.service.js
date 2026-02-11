@@ -154,7 +154,9 @@ class ClientService {
                     reviewed: apt.reviewed || false,
                     rating: apt.rating,
                     package_id: apt.package_id,
-                    salon_plan_id: apt.salon_plan_id
+                    salon_plan_id: apt.salon_plan_id,
+                    consumed_sessions: apt.consumed_sessions,
+                    total_sessions: apt.total_sessions || (apt.package?.sessions ? parseInt(apt.package.sessions) : (apt.salon_plan?.sessions ? parseInt(apt.salon_plan.sessions) : 0))
                 };
             });
 
