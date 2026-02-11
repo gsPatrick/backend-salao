@@ -335,6 +335,23 @@ class ClientService {
             return data;
         });
     }
+    async updateStatistics(clientId, appointmentDate) {
+        const client = await Client.findByPk(clientId);
+        if (!client) return;
+
+        const newTotalVisits = (client.total_visits || 0) + 1;
+
+        let lastVisit = client.last_visit;
+        // Update last_visit if appointmentDate is more recent
+        if (!lastVisit || new Date(appointmentDate) > new Date(lastVisit)) {
+            lastVisit = appointmentDate;
+        }
+
+        await client.update({
+            total_visits: newTotalVisits,
+            last_visit: lastVisit
+        });
+    }
 }
 
 module.exports = new ClientService();

@@ -223,12 +223,15 @@ class AppointmentService {
     }
 
     async update(id, data, tenantId) {
-        const appointment = await this.getById(id, tenantId);
+        const appointmentInstance = await Appointment.findOne({ where: { id, tenant_id: tenantId } });
+        if (!appointmentInstance) throw new Error('Agendamento não encontrado');
+
+        const appointmentData = appointmentInstance.toJSON();
 
         // Check for conflict if date, time, or professional is being changed
-        const checkDate = data.date || appointment.date;
-        const checkTime = data.time || appointment.time;
-        const checkProfessional = data.professional_id || appointment.professional_id;
+        const checkDate = data.date || appointmentData.date;
+        const checkTime = data.time || appointmentData.time;
+        const checkProfessional = data.professional_id || appointmentData.professional_id;
 
         if (data.date || data.time || data.professional_id) {
             const conflict = await this.checkConflict(
@@ -251,50 +254,62 @@ class AppointmentService {
             }
         }
 
-        await appointment.update(data);
+        await appointmentInstance.update(data);
         return this.getById(id, tenantId);
     }
 
     async updateStatus(id, status, tenantId) {
-        const appointment = await this.getById(id, tenantId);
-        const oldStatus = appointment.status;
-        await appointment.update({ status });
+        const appointmentInstance = await Appointment.findOne({
+            where: { id, tenant_id: tenantId },
+            include: [
+                { model: Client, as: 'client' },
+                { model: Service, as: 'service' }
+            ]
+        });
+        if (!appointmentInstance) throw new Error('Agendamento não encontrado');
+
+        const oldStatus = appointmentInstance.status;
+        await appointmentInstance.update({ status });
 
         const crmAutomationService = require('../../services/crm_automation.service');
 
         // Financial integration: Create transaction when completed
-        const completionStatuses = ['Atendido', 'realizado', 'concluído', 'Completed'];
+        const completionStatuses = ['Atendido', 'realizado', 'concluído', 'Completed', 'concluido'];
         if (completionStatuses.includes(status) && !completionStatuses.includes(oldStatus)) {
             try {
+                // Update Client Statistics (Total Visits, Last Visit)
+                const clientService = require('../Client/client.service');
+                await clientService.updateStatistics(appointmentInstance.client_id, appointmentInstance.date);
+
                 const financeService = require('../Finance/finance.service');
                 await financeService.create({
                     type: 'receita',
                     category: 'Serviço',
-                    amount: appointment.price || 0,
-                    date: appointment.date,
-                    description: `Atendimento: ${appointment.client?.name || 'Cliente'} - ${appointment.service?.name || 'Serviço'}`,
+                    amount: appointmentInstance.price || 0,
+                    date: appointmentInstance.date,
+                    description: `Atendimento: ${appointmentInstance.client?.name || 'Cliente'} - ${appointmentInstance.service?.name || 'Serviço'}`,
                     status: 'pago',
-                    unit: appointment.unit,
-                    appointment_id: appointment.id
+                    unit: appointmentInstance.unit,
+                    appointment_id: appointmentInstance.id
                 }, tenantId);
             } catch (error) {
-                console.error('[Finance Hook Error]:', error);
+                console.error('[Finance/Stats Hook Error]:', error);
             }
         }
 
         // Update client status if faltante
         if (status === 'faltante') {
-            await Client.update({ status: 'Faltante' }, { where: { id: appointment.client_id } });
+            await Client.update({ status: 'Faltante' }, { where: { id: appointmentInstance.client_id } });
 
             // Real-time CRM hook
-            crmAutomationService.handleAbsent(tenantId, appointment.client).catch(err =>
+            crmAutomationService.handleAbsent(tenantId, appointmentInstance.client).catch(err =>
                 console.error('[CRM Hook Error] handleAbsent:', err)
             );
         }
 
         if (status === 'reagendado') {
             // Real-time CRM hook
-            crmAutomationService.handleRescheduled(tenantId, appointment.client, appointment).catch(err =>
+            crmAutomationService.handleRescheduled(tenantId, appointmentInstance.client, appointmentInstance).catch(err =>
                 console.error('[CRM Hook Error] handleRescheduled:', err)
             );
         }
