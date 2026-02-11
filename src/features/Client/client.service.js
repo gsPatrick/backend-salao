@@ -155,8 +155,8 @@ class ClientService {
                     rating: apt.rating,
                     package_id: apt.package_id,
                     salon_plan_id: apt.salon_plan_id,
-                    consumed_sessions: apt.consumed_sessions,
-                    total_sessions: apt.total_sessions || (apt.package?.sessions ? parseInt(apt.package.sessions) : (apt.salon_plan?.sessions ? parseInt(apt.salon_plan.sessions) : 0))
+                    consumed_sessions: Number(apt.consumed_sessions || 0),
+                    total_sessions: Number(apt.total_sessions || (apt.package?.sessions ? parseInt(apt.package.sessions) : (apt.salon_plan?.sessions ? parseInt(apt.salon_plan.sessions) : 0)))
                 };
             });
 
@@ -243,10 +243,10 @@ class ClientService {
         }
 
         // Include associated names for direct mapping
-        if (clientData.package) {
+        if (clientData.package && !clientData.packageName) {
             clientData.packageName = clientData.package.name;
         }
-        if (clientData.salon_plan) {
+        if (clientData.salon_plan && !clientData.planName) {
             clientData.planName = clientData.salon_plan.name;
         }
 
