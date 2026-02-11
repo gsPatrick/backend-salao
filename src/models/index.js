@@ -59,7 +59,7 @@ const {
     CRMSettings, TrainingVideo, AdBanner, Notification, SupportTicket,
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
-    Lead, MarketingCampaign, SalonPlan, Unit, ChatMessage, WhatsAppSession,
+    Lead, MarketingCampaign, SalonPlan, SalonPlanSubscription, Unit, ChatMessage, WhatsAppSession,
     ScheduleBlock, AuditLog
 } = db;
 
