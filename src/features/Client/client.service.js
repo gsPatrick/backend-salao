@@ -379,11 +379,14 @@ class ClientService {
         const client = await Client.create({
             ...sanitizedData,
             tenant_id: tenantId,
-            unit_id: sanitizedData.unit_id, // Ensure unit_id is passed
+            unit_id: sanitizedData.unit_id,
             registration_date: sanitizedData.registration_date || new Date(),
             is_active: true,
             is_complete_registration: sanitizedData.is_complete_registration !== undefined ? sanitizedData.is_complete_registration : true
         });
+
+        // Create initial subscriptions if plan or package is provided on creation
+        await this.handlePlanAndPackageSubscriptions(client, sanitizedData, null, tenantId);
 
         // Real-time CRM hook
         const crmAutomationService = require('../../services/crm_automation.service');
@@ -400,34 +403,80 @@ class ClientService {
         if (!client) throw new Error('Cliente não encontrado');
 
         const oldPlanId = client.plan_id;
+        const oldPackageId = client.package_id;
         const sanitizedData = this.sanitizeClientData(data);
         await client.update(sanitizedData);
 
-        // If plan changed, create a subscription for tracking sessions
-        if (sanitizedData.plan_id && sanitizedData.plan_id !== oldPlanId) {
-            const plan = await SalonPlan.findByPk(sanitizedData.plan_id);
+        // Handle plan and package subscriptions
+        await this.handlePlanAndPackageSubscriptions(client, sanitizedData, { oldPlanId, oldPackageId }, tenantId);
+
+        // Return the full formatted object using getById
+        return this.getById(id, tenantId);
+    }
+
+    /**
+     * Helper to handle subscription creation when plan or package changes
+     */
+    async handlePlanAndPackageSubscriptions(client, newData, oldData, tenantId) {
+        const id = client.id;
+        const unitId = newData.unit_id || client.unit_id;
+
+        // 1. Handle Salon Plan Subscription
+        if (newData.plan_id && newData.plan_id !== oldData?.oldPlanId) {
+            const plan = await SalonPlan.findByPk(newData.plan_id);
             if (plan) {
                 // Deactivate old plan subscriptions if any
                 await SalonPlanSubscription.update(
-                    { status: 'archived' },
+                    { status: 'archived', active: false },
                     { where: { client_id: id, tenant_id: tenantId, status: 'active' } }
                 );
 
                 await SalonPlanSubscription.create({
                     tenant_id: tenantId,
                     client_id: id,
-                    plan_id: sanitizedData.plan_id,
+                    plan_id: newData.plan_id,
                     start_date: new Date(),
                     status: 'active',
+                    active: true,
                     total_sessions: parseInt(plan.sessions) || null,
                     used_sessions: 0,
-                    unit_id: sanitizedData.unit_id || client.unit_id
+                    unit_id: unitId
                 });
             }
         }
 
-        // Return the full formatted object using getById
-        return this.getById(id, tenantId);
+        // 2. Handle Monthly Package Subscription
+        if (newData.package_id && newData.package_id !== oldData?.oldPackageId) {
+            const pkg = await MonthlyPackage.findByPk(newData.package_id);
+            if (pkg) {
+                // Deactivate old package subscriptions if any
+                await PackageSubscription.update(
+                    { status: 'archived', active: false },
+                    { where: { client_id: id, tenant_id: tenantId, status: 'active' } }
+                );
+
+                // Calculate end date based on duration (months)
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + (parseInt(pkg.duration) || 1));
+
+                await PackageSubscription.create({
+                    tenant_id: tenantId,
+                    client_id: id,
+                    package_id: newData.package_id,
+                    client_name: client.name,
+                    client_email: client.email,
+                    client_phone: client.phone,
+                    start_date: startDate,
+                    end_date: endDate,
+                    status: 'active',
+                    active: true,
+                    total_sessions: parseInt(pkg.sessions) || null,
+                    clicks: 0,
+                    unit_id: unitId
+                });
+            }
+        }
     }
 
     async delete(id, tenantId) {
