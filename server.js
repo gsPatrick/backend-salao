@@ -53,9 +53,17 @@ async function startServer() {
         const marketingDispatcher = require('./src/services/marketing_dispatcher.service');
         marketingDispatcher.start();
 
+        // Initialize Reminder Service (Minute-level checks)
+        const reminderService = require('./src/services/reminder.service');
+        const ONE_MINUTE = 60 * 1000;
+        setInterval(() => {
+            reminderService.processReminders().catch(err => console.error('[Reminder Service] Error:', err));
+        }, ONE_MINUTE);
+
         // Run once on startup (checks for anything missed while server was down)
         setTimeout(() => {
             crmAutomation.runDailyChecks().catch(err => console.error('CRM Automation Startup Error:', err));
+            reminderService.processReminders().catch(err => console.error('[Reminder Service] Startup Error:', err));
         }, 10000);
     } catch (error) {
         console.error('❌ Unable to start server:', error);
