@@ -258,7 +258,7 @@ class AppointmentService {
         return this.getById(id, tenantId);
     }
 
-    async updateStatus(id, status, tenantId) {
+    async updateStatus(id, status, tenantId, sessionsConsumed = 1) {
         const appointmentInstance = await Appointment.findOne({
             where: { id, tenant_id: tenantId },
             include: [
@@ -306,12 +306,11 @@ class AppointmentService {
                     appointment_id: appointmentInstance.id
                 };
 
-                //Log before creation for debugging
-                //console.log('[Finance Hook] Creating transaction:', transactionData);
-
                 await financeService.create(transactionData, tenantId);
 
                 // Session Counter Increment
+                const sessionsToIncrement = parseInt(sessionsConsumed) || 1;
+
                 if (appointmentInstance.package_id) {
                     const sub = await PackageSubscription.findOne({
                         where: {
@@ -321,7 +320,7 @@ class AppointmentService {
                         }
                     });
                     if (sub) {
-                        await sub.increment('clicks');
+                        await sub.increment('clicks', { by: sessionsToIncrement });
                     }
                 } else if (appointmentInstance.salon_plan_id) {
                     const sub = await SalonPlanSubscription.findOne({
@@ -332,7 +331,7 @@ class AppointmentService {
                         }
                     });
                     if (sub) {
-                        await sub.increment('used_sessions');
+                        await sub.increment('used_sessions', { by: sessionsToIncrement });
                     }
                 }
             } catch (error) {

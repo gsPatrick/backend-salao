@@ -75,8 +75,9 @@ class AppointmentController {
 
     async updateStatus(req, res) {
         try {
+            const { status, sessionsConsumed } = req.body;
             const appointment = await appointmentService.updateStatus(
-                req.params.id, req.body.status, req.tenantId
+                req.params.id, status, req.tenantId, sessionsConsumed
             );
             res.json({ success: true, data: appointment });
         } catch (error) {
