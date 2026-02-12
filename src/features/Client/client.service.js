@@ -183,19 +183,21 @@ class ClientService {
         }
 
         // Transform subscriptions to packages format for frontend compatibility (Merging with legacy JSONB packages)
-        if (!clientData.packages || !Array.isArray(clientData.packages)) {
-            clientData.packages = [];
+        // We ensure clientData.packages is a clean array and merge all sources
+        let mergedPackages = [];
+        if (clientData.packages && Array.isArray(clientData.packages)) {
+            mergedPackages = [...clientData.packages];
         }
 
         if (clientData.subscriptions && clientData.subscriptions.length > 0) {
-            clientData.packages.push(...clientData.subscriptions.map(sub => {
-                const total = sub.total_sessions || parseInt(sub.package?.sessions) || 0;
+            const packageSubs = clientData.subscriptions.map(sub => {
+                const total = sub.total_sessions || (sub.package?.sessions ? parseInt(sub.package.sessions) : 0) || 0;
                 return {
                     id: sub.id,
                     name: sub.package?.name || 'Pacote',
                     total_sessions: total,
-                    used_sessions: sub.clicks || 0,
-                    sessions: sub.package?.sessions || 0,
+                    used_sessions: Number(sub.clicks || 0),
+                    sessions: sub.package?.sessions || total || 0,
                     price: sub.package?.price || '0',
                     start_date: sub.start_date,
                     end_date: sub.end_date,
@@ -203,16 +205,23 @@ class ClientService {
                     type: 'package',
                     package_id: sub.package_id
                 };
-            }));
+            });
+
+            // Add to merged list only if not already present (by package_id)
+            packageSubs.forEach(ps => {
+                if (!mergedPackages.some(p => p.package_id === ps.package_id && p.type === 'package')) {
+                    mergedPackages.push(ps);
+                }
+            });
             delete clientData.subscriptions;
         }
 
         if (clientData.plan_subscriptions && clientData.plan_subscriptions.length > 0) {
-            clientData.packages.push(...clientData.plan_subscriptions.map(sub => ({
+            const planSubs = clientData.plan_subscriptions.map(sub => ({
                 id: sub.id,
                 name: sub.plan?.name || 'Plano',
-                total_sessions: sub.total_sessions || sub.plan?.sessions || 0,
-                used_sessions: sub.used_sessions || 0,
+                total_sessions: sub.total_sessions || (sub.plan?.sessions ? parseInt(sub.plan.sessions) : 0) || 0,
+                used_sessions: Number(sub.used_sessions || 0),
                 sessions: sub.plan?.sessions || 0,
                 price: sub.plan?.price || '0',
                 start_date: sub.start_date,
@@ -220,27 +229,37 @@ class ClientService {
                 status: sub.status,
                 type: 'plan',
                 plan_id: sub.plan_id
-            })));
+            }));
+
+            planSubs.forEach(ps => {
+                if (!mergedPackages.some(p => p.plan_id === ps.plan_id && p.type === 'plan')) {
+                    mergedPackages.push(ps);
+                }
+            });
             delete clientData.plan_subscriptions;
         }
 
         // Include direct package/plan if not already in the list
-        if (clientData.package && !clientData.packages.some(p => p.package_id == clientData.package_id)) {
-            clientData.packages.push({
+        if (clientData.package && !mergedPackages.some(p => p.package_id == clientData.package_id && p.type === 'package')) {
+            mergedPackages.push({
                 id: `direct-pkg-${clientData.package_id}`,
                 name: clientData.package.name,
                 type: 'package',
-                package_id: clientData.package_id
+                package_id: clientData.package_id,
+                status: 'active'
             });
         }
-        if (clientData.salon_plan && !clientData.packages.some(p => p.plan_id == clientData.plan_id)) {
-            clientData.packages.push({
+        if (clientData.salon_plan && !mergedPackages.some(p => p.plan_id == clientData.plan_id && p.type === 'plan')) {
+            mergedPackages.push({
                 id: `direct-plan-${clientData.plan_id}`,
                 name: clientData.salon_plan.name,
                 type: 'plan',
-                plan_id: clientData.plan_id
+                plan_id: clientData.plan_id,
+                status: 'active'
             });
         }
+
+        clientData.packages = mergedPackages;
 
         // Include associated names for direct mapping
         if (clientData.package && !clientData.packageName) {
