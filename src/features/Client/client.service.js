@@ -259,6 +259,35 @@ class ClientService {
             });
         }
 
+        // Implicitly collect packages/plans from appointment history if missing from subscriptions
+        // This handles cases where appointments exist but formal subscription records are missing
+        if (clientData.history && clientData.history.length > 0) {
+            clientData.history.forEach(apt => {
+                if (apt.package_id && !mergedPackages.some(p => p.package_id == apt.package_id && p.type === 'package')) {
+                    mergedPackages.push({
+                        id: `history-pkg-${apt.package_id}`,
+                        name: apt.name, // The apt name is already the package name in the transform above
+                        type: 'package',
+                        package_id: apt.package_id,
+                        total_sessions: apt.total_sessions,
+                        used_sessions: apt.consumed_sessions, // Use the count from the appointment
+                        status: 'active'
+                    });
+                }
+                if (apt.salon_plan_id && !mergedPackages.some(p => p.plan_id == apt.salon_plan_id && p.type === 'plan')) {
+                    mergedPackages.push({
+                        id: `history-plan-${apt.salon_plan_id}`,
+                        name: apt.name,
+                        type: 'plan',
+                        plan_id: apt.salon_plan_id,
+                        total_sessions: apt.total_sessions,
+                        used_sessions: apt.consumed_sessions,
+                        status: 'active'
+                    });
+                }
+            });
+        }
+
         clientData.packages = mergedPackages;
 
         // Include associated names for direct mapping
