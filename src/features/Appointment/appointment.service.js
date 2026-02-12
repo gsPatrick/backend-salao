@@ -203,7 +203,9 @@ class AppointmentService {
             let packageSubId = null;
             let salonPlanSubId = null;
 
-            if (data.package_id) {
+            if (data.package_subscription_id) {
+                packageSubId = data.package_subscription_id;
+            } else if (data.package_id) {
                 const pkg = item; // monthly package from previous block
                 const sessionsStr = pkg ? String(pkg.sessions || '') : '';
                 totalSessionsSnapshot = parseInt(sessionsStr, 10);
@@ -216,6 +218,8 @@ class AppointmentService {
                     transaction: t
                 });
                 if (sub) packageSubId = sub.id;
+            } else if (data.salon_plan_subscription_id) {
+                salonPlanSubId = data.salon_plan_subscription_id;
             } else if (data.salon_plan_id) {
                 const plan = item;
                 const sessionsStr = plan ? String(plan.sessions || '') : '';
