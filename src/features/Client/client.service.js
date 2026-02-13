@@ -634,8 +634,12 @@ class ClientService {
     }
 
     async delete(id, tenantId) {
+        // Cascade delete appointments first
+        await Appointment.destroy({ where: { client_id: id, tenant_id: tenantId } });
+
+        // Then soft-delete the client
         await Client.update({ is_active: false }, { where: { id, tenant_id: tenantId } });
-        return { message: 'Cliente deletado com sucesso' };
+        return { message: 'Cliente deletado com sucesso e agendamentos removidos.' };
     }
 
     async block(id, reason, tenantId) {
