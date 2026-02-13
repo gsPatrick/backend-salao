@@ -291,6 +291,31 @@ exports.createSubscription = async (req, res) => {
             total_sessions: parseInt(pkg.sessions) || null
         });
 
+        // Record financial transaction for the full package value
+        try {
+            const financeService = require('../Finance/finance.service');
+            const { Client } = require('../../models');
+            let clientName = data.clientName;
+
+            if (data.clientId && !clientName) {
+                const client = await Client.findByPk(data.clientId);
+                if (client) clientName = client.name;
+            }
+
+            await financeService.create({
+                type: 'receita',
+                category: 'Venda de Pacote',
+                amount: pkg.price,
+                date: new Date().toISOString().split('T')[0],
+                description: `Venda de Pacote: ${pkg.name} para ${clientName || 'Cliente'}`,
+                status: 'pago',
+                payment_method: data.payment_method || data.paymentMethod || 'Dinheiro',
+                unit_id: unitId
+            }, tenantId);
+        } catch (err) {
+            console.error('[Finance Hook Error] Package Subscription (Direct):', err);
+        }
+
         // Fetch again with include to match list format
         const subscription = await PackageSubscription.findByPk(s.id, {
             include: [{ model: MonthlyPackage, as: 'package' }]

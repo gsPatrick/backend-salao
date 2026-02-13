@@ -537,6 +537,23 @@ class ClientService {
                     used_sessions: 0,
                     unit_id: unitId
                 });
+
+                // Record financial transaction for the full plan value
+                try {
+                    const financeService = require('../Finance/finance.service');
+                    await financeService.create({
+                        type: 'receita',
+                        category: 'Venda de Plano',
+                        amount: plan.price,
+                        date: new Date().toISOString().split('T')[0],
+                        description: `Venda de Plano: ${plan.name} para ${client.name}`,
+                        status: 'pago',
+                        payment_method: newData.payment_method || newData.paymentMethod || 'Dinheiro',
+                        unit_id: unitId
+                    }, tenantId);
+                } catch (err) {
+                    console.error('[Finance Hook Error] Plan Subscription:', err);
+                }
             }
         }
 
@@ -572,6 +589,23 @@ class ClientService {
                     clicks: 0,
                     unit_id: unitId
                 });
+
+                // Record financial transaction for the full package value
+                try {
+                    const financeService = require('../Finance/finance.service');
+                    await financeService.create({
+                        type: 'receita',
+                        category: 'Venda de Pacote',
+                        amount: pkg.price,
+                        date: new Date().toISOString().split('T')[0],
+                        description: `Venda de Pacote: ${pkg.name} para ${client.name}`,
+                        status: 'pago',
+                        payment_method: newData.payment_method || newData.paymentMethod || 'Dinheiro',
+                        unit_id: unitId
+                    }, tenantId);
+                } catch (err) {
+                    console.error('[Finance Hook Error] Package Subscription:', err);
+                }
             }
         }
     }

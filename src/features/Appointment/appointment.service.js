@@ -196,7 +196,12 @@ class AppointmentService {
                 endDate.setHours(hours, minutes + duration);
                 data.end_time = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
             }
-            data.price = data.price || price;
+            // Ensure price is 0 for sessions linked to an existing subscription to avoid double billing
+            if (data.package_subscription_id || data.salon_plan_subscription_id) {
+                data.price = 0;
+            } else if (data.price === undefined || data.price === null || String(data.price).trim() === '') {
+                data.price = price;
+            }
 
             // Snapshot session info and link unique subscription if applicable
             let totalSessionsSnapshot = null;
@@ -242,7 +247,8 @@ class AppointmentService {
                 package_subscription_id: packageSubId,
                 salon_plan_subscription_id: salonPlanSubId,
                 total_sessions: totalSessionsSnapshot,
-                consumed_sessions: 0 // Always 0 on creation as per user request
+                consumed_sessions: 0,
+                payment_status: data.payment_status || ((packageSubId || salonPlanSubId) ? 'linked_to_package' : 'pending')
             }, { transaction: t });
 
             // Real-time CRM hook (out of transaction to avoid blocking)
@@ -341,19 +347,24 @@ class AppointmentService {
                 const clientService = require('../Client/client.service');
                 await clientService.updateStatistics(appointmentInstance.client_id);
 
-                const financeService = require('../Finance/finance.service');
-                const transactionData = {
-                    type: 'receita',
-                    category: 'Serviço',
-                    amount: appointmentInstance.price !== undefined && appointmentInstance.price !== null ? appointmentInstance.price : 0,
-                    date: appointmentInstance.date,
-                    description: `Atendimento: ${appointmentInstance.client?.name || 'Cliente'} - ${appointmentInstance.service?.name || 'Serviço'}`,
-                    status: 'pago',
-                    unit_id: appointmentInstance.unit_id || appointmentInstance.client?.preferred_unit || null,
-                    appointment_id: appointmentInstance.id
-                };
+                // Skip financial transaction if it's already paid via package/plan
+                if (appointmentInstance.payment_status !== 'linked_to_package' && parseFloat(appointmentInstance.price) > 0) {
+                    const financeService = require('../Finance/finance.service');
+                    const transactionData = {
+                        type: 'receita',
+                        category: 'Serviço',
+                        amount: appointmentInstance.price,
+                        date: appointmentInstance.date,
+                        description: `Atendimento: ${appointmentInstance.client?.name || 'Cliente'} - ${appointmentInstance.service?.name || 'Serviço'}`,
+                        status: 'pago',
+                        unit_id: appointmentInstance.unit_id || appointmentInstance.client?.preferred_unit || null,
+                        appointment_id: appointmentInstance.id
+                    };
 
-                await financeService.create(transactionData, tenantId);
+                    await financeService.create(transactionData, tenantId);
+                } else {
+                    console.log(`[Finance Hook] Skipping transaction for appointment ${id} (Price: ${appointmentInstance.price}, Payment Status: ${appointmentInstance.payment_status})`);
+                }
             } catch (error) {
                 console.error('[Finance/Stats Hook Error]:', error);
             }

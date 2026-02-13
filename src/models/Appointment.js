@@ -113,6 +113,11 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: 'agendado',
         },
+        payment_status: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: 'pending',
+        },
         price: {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: true,
