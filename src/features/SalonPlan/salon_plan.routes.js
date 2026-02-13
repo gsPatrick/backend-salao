@@ -12,4 +12,11 @@ router.delete('/:id', salonPlanController.delete);
 router.patch('/:id/suspend', salonPlanController.toggleSuspend);
 router.patch('/:id/favorite', salonPlanController.toggleFavorite);
 
+// Subscriptions
+router.get('/subscriptions', salonPlanController.listSubscriptions);
+router.post('/subscriptions', salonPlanController.createSubscription);
+router.put('/subscriptions/:id', salonPlanController.updateSubscription);
+router.delete('/subscriptions/:id', salonPlanController.deleteSubscription);
+router.patch('/subscriptions/:id/archive', salonPlanController.archiveSubscription);
+
 module.exports = router;

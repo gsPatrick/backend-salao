@@ -110,6 +110,116 @@ exports.toggleFavorite = async (req, res) => {
     }
 };
 
+// --- Subscriptions ---
+
+exports.listSubscriptions = async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { clientId, unitId } = req.query;
+
+        const where = { tenant_id: tenantId };
+        if (clientId) where.client_id = clientId;
+        if (unitId) where.unit_id = unitId;
+
+        const subs = await SalonPlanSubscription.findAll({
+            where,
+            include: [{ model: SalonPlan, as: 'plan' }],
+            order: [['created_at', 'DESC']]
+        });
+
+        res.json(subs.map(s => ({
+            id: s.id,
+            planId: s.plan_id,
+            planName: s.plan ? s.plan.name : 'Unknown Plan',
+            clientId: s.client_id,
+            startDate: s.start_date,
+            endDate: s.end_date,
+            status: s.status,
+            usedSessions: s.used_sessions,
+            totalSessions: s.total_sessions
+        })));
+    } catch (error) {
+        console.error('Error listing plan subscriptions:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.createSubscription = async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const data = req.body;
+        const unitId = req.headers['x-unit-id'] || data.unitId;
+
+        const plan = await SalonPlan.findByPk(data.planId);
+        if (!plan) return res.status(404).json({ error: 'Plano não encontrado' });
+
+        const sub = await SalonPlanSubscription.create({
+            tenant_id: tenantId,
+            unit_id: unitId,
+            plan_id: data.planId,
+            client_id: data.clientId,
+            start_date: data.startDate,
+            end_date: data.endDate,
+            status: 'active',
+            total_sessions: parseInt(plan.sessions) || null
+        });
+
+        res.json(sub);
+    } catch (error) {
+        console.error('Error creating plan subscription:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.updateSubscription = async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { id } = req.params;
+        const data = req.body;
+
+        const sub = await SalonPlanSubscription.findOne({ where: { id, tenant_id: tenantId } });
+        if (!sub) return res.status(404).json({ error: 'Assinatura não encontrada' });
+
+        await sub.update({
+            status: data.status,
+            end_date: data.endDate
+        });
+
+        res.json(sub);
+    } catch (error) {
+        console.error('Error updating plan subscription:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.deleteSubscription = async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { id } = req.params;
+        await SalonPlanSubscription.destroy({ where: { id, tenant_id: tenantId } });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting plan subscription:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.archiveSubscription = async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { id } = req.params;
+        const sub = await SalonPlanSubscription.findOne({ where: { id, tenant_id: tenantId } });
+        if (!sub) return res.status(404).json({ error: 'Assinatura não encontrada' });
+
+        const newStatus = sub.status === 'archived' ? 'active' : 'archived';
+        await sub.update({ status: newStatus });
+        res.json({ status: newStatus });
+    } catch (error) {
+        console.error('Error archiving plan subscription:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
 function formatPlan(p) {
     return {
         id: p.id,
