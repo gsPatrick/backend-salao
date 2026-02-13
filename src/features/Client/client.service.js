@@ -86,14 +86,25 @@ class ClientService {
         clientData.use_social_name = !!useSocialName;
 
         if (clientData.Appointments && clientData.Appointments.length > 0) {
+            // Fetch all services for this tenant to allow matching by name for legacy items
+            const { Service: ServiceModel } = require('../../models');
+            const allServices = await ServiceModel.findAll({
+                where: { tenant_id: tenantId },
+                attributes: ['id', 'name']
+            });
+            const serviceMap = {};
+            allServices.forEach(s => {
+                serviceMap[s.name.toLowerCase().trim()] = s.id;
+            });
+
             const appointmentHistory = clientData.Appointments.map(apt => {
                 let type = 'Serviço';
                 let sessionInfo = null;
-                let name = 'Serviço';
+                let name = apt.service?.name || apt.service_name || 'Serviço';
 
                 if (apt.package_id) {
                     type = 'Pacote';
-                    name = apt.package?.name || 'Pacote';
+                    name = apt.package?.name || apt.service_name || 'Pacote';
 
                     const total = apt.total_sessions || parseInt(apt.package?.sessions) || 0;
                     const consumed = apt.consumed_sessions || 0;
@@ -115,7 +126,7 @@ class ClientService {
                     }
                 } else if (apt.salon_plan_id) {
                     type = 'Plano';
-                    name = apt.salon_plan?.name || 'Plano';
+                    name = apt.salon_plan?.name || apt.service_name || 'Plano';
 
                     const total = apt.total_sessions || parseInt(apt.salon_plan?.sessions) || 0;
                     const consumed = apt.consumed_sessions || 0;
@@ -134,16 +145,21 @@ class ClientService {
                             sessionInfo = `${used}/${subTotal} sessões`;
                         }
                     }
-                }
-                else if (apt.service?.name) {
+                } else if (apt.service?.name) {
                     name = apt.service.name;
+                }
+
+                // Attempt to find service_id if missing but we have a name
+                let serviceId = apt.service_id;
+                if (!serviceId && name && serviceMap[name.toLowerCase().trim()]) {
+                    serviceId = serviceMap[name.toLowerCase().trim()];
                 }
 
                 return {
                     id: apt.id,
                     name,
-                    type, // New field for frontend label
-                    sessionInfo, // New field for "3 sessões" or "1/10"
+                    type,
+                    sessionInfo,
                     date: apt.date,
                     time: apt.time,
                     professional: apt.professional?.name || 'Profissional',
@@ -153,6 +169,7 @@ class ClientService {
                     price: apt.price || apt.service?.price || '0',
                     reviewed: apt.reviewed || false,
                     rating: apt.rating,
+                    service_id: serviceId,
                     package_id: apt.package_id,
                     salon_plan_id: apt.salon_plan_id,
                     consumed_sessions: Number(apt.consumed_sessions || 0),
@@ -174,6 +191,12 @@ class ClientService {
                 if (!isDuplicate) {
                     // Ensure price is formatted for JSON history if missing
                     if (jsonItem.price === undefined) jsonItem.price = '0';
+
+                    // Attempt to find service_id if missing but we have a name
+                    if (!jsonItem.service_id && jsonItem.name && serviceMap[jsonItem.name.toLowerCase().trim()]) {
+                        jsonItem.service_id = serviceMap[jsonItem.name.toLowerCase().trim()];
+                    }
+
                     mergedHistory.push(jsonItem);
                 }
             });
