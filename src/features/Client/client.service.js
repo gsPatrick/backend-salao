@@ -230,9 +230,9 @@ class ClientService {
                 };
             });
 
-            // Add to merged list only if not already present (by package_id)
+            // Add to merged list only if not already present (by subscription ID)
             packageSubs.forEach(ps => {
-                if (!mergedPackages.some(p => p.package_id === ps.package_id && p.type === 'package')) {
+                if (!mergedPackages.some(p => p.id === ps.id)) {
                     mergedPackages.push(ps);
                 }
             });
@@ -255,7 +255,7 @@ class ClientService {
             }));
 
             planSubs.forEach(ps => {
-                if (!mergedPackages.some(p => p.plan_id === ps.plan_id && p.type === 'plan')) {
+                if (!mergedPackages.some(p => p.id === ps.id)) {
                     mergedPackages.push(ps);
                 }
             });
