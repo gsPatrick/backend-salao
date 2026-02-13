@@ -239,6 +239,50 @@ class AppointmentService {
                 if (sub) salonPlanSubId = sub.id;
             }
 
+            // SESSION LIMIT ENFORCEMENT: Prevent scheduling beyond the total sessions allowed
+            if (packageSubId || data.package_id) {
+                const pkgId = data.package_id;
+                const pkg = await MonthlyPackage.findByPk(pkgId, { transaction: t });
+                const maxSessions = pkg ? parseInt(String(pkg.sessions || '0'), 10) : 0;
+                if (maxSessions > 0) {
+                    const existingCount = await Appointment.count({
+                        where: {
+                            tenant_id: tenantId,
+                            package_id: pkgId,
+                            client_id: data.client_id,
+                            status: { [Op.notIn]: ['cancelado', 'reagendado'] }
+                        },
+                        transaction: t
+                    });
+                    if (existingCount >= maxSessions) {
+                        const error = new Error(`Limite de sessões atingido (${existingCount}/${maxSessions}). Não é possível agendar mais sessões para este pacote.`);
+                        error.status = 400;
+                        throw error;
+                    }
+                }
+            }
+            if (salonPlanSubId || data.salon_plan_id) {
+                const planId = data.salon_plan_id;
+                const plan = await SalonPlan.findByPk(planId, { transaction: t });
+                const maxSessions = plan ? parseInt(String(plan.sessions || '0'), 10) : 0;
+                if (maxSessions > 0) {
+                    const existingCount = await Appointment.count({
+                        where: {
+                            tenant_id: tenantId,
+                            salon_plan_id: planId,
+                            client_id: data.client_id,
+                            status: { [Op.notIn]: ['cancelado', 'reagendado'] }
+                        },
+                        transaction: t
+                    });
+                    if (existingCount >= maxSessions) {
+                        const error = new Error(`Limite de sessões atingido (${existingCount}/${maxSessions}). Não é possível agendar mais sessões para este plano.`);
+                        error.status = 400;
+                        throw error;
+                    }
+                }
+            }
+
             const appointment = await Appointment.create({
                 ...data,
                 tenant_id: tenantId,
