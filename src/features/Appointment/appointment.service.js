@@ -295,21 +295,61 @@ class AppointmentService {
                 payment_status: data.payment_status || ((packageSubId || salonPlanSubId) ? 'linked_to_package' : 'pending')
             }, { transaction: t });
 
-            // Real-time CRM hook (out of transaction to avoid blocking)
-            const today = new Date().toISOString().split('T')[0];
-            if (data.date === today) {
-                const crmAutomationService = require('../../services/crm_automation.service');
-                Client.findByPk(data.client_id).then(client => {
-                    if (client) {
-                        crmAutomationService.handleScheduledToday(tenantId, client, appointment).catch(err =>
-                            console.error('[CRM Hook Error] handleScheduledToday:', err)
-                        );
-                    }
-                });
+            // If created directly as concluded, trigger side effects
+            if (appointment.status === 'concluido') {
+                // We need to call this manually because the hooks might not fire or we want unified logic
+                // However, we are inside a transaction `t`. The helper currently doesn't accept transaction.
+                // But the helper mainly does updates on other models.
+                // To be safe and consistent, we should probably refactor functionality to be transaction-aware
+                // OR we just do it after the transaction commits?
+                // `create` returns the appointment. The helper does `appointmentInstance.update`.
+                // Let's do a quick hack: we can't easily use the helper inside the transaction without passing `t`.
+                // But `create` is already complex.
+                // AND `_handleStatusChangeSideEffects` is async and does DB calls.
+
+                // Ideally, we should pass `t` to `_handleStatusChangeSideEffects`.
+                // But for now, let's keep it simple. If status is 'concluido', we can just run the logic 
+                // AFTER the transaction? 
+                // But `create` wraps everything in `sequelize.transaction`.
+
+                // Let's modifying `_handleStatusChangeSideEffects` to accept a transaction option.
             }
 
             return appointment;
         });
+
+        // Post-creation hook for 'concluido' side effects (outside the main creation transaction to avoid complexity, 
+        // or we risk locking issues if we don't pass `t`).
+        // Since `_handleStatusChangeSideEffects` fetches data, it might see the data since the transaction is committed (returned).
+        if (createdAppointment.status === 'concluido') {
+            const freshInstance = await Appointment.findByPk(createdAppointment.id, {
+                include: [
+                    { model: Client, as: 'client' },
+                    { model: Service, as: 'service' }
+                ]
+            });
+            if (freshInstance) {
+                const sideEffects = await this._handleStatusChangeSideEffects(freshInstance, 'concluido', tenantId);
+                if (Object.keys(sideEffects).length > 0) {
+                    await freshInstance.update(sideEffects);
+                }
+            }
+        }
+
+        // Real-time CRM hook
+        const today = new Date().toISOString().split('T')[0];
+        if (data.date === today) {
+            const crmAutomationService = require('../../services/crm_automation.service');
+            Client.findByPk(data.client_id).then(client => {
+                if (client) {
+                    crmAutomationService.handleScheduledToday(tenantId, client, createdAppointment).catch(err =>
+                        console.error('[CRM Hook Error] handleScheduledToday:', err)
+                    );
+                }
+            });
+        }
+
+        return createdAppointment;
     }
 
     async update(id, data, tenantId) {
@@ -344,7 +384,10 @@ class AppointmentService {
             }
         }
 
-        if (data.status === 'agendado' && appointmentInstance.consumed_sessions > 0) {
+        if (data.status === 'concluido' && appointmentInstance.status !== 'concluido') {
+            const sideEffectUpdates = await this._handleStatusChangeSideEffects(appointmentInstance, data.status, tenantId);
+            Object.assign(data, sideEffectUpdates);
+        } else if (data.status === 'agendado' && appointmentInstance.consumed_sessions > 0) {
             console.log(`[Status Safeguard] Appointment ${id} update blocking reversion to 'agendado' because consumed_sessions=${appointmentInstance.consumed_sessions}`);
             data.status = 'concluido';
         }
@@ -353,36 +396,27 @@ class AppointmentService {
         return this.getById(id, tenantId);
     }
 
-    async updateStatus(id, status, tenantId, sessionsConsumed = 1) {
-        const appointmentInstance = await Appointment.findOne({
-            where: { id, tenant_id: tenantId },
-            include: [
-                { model: Client, as: 'client' },
-                { model: Service, as: 'service' }
-            ]
-        });
-        if (!appointmentInstance) throw new Error('Agendamento não encontrado');
 
+    // --- PRIVATE HELPER: Handle side-effects of concluding an appointment (finance, stats, session count) ---
+    async _handleStatusChangeSideEffects(appointmentInstance, status, tenantId, sessionsConsumed = 1) {
         const oldStatus = appointmentInstance.status;
-
-        // Auto-fill date/time if missing and concluding
-        const updateData = { status };
-        if (status === 'concluido' && (!appointmentInstance.date || !appointmentInstance.time)) {
-            const now = new Date();
-            if (!appointmentInstance.date) {
-                updateData.date = now.toISOString().split('T')[0];
-            }
-            if (!appointmentInstance.time) {
-                updateData.time = now.toTimeString().split(' ')[0].slice(0, 5);
-            }
-        }
-
-        const crmAutomationService = require('../../services/crm_automation.service');
-
-        // Financial integration: Create transaction when completed
         const completionStatuses = ['concluido'];
         const isConcluding = completionStatuses.includes(status);
         const wasConcluding = completionStatuses.includes(oldStatus);
+        const updateData = {};
+
+        // Auto-fill date/time if missing and concluding
+        if (isConcluding && (!appointmentInstance.date || !appointmentInstance.time)) {
+            const now = new Date();
+            if (!appointmentInstance.date) {
+                updateData.date = now.toISOString().split('T')[0];
+                appointmentInstance.date = updateData.date;
+            }
+            if (!appointmentInstance.time) {
+                updateData.time = now.toTimeString().split(' ')[0].slice(0, 5);
+                appointmentInstance.time = updateData.time;
+            }
+        }
 
         // 1. Financial/Stats integration: Only on FIRST completion
         if (isConcluding && !wasConcluding) {
@@ -406,8 +440,6 @@ class AppointmentService {
                     };
 
                     await financeService.create(transactionData, tenantId);
-                } else {
-                    console.log(`[Finance Hook] Skipping transaction for appointment ${id} (Price: ${appointmentInstance.price}, Payment Status: ${appointmentInstance.payment_status})`);
                 }
             } catch (error) {
                 console.error('[Finance/Stats Hook Error]:', error);
@@ -415,29 +447,43 @@ class AppointmentService {
         }
 
         // 2. Session Counter Increment: Every time it's "Concluded" (even if already concluded)
+        // Note: Ideally we should only increment if transitioning from non-concluded to concluded,
+        // or if explicitly requested via sessionsConsumed > 0.
+        // Current logic: If isConcluding, try to increment.
         if (isConcluding) {
             try {
                 const sessionsToIncrement = parseInt(sessionsConsumed) || 1;
                 let allSessionsConsumed = true; // Default: fully concluded
+                let currentSessionIndex = null;
 
                 // Update snapshot on the appointment itself
-                appointmentInstance.consumed_sessions = (appointmentInstance.consumed_sessions || 0) + sessionsToIncrement;
-                updateData.consumed_sessions = appointmentInstance.consumed_sessions;
+                // Only increment consumed_sessions if it hasn't been done yet for this specific completion event
+                // But for now, we follow the existing pattern: increment if passed.
+                // However, we must be careful not to double-count if the appointment was already concluded.
+                // The check `!wasConcluding` above handles the "first time" logic.
+                // But `updateStatus` allows `sessionsConsumed` param which implies an explicit increment.
 
-                // Update the linked subscription (Instance-specific)
+                // If it wasn't concluding before, we increment.
+                // If it WAS concluding, we only increment if sessionsConsumed is explicitly provided (logic preserved from before).
+
+                if (!wasConcluding || sessionsConsumed > 0) {
+                    appointmentInstance.consumed_sessions = (appointmentInstance.consumed_sessions || 0) + sessionsToIncrement;
+                    updateData.consumed_sessions = appointmentInstance.consumed_sessions;
+                }
+
+                // Identify Subscription
+                let sub = null;
+                let type = null; // 'package' or 'plan'
+
                 if (appointmentInstance.package_subscription_id) {
-                    const sub = await PackageSubscription.findByPk(appointmentInstance.package_subscription_id);
-                    if (sub) {
-                        await sub.increment('clicks', { by: sessionsToIncrement });
-                        await sub.reload();
-                        const total = appointmentInstance.total_sessions;
-                        if (total !== null && sub.clicks < total) {
-                            allSessionsConsumed = false;
-                        }
-                    }
+                    sub = await PackageSubscription.findByPk(appointmentInstance.package_subscription_id);
+                    type = 'package';
+                } else if (appointmentInstance.salon_plan_subscription_id) {
+                    sub = await SalonPlanSubscription.findByPk(appointmentInstance.salon_plan_subscription_id);
+                    type = 'plan';
                 } else if (appointmentInstance.package_id) {
-                    // Fallback for legacy appointments or if subscription_id is missing
-                    const sub = await PackageSubscription.findOne({
+                    // Fallback
+                    sub = await PackageSubscription.findOne({
                         where: {
                             client_id: appointmentInstance.client_id,
                             package_id: appointmentInstance.package_id,
@@ -445,28 +491,13 @@ class AppointmentService {
                         }
                     });
                     if (sub) {
-                        await sub.increment('clicks', { by: sessionsToIncrement });
-                        await sub.reload();
-                        const pkg = await MonthlyPackage.findByPk(appointmentInstance.package_id);
-                        const sessionsStr = pkg ? String(pkg.sessions || '') : '';
-                        const total = parseInt(sessionsStr, 10);
-                        if (!isNaN(total) && total > 0 && sub.clicks < total) {
-                            allSessionsConsumed = false;
-                        }
-                    }
-                } else if (appointmentInstance.salon_plan_subscription_id) {
-                    const sub = await SalonPlanSubscription.findByPk(appointmentInstance.salon_plan_subscription_id);
-                    if (sub) {
-                        await sub.increment('used_sessions', { by: sessionsToIncrement });
-                        await sub.reload();
-                        const total = appointmentInstance.total_sessions;
-                        if (total !== null && sub.used_sessions < total) {
-                            allSessionsConsumed = false;
-                        }
+                        // Link it now for future reference
+                        updateData.package_subscription_id = sub.id;
+                        type = 'package';
                     }
                 } else if (appointmentInstance.salon_plan_id) {
-                    // Fallback for plans
-                    const sub = await SalonPlanSubscription.findOne({
+                    // Fallback
+                    sub = await SalonPlanSubscription.findOne({
                         where: {
                             client_id: appointmentInstance.client_id,
                             plan_id: appointmentInstance.salon_plan_id,
@@ -474,14 +505,44 @@ class AppointmentService {
                         }
                     });
                     if (sub) {
-                        await sub.increment('used_sessions', { by: sessionsToIncrement });
-                        await sub.reload();
-                        const plan = await SalonPlan.findByPk(appointmentInstance.salon_plan_id);
-                        const sessionsStr = plan ? String(plan.sessions || '') : '';
-                        const total = parseInt(sessionsStr, 10);
-                        if (!isNaN(total) && total > 0 && sub.used_sessions < total) {
+                        // Link it now
+                        updateData.salon_plan_subscription_id = sub.id;
+                        type = 'plan';
+                    }
+                }
+
+                if (sub) {
+                    if (type === 'package') {
+                        // Increment clicks only if it's a new completion or explicit consumption
+                        if (!wasConcluding || sessionsConsumed > 0) {
+                            await sub.increment('clicks', { by: sessionsToIncrement });
+                            await sub.reload();
+                        }
+
+                        // Calculate session index
+                        currentSessionIndex = sub.clicks; // The index after increment is the current session number
+
+                        const total = appointmentInstance.total_sessions || sub.total_sessions;
+                        if (total && sub.clicks < total) {
                             allSessionsConsumed = false;
                         }
+                    } else if (type === 'plan') {
+                        if (!wasConcluding || sessionsConsumed > 0) {
+                            await sub.increment('used_sessions', { by: sessionsToIncrement });
+                            await sub.reload();
+                        }
+
+                        currentSessionIndex = sub.used_sessions;
+
+                        const total = appointmentInstance.total_sessions || sub.total_sessions;
+                        if (total && sub.used_sessions < total) {
+                            allSessionsConsumed = false;
+                        }
+                    }
+
+                    // Save session index to appointment if not already set
+                    if (currentSessionIndex && !appointmentInstance.session_index) {
+                        updateData.session_index = currentSessionIndex;
                     }
                 }
 
@@ -492,8 +553,9 @@ class AppointmentService {
 
                 // --- SAFEGUARD: Prevent reversion to 'agendado' if sessions were consumed ---
                 if (appointmentInstance.consumed_sessions > 0 && status === 'agendado') {
-                    console.log(`[Status Safeguard] Appointment ${id} has ${appointmentInstance.consumed_sessions} consumed sessions. Forcing status to 'concluido' to prevent schedule reversion.`);
+                    console.log(`[Status Safeguard] Appointment ${appointmentInstance.id} has ${appointmentInstance.consumed_sessions} consumed sessions. Forcing status to 'concluido' to prevent schedule reversion.`);
                     updateData.status = 'concluido';
+                    return updateData; // Return immediately with override
                 }
             } catch (error) {
                 console.error('[Session Progress Error]:', error);
@@ -505,7 +567,29 @@ class AppointmentService {
             updateData.status = 'concluido';
         }
 
-        await appointmentInstance.update(updateData);
+        return updateData;
+    }
+
+    async updateStatus(id, status, tenantId, sessionsConsumed = 1) {
+        const appointmentInstance = await Appointment.findOne({
+            where: { id, tenant_id: tenantId },
+            include: [
+                { model: Client, as: 'client' },
+                { model: Service, as: 'service' }
+            ]
+        });
+        if (!appointmentInstance) throw new Error('Agendamento não encontrado');
+
+        // Calculate side-effects updates
+        const sideEffectUpdates = await this._handleStatusChangeSideEffects(appointmentInstance, status, tenantId, sessionsConsumed);
+
+        // Merge updates
+        const finalUpdates = { status, ...sideEffectUpdates };
+
+        await appointmentInstance.update(finalUpdates);
+
+        // --- Post-update hooks (CRM, Client Status) ---
+        const crmAutomationService = require('../../services/crm_automation.service');
 
         // Update client status if faltante
         if (status === 'faltante') {

@@ -88,6 +88,11 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: 0
         },
+        session_index: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            comment: 'The sequential number of this session within the package/plan (1-based)'
+        },
         date: {
             type: DataTypes.DATEONLY,
             allowNull: true,

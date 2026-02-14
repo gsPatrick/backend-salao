@@ -108,9 +108,15 @@ class ClientService {
 
                     const total = apt.total_sessions || parseInt(apt.package?.sessions) || 0;
                     const consumed = apt.consumed_sessions || 0;
+                    const index = apt.session_index;
 
-                    if (total > 0) {
-                        sessionInfo = `Sessão ${consumed} de ${total}`;
+                    if (index && total > 0) {
+                        sessionInfo = `Sessão ${index} de ${total}`;
+                    } else if (total > 0) {
+                        // Fallback: If no session_index but we have total, we can't reliably say "Sessão X" without it being wrong (all 1).
+                        // Better to show generic or try to infer from consumed (which is flawed here).
+                        // Let's stick to "Sessão ?" or just fallback to consumed if > 0 (as singular quantity).
+                        if (consumed > 0) sessionInfo = `${consumed} sessões`;
                     } else if (consumed > 0) {
                         sessionInfo = `${consumed} sessões`;
                     }
@@ -130,9 +136,12 @@ class ClientService {
 
                     const total = apt.total_sessions || parseInt(apt.salon_plan?.sessions) || 0;
                     const consumed = apt.consumed_sessions || 0;
+                    const index = apt.session_index;
 
-                    if (total > 0) {
-                        sessionInfo = `Sessão ${consumed} de ${total}`;
+                    if (index && total > 0) {
+                        sessionInfo = `Sessão ${index} de ${total}`;
+                    } else if (total > 0) {
+                        if (consumed > 0) sessionInfo = `${consumed} sessões`;
                     } else if (consumed > 0) {
                         sessionInfo = `${consumed} sessões`;
                     }
@@ -173,6 +182,7 @@ class ClientService {
                     package_id: apt.package_id,
                     salon_plan_id: apt.salon_plan_id,
                     consumed_sessions: Number(apt.consumed_sessions || 0),
+                    session_index: apt.session_index,
                     total_sessions: Number(apt.total_sessions || (apt.package?.sessions ? parseInt(apt.package.sessions) : (apt.salon_plan?.sessions ? parseInt(apt.salon_plan.sessions) : 0)))
                 };
             });
