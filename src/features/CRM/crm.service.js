@@ -31,32 +31,7 @@ class CRMService {
                 return stage;
             });
 
-            // Self-healing: Ensure 'recurrent' stage exists
-            const hasRecurrent = migratedStages.some(s => s.id === 'recurrent');
-            if (!hasRecurrent) {
-                modified = true;
-                const newStage = {
-                    id: 'recurrent',
-                    title: 'Recorrentes (Ativos)',
-                    icon: '💎',
-                    visible: true,
-                    deletable: true,
-                    ai_actions: [
-                        {
-                            title: 'Fidelização',
-                            description: 'Manter engajamento com cliente ativo.',
-                            active: false
-                        }
-                    ]
-                };
-
-                const newIndex = migratedStages.findIndex(s => s.id === 'new');
-                if (newIndex >= 0) {
-                    migratedStages.splice(newIndex + 1, 0, newStage);
-                } else {
-                    migratedStages.unshift(newStage);
-                }
-            }
+            // Self-healing removed: We now allow users (Pro/Premium) to delete any stage, including 'recurrent'.
 
             if (modified) {
                 settings.funnel_stages = migratedStages;
