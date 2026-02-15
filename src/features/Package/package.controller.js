@@ -390,14 +390,21 @@ exports.deleteSubscription = async (req, res) => {
         // Virtual items come from history without a formal subscription record
         if (isVirtual === 'true' && clientId) {
             console.log(`[Delete] Virtual Package Subscription: packageId=${id}, clientId=${clientId}`);
-            await Appointment.destroy({
+            const apts = await Appointment.findAll({
                 where: {
                     package_id: id,
                     client_id: clientId,
                     tenant_id: tenantId
-                }
+                },
+                attributes: ['id']
             });
-            return res.json({ success: true, message: 'Agendamentos do pacote excluídos com sucesso' });
+            const aptIds = apts.map(a => a.id);
+            if (aptIds.length > 0) {
+                const { ProfessionalReview } = require('../../models');
+                await ProfessionalReview.destroy({ where: { appointment_id: aptIds, tenant_id: tenantId } });
+                await Appointment.destroy({ where: { id: aptIds } });
+            }
+            return res.json({ success: true, message: 'Agendamentos e avaliações do pacote excluídos com sucesso' });
         }
 
         // For real subscriptions, we delete appointments linked to this subscription ID
@@ -405,24 +412,25 @@ exports.deleteSubscription = async (req, res) => {
         const subscription = await PackageSubscription.findOne({ where: { id, tenant_id: tenantId } });
 
         if (subscription) {
-            // Delete appointments linked by subscription ID
-            await Appointment.destroy({
+            const apts = await Appointment.findAll({
                 where: {
-                    package_subscription_id: id,
+                    [Op.or]: [
+                        { package_subscription_id: id },
+                        {
+                            package_id: subscription.package_id,
+                            client_id: subscription.client_id,
+                            package_subscription_id: null
+                        }
+                    ],
                     tenant_id: tenantId
-                }
+                },
+                attributes: ['id']
             });
-
-            // FALLBACK: Also delete by (client_id + package_id) to catch loose appointments
-            if (subscription.client_id && subscription.package_id) {
-                await Appointment.destroy({
-                    where: {
-                        package_id: subscription.package_id,
-                        client_id: subscription.client_id,
-                        tenant_id: tenantId,
-                        package_subscription_id: null // Only if not already caught
-                    }
-                });
+            const aptIds = apts.map(a => a.id);
+            if (aptIds.length > 0) {
+                const { ProfessionalReview } = require('../../models');
+                await ProfessionalReview.destroy({ where: { appointment_id: aptIds, tenant_id: tenantId } });
+                await Appointment.destroy({ where: { id: aptIds } });
             }
 
             await subscription.destroy();

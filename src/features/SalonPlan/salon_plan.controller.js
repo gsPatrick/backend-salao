@@ -232,36 +232,44 @@ exports.deleteSubscription = async (req, res) => {
 
         if (isVirtual === 'true' && clientId) {
             console.log(`[Delete] Virtual Plan Subscription: planId=${id}, clientId=${clientId}`);
-            await Appointment.destroy({
+            const apts = await Appointment.findAll({
                 where: {
                     salon_plan_id: id,
                     client_id: clientId,
                     tenant_id: tenantId
-                }
+                },
+                attributes: ['id']
             });
-            return res.json({ success: true, message: 'Agendamentos do plano excluídos com sucesso' });
+            const aptIds = apts.map(a => a.id);
+            if (aptIds.length > 0) {
+                const { ProfessionalReview } = require('../../models');
+                await ProfessionalReview.destroy({ where: { appointment_id: aptIds, tenant_id: tenantId } });
+                await Appointment.destroy({ where: { id: aptIds } });
+            }
+            return res.json({ success: true, message: 'Agendamentos e avaliações do plano excluídos com sucesso' });
         }
 
         const sub = await SalonPlanSubscription.findOne({ where: { id, tenant_id: tenantId } });
         if (sub) {
-            // Delete associated appointments
-            await Appointment.destroy({
+            const apts = await Appointment.findAll({
                 where: {
-                    salon_plan_subscription_id: id,
+                    [Op.or]: [
+                        { salon_plan_subscription_id: id },
+                        {
+                            salon_plan_id: sub.plan_id,
+                            client_id: sub.client_id,
+                            salon_plan_subscription_id: null
+                        }
+                    ],
                     tenant_id: tenantId
-                }
+                },
+                attributes: ['id']
             });
-
-            // Cleanup loose appointments
-            if (sub.client_id && sub.plan_id) {
-                await Appointment.destroy({
-                    where: {
-                        salon_plan_id: sub.plan_id,
-                        client_id: sub.client_id,
-                        tenant_id: tenantId,
-                        salon_plan_subscription_id: null
-                    }
-                });
+            const aptIds = apts.map(a => a.id);
+            if (aptIds.length > 0) {
+                const { ProfessionalReview } = require('../../models');
+                await ProfessionalReview.destroy({ where: { appointment_id: aptIds, tenant_id: tenantId } });
+                await Appointment.destroy({ where: { id: aptIds } });
             }
 
             await sub.destroy();

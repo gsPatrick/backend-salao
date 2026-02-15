@@ -706,11 +706,10 @@ class AppointmentService {
         // Handle dependent records
         const { FinancialTransaction, ProfessionalReview } = require('../../models');
 
-        // Nullify appointment_id in financial transactions to preserve them but allow deletion
-        await FinancialTransaction.update(
-            { appointment_id: null },
-            { where: { appointment_id: id, tenant_id: tenantId } }
-        );
+        // Delete appointment-linked financial transactions (user requested full cascade)
+        await FinancialTransaction.destroy({
+            where: { appointment_id: id, tenant_id: tenantId }
+        });
 
         // Delete related reviews
         await ProfessionalReview.destroy({

@@ -647,12 +647,23 @@ class ClientService {
     }
 
     async delete(id, tenantId) {
-        // Cascade delete appointments first
+        // Cascade delete hierarchy (User requested: "sumir tudo")
+        const { FinancialTransaction, PackageSubscription, SalonPlanSubscription } = require('../../models');
+
+        // 1. Delete all appointments
         await Appointment.destroy({ where: { client_id: id, tenant_id: tenantId } });
 
-        // Then soft-delete the client
-        await Client.update({ is_active: false }, { where: { id, tenant_id: tenantId } });
-        return { message: 'Cliente deletado com sucesso e agendamentos removidos.' };
+        // 2. Delete all financial transactions
+        await FinancialTransaction.destroy({ where: { client_id: id, tenant_id: tenantId } });
+
+        // 3. Delete all subscriptions
+        await PackageSubscription.destroy({ where: { client_id: id, tenant_id: tenantId } });
+        await SalonPlanSubscription.destroy({ where: { client_id: id, tenant_id: tenantId } });
+
+        // 4. Hard-delete the client
+        await Client.destroy({ where: { id, tenant_id: tenantId } });
+
+        return { message: 'Cliente e todos os seus dados vinculados foram removidos definitivamente.' };
     }
 
     async block(id, reason, tenantId) {
