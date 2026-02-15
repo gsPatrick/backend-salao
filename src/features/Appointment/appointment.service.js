@@ -250,7 +250,7 @@ class AppointmentService {
                             tenant_id: tenantId,
                             package_id: pkgId,
                             client_id: data.client_id,
-                            status: { [Op.notIn]: ['cancelado', 'reagendado'] }
+                            status: { [Op.notIn]: ['cancelado', 'reagendado', 'faltou'] }
                         },
                         transaction: t
                     });
@@ -271,7 +271,7 @@ class AppointmentService {
                             tenant_id: tenantId,
                             salon_plan_id: planId,
                             client_id: data.client_id,
-                            status: { [Op.notIn]: ['cancelado', 'reagendado'] }
+                            status: { [Op.notIn]: ['cancelado', 'reagendado', 'faltou'] }
                         },
                         transaction: t
                     });
