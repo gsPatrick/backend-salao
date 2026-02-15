@@ -8,33 +8,59 @@ class CRMService {
             settings = await CRMSettings.create({ tenant_id: tenantId });
         }
 
-        // Self-healing: Ensure 'recurrent' stage exists
+        // Migration logic: Convert single action fields to ai_actions array
         if (settings.funnel_stages && Array.isArray(settings.funnel_stages)) {
-            const hasRecurrent = settings.funnel_stages.some(s => s.id === 'recurrent');
+            let modified = false;
+            const migratedStages = settings.funnel_stages.map(stage => {
+                // If it still has the old single-action fields and no ai_actions
+                if (!stage.ai_actions && (stage.configTitle || stage.configDescription)) {
+                    modified = true;
+                    const { configTitle, configDescription, isAIActionActive, attachmentName, ...rest } = stage;
+                    return {
+                        ...rest,
+                        ai_actions: [
+                            {
+                                title: configTitle || 'Ação Sem Título',
+                                description: configDescription || '',
+                                active: !!isAIActionActive,
+                                attachmentName: attachmentName
+                            }
+                        ]
+                    };
+                }
+                return stage;
+            });
+
+            // Self-healing: Ensure 'recurrent' stage exists
+            const hasRecurrent = migratedStages.some(s => s.id === 'recurrent');
             if (!hasRecurrent) {
+                modified = true;
                 const newStage = {
                     id: 'recurrent',
                     title: 'Recorrentes (Ativos)',
                     icon: '💎',
                     visible: true,
                     deletable: true,
-                    configTitle: 'Fidelização',
-                    configDescription: 'Manter engajamento com cliente ativo.',
-                    isAIActionActive: false
+                    ai_actions: [
+                        {
+                            title: 'Fidelização',
+                            description: 'Manter engajamento com cliente ativo.',
+                            active: false
+                        }
+                    ]
                 };
 
-                const stages = [...settings.funnel_stages];
-                const newIndex = stages.findIndex(s => s.id === 'new');
-
+                const newIndex = migratedStages.findIndex(s => s.id === 'new');
                 if (newIndex >= 0) {
-                    stages.splice(newIndex + 1, 0, newStage);
+                    migratedStages.splice(newIndex + 1, 0, newStage);
                 } else {
-                    stages.unshift(newStage);
+                    migratedStages.unshift(newStage);
                 }
+            }
 
-                // Update and persist
-                settings.funnel_stages = stages;
-                settings.changed('funnel_stages', true); // Force update for JSONB
+            if (modified) {
+                settings.funnel_stages = migratedStages;
+                settings.changed('funnel_stages', true);
                 await settings.save();
             }
         }

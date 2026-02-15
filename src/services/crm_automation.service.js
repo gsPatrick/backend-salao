@@ -22,9 +22,12 @@ class CRMAutomationService {
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         if (!settings || !settings.funnel_stages) return;
 
-        const birthdayConfig = settings.funnel_stages.find(s => s.id === 'birthday');
-        if (birthdayConfig && birthdayConfig.isAIActionActive) {
-            await this.handleBirthdaysDaily(tenantId, birthdayConfig);
+        const birthdayStage = settings.funnel_stages.find(s => s.id === 'birthday');
+        if (birthdayStage && birthdayStage.ai_actions && Array.isArray(birthdayStage.ai_actions)) {
+            const activeActions = birthdayStage.ai_actions.filter(a => a.active);
+            if (activeActions.length > 0) {
+                await this.handleBirthdaysDaily(tenantId, birthdayStage, activeActions);
+            }
         }
     }
 
@@ -32,9 +35,13 @@ class CRMAutomationService {
 
     async handleNewClient(tenantId, client) {
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
-        const config = settings?.funnel_stages?.find(s => s.id === 'new');
-        if (config && config.isAIActionActive) {
-            await this.triggerRobotAction(tenantId, client, config);
+        const stage = settings?.funnel_stages?.find(s => s.id === 'new');
+        if (stage && stage.ai_actions && Array.isArray(stage.ai_actions)) {
+            for (const action of stage.ai_actions) {
+                if (action.active) {
+                    await this.triggerRobotAction(tenantId, client, stage, action);
+                }
+            }
         }
     }
 
@@ -49,31 +56,43 @@ class CRMAutomationService {
         }
 
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
-        const config = settings?.funnel_stages?.find(s => s.id === 'scheduled');
-        if (config && config.isAIActionActive) {
-            await this.triggerRobotAction(tenantId, client, config, appointment);
+        const stage = settings?.funnel_stages?.find(s => s.id === 'scheduled');
+        if (stage && stage.ai_actions && Array.isArray(stage.ai_actions)) {
+            for (const action of stage.ai_actions) {
+                if (action.active) {
+                    await this.triggerRobotAction(tenantId, client, stage, action, appointment);
+                }
+            }
         }
     }
 
     async handleAbsent(tenantId, client) {
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
-        const config = settings?.funnel_stages?.find(s => s.id === 'absent');
-        if (config && config.isAIActionActive) {
-            await this.triggerRobotAction(tenantId, client, config);
+        const stage = settings?.funnel_stages?.find(s => s.id === 'absent');
+        if (stage && stage.ai_actions && Array.isArray(stage.ai_actions)) {
+            for (const action of stage.ai_actions) {
+                if (action.active) {
+                    await this.triggerRobotAction(tenantId, client, stage, action);
+                }
+            }
         }
     }
 
     async handleRescheduled(tenantId, client, appointment) {
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
-        const config = settings?.funnel_stages?.find(s => s.id === 'rescheduled');
-        if (config && config.isAIActionActive) {
-            await this.triggerRobotAction(tenantId, client, config, appointment);
+        const stage = settings?.funnel_stages?.find(s => s.id === 'rescheduled');
+        if (stage && stage.ai_actions && Array.isArray(stage.ai_actions)) {
+            for (const action of stage.ai_actions) {
+                if (action.active) {
+                    await this.triggerRobotAction(tenantId, client, stage, action, appointment);
+                }
+            }
         }
     }
 
     // --- Periodic Internal Helpers ---
 
-    async handleBirthdaysDaily(tenantId, config) {
+    async handleBirthdaysDaily(tenantId, stage, activeActions) {
         const today = new Date();
         const month = today.getUTCMonth() + 1;
         const day = today.getUTCDate();
@@ -90,38 +109,32 @@ class CRMAutomationService {
         });
 
         for (const client of clients) {
-            await this.triggerRobotAction(tenantId, client, config);
+            for (const action of activeActions) {
+                await this.triggerRobotAction(tenantId, client, stage, action);
+            }
         }
     }
 
-    async triggerRobotAction(tenantId, client, stageConfig, appointment = null) {
+    async triggerRobotAction(tenantId, client, stage, action, appointment = null) {
         if (!client.phone) return;
 
-        // Check if we already sent an AI message for this stage today to avoid spam
-        // For simplicity, we can check AIChat history or a dedicated logs table.
-        // For now, let's assume one-time trigger logic.
+        console.log(`[CRM Robot] Triggering action '${action.title}' for client ${client.name} at stage: ${stage.title}`);
 
-        console.log(`[CRM Robot] Triggering action for client ${client.name} (${client.phone}) at stage: ${stageConfig.title}`);
-
-        const instruction = stageConfig.configDescription;
+        const instruction = action.description;
         const context = `
             Você é um assistente virtual agindo no CRM. 
-            O cliente está na etapa: ${stageConfig.title}.
-            Instrução do Gerente: ${instruction}
+            O cliente está na etapa: ${stage.title}.
+            Ação Específica: ${action.title}.
+            Instrução do Gerente para esta ação: ${instruction}
             Dados do Cliente: Nome: ${client.name}, Telefone: ${client.phone}.
             ${appointment ? `Agendamento: ${appointment.time} de hoje.` : ''}
             Gere uma mensagem curta e amigável para o WhatsApp.
         `;
 
         try {
-            const message = await aiService.processMessage(tenantId, client.phone, `[SISTEMA: Ação Automática CRM - ${stageConfig.title}]`, false, context);
-            if (message) {
-                // message is sent by aiService.processMessage if integrated with whatsappService
-                // But wait, aiService.processMessage usually sends the response automatically.
-                // However, I need to make sure aiService can handle this "SISTEMA" trigger without sounding weird.
-            }
+            await aiService.processMessage(tenantId, client.phone, `[SISTEMA: CRM - ${stage.title} - ${action.title}]`, false, context);
         } catch (error) {
-            console.error(`[CRM Robot] Error triggering AI for ${client.phone}:`, error);
+            console.error(`[CRM Robot] Error triggering AI action '${action.title}' for ${client.phone}:`, error);
         }
     }
 }

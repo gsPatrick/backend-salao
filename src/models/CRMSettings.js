@@ -14,18 +14,117 @@ const CRMSettings = sequelize.define('crm_settings', {
     funnel_stages: {
         type: DataTypes.JSONB,
         defaultValue: [
-            { id: 'new', title: 'Novos Clientes', icon: '✨', visible: true, deletable: true, configTitle: 'Boas-vindas', configDescription: 'Enviar mensagem de boas-vindas via WhatsApp e agendar primeiro contato.', isAIActionActive: true },
-            { id: 'recurrent', title: 'Recorrentes (Ativos)', icon: '💎', visible: true, deletable: true, configTitle: 'Fidelização', configDescription: 'Manter engajamento com cliente ativo.', isAIActionActive: false },
-            { id: 'birthday', title: 'Aniversariante do Dia', icon: '🎂', visible: true, deletable: false, configTitle: 'Mensagem de Aniversário', configDescription: 'Enviar mensagem automática de feliz aniversário com um cupom de 10% de desconto.', isAIActionActive: true },
-            { id: 'scheduled', title: 'Agendados Hoje', icon: '✅', visible: true, deletable: false, configTitle: 'Lembrete de Agendamento', configDescription: 'Enviar lembrete 1 hora antes do horário. Confirmar com cliente se ele vem.', isAIActionActive: false },
-            { id: 'absent', title: 'Faltantes', icon: '❌', visible: true, deletable: false, configTitle: 'Contato Pós-Falta', configDescription: 'Entrar em contato para entender o motivo da falta e oferecer reagendamento.', isAIActionActive: false },
-            { id: 'rescheduled', title: 'Reagendados', icon: '🔄', visible: true, deletable: false, configTitle: 'Confirmar Reagendamento', configDescription: 'Enviar confirmação do novo horário para o cliente.', isAIActionActive: true },
-            { id: 'inactive', title: 'Inativas (60+ dias)', icon: '⏳', visible: true, deletable: false, configTitle: 'Campanha de Reativação', configDescription: 'Enviar mensagem com oferta especial para clientes que não retornam há mais de 60 dias.', isAIActionActive: false },
+            {
+                id: 'new',
+                title: 'Novos Clientes',
+                icon: '✨',
+                visible: true,
+                deletable: true,
+                ai_actions: [
+                    {
+                        title: 'Boas-vindas',
+                        description: 'Enviar mensagem de boas-vindas via WhatsApp e agendar primeiro contato.',
+                        active: true
+                    }
+                ]
+            },
+            {
+                id: 'recurrent',
+                title: 'Recorrentes (Ativos)',
+                icon: '💎',
+                visible: true,
+                deletable: true,
+                ai_actions: [
+                    {
+                        title: 'Fidelização',
+                        description: 'Manter engajamento com cliente ativo.',
+                        active: false
+                    }
+                ]
+            },
+            {
+                id: 'birthday',
+                title: 'Aniversariante do Dia',
+                icon: '🎂',
+                visible: true,
+                deletable: false,
+                ai_actions: [
+                    {
+                        title: 'Mensagem de Aniversário',
+                        description: 'Enviar mensagem automática de feliz aniversário com um cupom de 10% de desconto.',
+                        active: true
+                    }
+                ]
+            },
+            {
+                id: 'scheduled',
+                title: 'Agendados Hoje',
+                icon: '✅',
+                visible: true,
+                deletable: false,
+                ai_actions: [
+                    {
+                        title: 'Lembrete de Agendamento',
+                        description: 'Enviar lembrete 1 hora antes do horário. Confirmar com cliente se ele vem.',
+                        active: false
+                    }
+                ]
+            },
+            {
+                id: 'absent',
+                title: 'Faltantes',
+                icon: '❌',
+                visible: true,
+                deletable: false,
+                ai_actions: [
+                    {
+                        title: 'Contato Pós-Falta',
+                        description: 'Entrar em contato para entender o motivo da falta e oferecer reagendamento.',
+                        active: false
+                    }
+                ]
+            },
+            {
+                id: 'rescheduled',
+                title: 'Reagendados',
+                icon: '🔄',
+                visible: true,
+                deletable: false,
+                ai_actions: [
+                    {
+                        title: 'Confirmar Reagendamento',
+                        description: 'Enviar confirmação do novo horário para o cliente.',
+                        active: true
+                    }
+                ]
+            },
+            {
+                id: 'inactive',
+                title: 'Inativas (60+ dias)',
+                icon: '⏳',
+                visible: true,
+                deletable: false,
+                ai_actions: [
+                    {
+                        title: 'Campanha de Reativação',
+                        description: 'Enviar mensagem com oferta especial para clientes que não retornam há mais de 60 dias.',
+                        active: false
+                    }
+                ]
+            },
         ]
     },
     automation_rules: {
         type: DataTypes.JSONB,
         defaultValue: []
+    },
+    classifications: {
+        type: DataTypes.JSONB,
+        defaultValue: [
+            { text: 'VIP', icon: '👑' },
+            { text: 'Potencial', icon: '💡' },
+            { text: 'Retorno', icon: '🔄' }
+        ]
     }
 }, {
     tableName: 'crm_settings',
