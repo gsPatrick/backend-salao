@@ -379,6 +379,15 @@ exports.deleteSubscription = async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const { id } = req.params;
+
+        // Delete all appointments associated with this subscription first
+        await Appointment.destroy({
+            where: {
+                package_subscription_id: id,
+                tenant_id: tenantId
+            }
+        });
+
         await PackageSubscription.destroy({ where: { id, tenant_id: tenantId } });
         res.json({ success: true });
     } catch (error) {

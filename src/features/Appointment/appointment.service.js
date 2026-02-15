@@ -295,6 +295,10 @@ class AppointmentService {
                 payment_status: data.payment_status || ((packageSubId || salonPlanSubId) ? 'linked_to_package' : 'pending')
             }, { transaction: t });
 
+            // Update Client Statistics (Total Visits, Last Visit) - Absolute Sync
+            const clientService = require('../Client/client.service');
+            await clientService.updateStatistics(appointment.client_id);
+
             // If created directly as concluded, trigger side effects
             if (appointment.status === 'concluido') {
                 // We need to call this manually because the hooks might not fire or we want unified logic
@@ -308,8 +312,8 @@ class AppointmentService {
                 // AND `_handleStatusChangeSideEffects` is async and does DB calls.
 
                 // Ideally, we should pass `t` to `_handleStatusChangeSideEffects`.
-                // But for now, let's keep it simple. If status is 'concluido', we can just run the logic 
-                // AFTER the transaction? 
+                // But for now, let's keep it simple. If status is 'concluido', we can just run the logic
+                // AFTER the transaction?
                 // But `create` wraps everything in `sequelize.transaction`.
 
                 // Let's modifying `_handleStatusChangeSideEffects` to accept a transaction option.
@@ -318,7 +322,7 @@ class AppointmentService {
             return appointment;
         });
 
-        // Post-creation hook for 'concluido' side effects (outside the main creation transaction to avoid complexity, 
+        // Post-creation hook for 'concluido' side effects (outside the main creation transaction to avoid complexity,
         // or we risk locking issues if we don't pass `t`).
         // Since `_handleStatusChangeSideEffects` fetches data, it might see the data since the transaction is committed (returned).
         if (createdAppointment.status === 'concluido') {
@@ -450,6 +454,11 @@ class AppointmentService {
         // Note: Ideally we should only increment if transitioning from non-concluded to concluded,
         // or if explicitly requested via sessionsConsumed > 0.
         // Current logic: If isConcluding, try to increment.
+        // But `updateStatus` allows `sessionsConsumed` param which implies an explicit increment.
+
+        // If it wasn't concluding before, we increment.
+        // If it WAS concluding, we only increment if sessionsConsumed is explicitly provided (logic preserved from before).
+
         if (isConcluding) {
             try {
                 const sessionsToIncrement = parseInt(sessionsConsumed) || 1;
@@ -461,11 +470,6 @@ class AppointmentService {
                 // But for now, we follow the existing pattern: increment if passed.
                 // However, we must be careful not to double-count if the appointment was already concluded.
                 // The check `!wasConcluding` above handles the "first time" logic.
-                // But `updateStatus` allows `sessionsConsumed` param which implies an explicit increment.
-
-                // If it wasn't concluding before, we increment.
-                // If it WAS concluding, we only increment if sessionsConsumed is explicitly provided (logic preserved from before).
-
                 if (!wasConcluding || sessionsConsumed > 0) {
                     appointmentInstance.consumed_sessions = (appointmentInstance.consumed_sessions || 0) + sessionsToIncrement;
                     updateData.consumed_sessions = appointmentInstance.consumed_sessions;
@@ -592,14 +596,18 @@ class AppointmentService {
         const crmAutomationService = require('../../services/crm_automation.service');
 
         // Update client status if faltante
-        if (status === 'faltante') {
+        if (status === 'faltou') {
             await Client.update({ status: 'Faltante' }, { where: { id: appointmentInstance.client_id } });
 
             // Real-time CRM hook
-            crmAutomationService.handleAbsent(tenantId, appointmentInstance.client).catch(err =>
+            crmAutomationService.handleAbsent(tenantId, appointmentInstance.client, appointmentInstance).catch(err =>
                 console.error('[CRM Hook Error] handleAbsent:', err)
             );
         }
+
+        // Always update statistics on status change, just to be sure
+        const clientService = require('../Client/client.service');
+        await clientService.updateStatistics(appointmentInstance.client_id);
 
         if (status === 'reagendado') {
             // Real-time CRM hook
@@ -671,10 +679,12 @@ class AppointmentService {
 
             } catch (error) {
                 console.error('[Refund Hook Error]:', error);
-                // Throwing here might be good to alert the user, but partial success (cancel) is better than full fail
-                // For now, log is sufficient.
             }
         }
+
+        // Update Client Statistics after refund
+        const clientService = require('../Client/client.service');
+        await clientService.updateStatistics(appointment.client_id);
 
         return this.getById(id, tenantId);
     }
@@ -704,9 +714,15 @@ class AppointmentService {
         });
 
         console.log(`[AppointmentService] Found appointment id=${id}, destroying...`);
+        const clientId = appointment.client_id;
         await appointment.destroy();
-        console.log(`[AppointmentService] Appointment id=${id} DESTROYED successfully`);
-        return { id, deleted: true };
+        console.log(`[AppointmentService] Appointment id=${id} DELETED`);
+
+        // Update Client Statistics after deletion
+        const clientService = require('../Client/client.service');
+        await clientService.updateStatistics(clientId);
+
+        return { success: true };
     }
 
     async getByDate(date, tenantId, unitId = null) {
@@ -940,7 +956,16 @@ class AppointmentService {
     // --- Schedule Blocks Methods ---
     async getAllBlocks(tenantId, filters = {}) {
         const { ScheduleBlock } = require('../../models');
-        const where = { tenant_id: tenantId, ...filters };
+        const where = { tenant_id: tenantId };
+
+        if (filters.date) where.date = filters.date;
+        if (filters.professionalId || filters.professional_id) where.professional_id = filters.professionalId || filters.professional_id;
+        if (filters.unit) where.unit = filters.unit;
+
+        if (filters.dateFrom && filters.dateTo) {
+            where.date = { [Op.between]: [filters.dateFrom, filters.dateTo] };
+        }
+
         return await ScheduleBlock.findAll({ where, order: [['date', 'ASC'], ['start_time', 'ASC']] });
     }
 
