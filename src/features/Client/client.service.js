@@ -440,6 +440,9 @@ class ClientService {
             sanitized.package_id = sanitized.packageId;
             delete sanitized.packageId;
         }
+        if (sanitized.gender !== undefined) {
+            sanitized.gender = sanitized.gender;
+        }
         if (sanitized.procedurePhotos !== undefined && sanitized.procedure_photos === undefined) {
             sanitized.procedure_photos = sanitized.procedurePhotos;
             delete sanitized.procedurePhotos;
