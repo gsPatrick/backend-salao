@@ -403,10 +403,10 @@ class AppointmentService {
 
     // --- PRIVATE HELPER: Handle side-effects of concluding an appointment (finance, stats, session count) ---
     async _handleStatusChangeSideEffects(appointmentInstance, status, tenantId, sessionsConsumed = 1) {
-        const oldStatus = appointmentInstance.status;
-        const completionStatuses = ['concluido'];
-        const isConcluding = completionStatuses.includes(status);
-        const wasConcluding = completionStatuses.includes(oldStatus);
+        const appointmentStatus = (appointmentInstance.status || '').toLowerCase();
+        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+        const isConcluding = completionStatuses.includes(status.toLowerCase());
+        const wasConcluding = completionStatuses.includes(appointmentStatus);
         const updateData = {};
 
         // Auto-fill date/time if missing and concluding
@@ -621,7 +621,8 @@ class AppointmentService {
 
     async cancel(id, tenantId, reason = null) {
         const appointment = await this.getById(id, tenantId);
-        if (['concluido', 'atendido'].includes(appointment.status.toLowerCase())) {
+        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+        if (completionStatuses.includes(appointment.status.toLowerCase())) {
             return this.refund(id, reason || 'Cancelado pelo administrador', tenantId);
         }
         return this.updateStatus(id, 'cancelado', tenantId);
@@ -638,7 +639,8 @@ class AppointmentService {
 
         if (!appointment) throw new Error('Agendamento não encontrado');
 
-        const oldStatus = appointment.status.toLowerCase();
+        const oldStatus = (appointment.status || '').toLowerCase();
+        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
 
         // Update appointment status and reason
         await appointment.update({
@@ -647,8 +649,8 @@ class AppointmentService {
             canceled_at: new Date()
         });
 
-        // Revert Session Counter if it was previously concluded/atendido
-        if (['concluido', 'atendido'].includes(oldStatus)) {
+        // Revert Session Counter if it was previously considered "concluded"
+        if (completionStatuses.includes(oldStatus)) {
             try {
                 // Models are already imported at top level, no need to re-require
 

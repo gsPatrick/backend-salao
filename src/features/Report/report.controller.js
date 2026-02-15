@@ -8,7 +8,10 @@ exports.getFinancial = async (req, res) => {
         const headerUnitId = req.headers['x-unit-id'];
         const unitId = queryUnitId || headerUnitId;
 
-        const where = { tenant_id: tenantId };
+        const where = {
+            tenant_id: tenantId,
+            status: { [Op.in]: ['pago', 'paid'] }
+        };
 
         if (unitId) {
             where.unit_id = unitId;

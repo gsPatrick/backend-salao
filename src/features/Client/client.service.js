@@ -700,7 +700,7 @@ class ClientService {
         const { Appointment, Service, MonthlyPackage, SalonPlan } = require('../../models');
         const { Op } = require('sequelize');
 
-        const completionStatuses = ['concluido'];
+        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
 
         const appointments = await Appointment.findAll({
             where: {
