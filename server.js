@@ -12,6 +12,10 @@ async function startServer() {
         await sequelize.authenticate();
         console.log('✅ Database connection established successfully');
 
+        // Ensure Schema is up to date (Fix for missing columns like classifications)
+        const { ensureCRMSchema } = require('./src/utils/schema_fix');
+        await ensureCRMSchema(sequelize);
+
         // ⚠️ DISABLING sequelize.sync({ alter: true })
         // We now rely on migrations (npm run db:migrate) for database schema changes.
         // This avoids errors with complex type changes like converted columns to JSONB.
