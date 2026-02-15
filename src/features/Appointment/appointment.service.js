@@ -440,7 +440,8 @@ class AppointmentService {
                         description: `Atendimento: ${appointmentInstance.client?.name || 'Cliente'} - ${appointmentInstance.service?.name || 'Serviço'}`,
                         status: 'pago',
                         unit_id: appointmentInstance.unit_id || appointmentInstance.client?.preferred_unit || null,
-                        appointment_id: appointmentInstance.id
+                        appointment_id: appointmentInstance.id,
+                        client_id: appointmentInstance.client_id
                     };
 
                     await financeService.create(transactionData, tenantId);
@@ -676,7 +677,8 @@ class AppointmentService {
                     description: `Estorno: ${appointment.client?.name || 'Cliente'} - ${appointment.service?.name || 'Serviço'} (Motivo: ${reason})`,
                     status: 'pago',
                     unit_id: appointment.unit_id,
-                    appointment_id: appointment.id
+                    appointment_id: appointment.id,
+                    client_id: appointment.client_id
                 }, tenantId);
 
             } catch (error) {

@@ -1,4 +1,4 @@
-const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage, SalonPlan, SalonPlanSubscription } = require('../../models');
+const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage, SalonPlan, SalonPlanSubscription, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
 class ClientService {
@@ -583,7 +583,8 @@ class ClientService {
                         description: `Venda de Plano: ${plan.name} para ${client.name}`,
                         status: 'pago',
                         payment_method: newData.payment_method || newData.paymentMethod || 'Dinheiro',
-                        unit_id: unitId
+                        unit_id: unitId,
+                        client_id: id
                     }, tenantId);
                 } catch (err) {
                     console.error('[Finance Hook Error] Plan Subscription:', err);
@@ -635,7 +636,8 @@ class ClientService {
                         description: `Venda de Pacote: ${pkg.name} para ${client.name}`,
                         status: 'pago',
                         payment_method: newData.payment_method || newData.paymentMethod || 'Dinheiro',
-                        unit_id: unitId
+                        unit_id: unitId,
+                        client_id: id
                     }, tenantId);
                 } catch (err) {
                     console.error('[Finance Hook Error] Package Subscription:', err);
@@ -695,103 +697,83 @@ class ClientService {
         });
     }
     async updateStatistics(clientId) {
-        const { Appointment, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription } = require('../../models');
+        const { Appointment, Service, FinancialTransaction, Client } = require('../../models');
         const { Op } = require('sequelize');
 
-        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+        const client = await Client.findByPk(clientId);
+        if (!client) return;
 
-        // 1. Get all completed standalone appointments
-        const appointments = await Appointment.findAll({
+        const dbCompletionStatuses = ['concluido'];
+        const legacyCompletionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+
+        // 1. Calculate total visits from ALL completed appointments (standalone or package)
+        // Using raw SQL to bypass model issues with columns like created_at
+        const dbCompleted = await sequelize.query(`
+            SELECT a.id, a.date, a.time, a.service_id, a.package_id, a.salon_plan_id, s.name as service_name
+            FROM appointments a
+            LEFT JOIN services s ON a.service_id = s.id
+            WHERE a.client_id = :clientId 
+            AND a.status IN (:statuses)
+        `, {
+            replacements: { clientId, statuses: dbCompletionStatuses },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        const legacyHistory = client.history || [];
+        const legacyCompleted = legacyHistory.filter(h =>
+            legacyCompletionStatuses.includes((h.status || '').toLowerCase())
+        );
+
+        // We use a Set to avoid double counting if an appointment exists both in DB and JSONB 
+        // (though transformClient should have handled this, we be safe here)
+        const totalVisits = dbCompleted.length + legacyCompleted.filter(lh =>
+            !dbCompleted.some(db => db.date === lh.date && db.time === lh.time)
+        ).length;
+
+        const lastVisit = dbCompleted.length > 0 ? dbCompleted[0].date : (legacyCompleted.length > 0 ? legacyCompleted[0].date : null);
+
+        // 2. Sum Total Spent from Financial Transactions (MOST ACCURATE)
+        const transactions = await FinancialTransaction.findAll({
             where: {
                 client_id: clientId,
-                status: { [Op.in]: completionStatuses },
-                package_id: null,
-                salon_plan_id: null
-            },
-            include: [{ model: Service, as: 'service' }],
-            order: [['date', 'DESC'], ['time', 'DESC']]
-        });
-
-        // 2. Get all package subscriptions for this client
-        const packageSubs = await PackageSubscription.findAll({
-            where: { client_id: clientId, status: { [Op.ne]: 'canceled' } },
-            include: [{ model: MonthlyPackage, as: 'package' }]
-        });
-
-        // 3. Get all plan subscriptions for this client
-        const planSubs = await SalonPlanSubscription.findAll({
-            where: { client_id: clientId, status: { [Op.ne]: 'canceled' } },
-            include: [{ model: SalonPlan, as: 'plan' }]
-        });
-
-        // 4. Calculate total visits from ALL completed appointments (standalone or package)
-        const allCompleted = await Appointment.findAll({
-            where: {
-                client_id: clientId,
-                status: { [Op.in]: completionStatuses }
+                status: 'pago',
+                type: { [Op.in]: ['receita', 'income', 'despesa', 'expense'] }
             }
         });
-        const totalVisits = allCompleted.length;
-        const lastVisit = allCompleted.length > 0 ? allCompleted[0].date : null;
 
         let totalSpent = 0;
-        const serviceCounts = {};
-
-        // Sum standalone services
-        appointments.forEach(apt => {
-            let price = parseFloat(apt.price) || 0;
-            if (price > 10000 && price % 100 === 0) price /= 100; // Heuristic fix
-            totalSpent += price;
-
-            let name = apt.service?.name || 'Serviço';
-            serviceCounts[name] = (serviceCounts[name] || 0) + 1;
-        });
-
-        // Sum Package Subscriptions
-        packageSubs.forEach(sub => {
-            const price = parseFloat(sub.package?.price || 0);
-            totalSpent += price;
-            const name = sub.package?.name || 'Pacote';
-            serviceCounts[name] = (serviceCounts[name] || 0) + (sub.clicks || 0);
-        });
-
-        // Sum Plan Subscriptions
-        planSubs.forEach(sub => {
-            const price = parseFloat(sub.plan?.price || 0);
-            totalSpent += price;
-            const name = sub.plan?.name || 'Plano';
-            serviceCounts[name] = (serviceCounts[name] || 0) + (sub.used_sessions || 0);
-        });
-
-        // Special case: If user sees "Agendado" items with prices in history and wants them counted (like in the screenshot)
-        // those are often appointments that ALREADY have a price set manually.
-        const agendadoWithPrice = await Appointment.findAll({
-            where: {
-                client_id: clientId,
-                status: 'agendado',
-                price: { [Op.gt]: 0 },
-                package_id: null,
-                salon_plan_id: null
+        transactions.forEach(t => {
+            const amount = parseFloat(t.amount) || 0;
+            if (t.type === 'receita' || t.type === 'income') {
+                totalSpent += amount;
+            } else {
+                totalSpent -= amount; // Deduct Estornos / Expenses
             }
         });
-        agendadoWithPrice.forEach(apt => {
-            let price = parseFloat(apt.price) || 0;
-            if (price > 10000 && price % 100 === 0) price /= 100;
-            totalSpent += price;
+
+        // 3. Service Frequency (From appointments + history)
+        const serviceCounts = {};
+        dbCompleted.forEach(apt => {
+            const name = apt.service_name || 'Serviço';
+            serviceCounts[name] = (serviceCounts[name] || 0) + 1;
+        });
+        legacyCompleted.forEach(lh => {
+            const name = lh.name || 'Serviço';
+            serviceCounts[name] = (serviceCounts[name] || 0) + 1;
         });
 
         const averageTicket = totalVisits > 0 ? totalSpent / totalVisits : 0;
         const mostFrequentService = Object.keys(serviceCounts).reduce((a, b) => serviceCounts[a] > serviceCounts[b] ? a : b, null);
 
-        await Client.update({
+        await client.update({
             total_visits: totalVisits,
             last_visit: lastVisit,
             total_spent: totalSpent,
             average_ticket: averageTicket,
             most_frequent_service: mostFrequentService
-        }, { where: { id: clientId } });
+        });
 
-        console.log(`[Stats Update] Client ${clientId}: ${totalVisits} visits, total spent: ${totalSpent}, most freq: ${mostFrequentService}`);
+        console.log(`[Stats Update] Client ${clientId}: ${totalVisits} visits, total spent: ${totalSpent.toFixed(2)}, avg ticket: ${averageTicket.toFixed(2)}`);
     }
 }
 

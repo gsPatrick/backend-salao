@@ -310,7 +310,8 @@ exports.createSubscription = async (req, res) => {
                 description: `Venda de Pacote: ${pkg.name} para ${clientName || 'Cliente'}`,
                 status: 'pago',
                 payment_method: data.payment_method || data.paymentMethod || 'Dinheiro',
-                unit_id: unitId
+                unit_id: unitId,
+                client_id: data.clientId
             }, tenantId);
         } catch (err) {
             console.error('[Finance Hook Error] Package Subscription (Direct):', err);

@@ -165,6 +165,32 @@ exports.createSubscription = async (req, res) => {
             total_sessions: parseInt(plan.sessions) || null
         });
 
+        // Record financial transaction for the full plan value
+        try {
+            const financeService = require('../Finance/finance.service');
+            const { Client } = require('../../models');
+            let clientName = data.clientName;
+
+            if (data.clientId && !clientName) {
+                const client = await Client.findByPk(data.clientId);
+                if (client) clientName = client.name;
+            }
+
+            await financeService.create({
+                type: 'receita',
+                category: 'Venda de Plano',
+                amount: plan.price,
+                date: new Date().toISOString().split('T')[0],
+                description: `Venda de Plano: ${plan.name} para ${clientName || 'Cliente'}`,
+                status: 'pago',
+                payment_method: data.payment_method || data.paymentMethod || 'Dinheiro',
+                unit_id: unitId,
+                client_id: data.clientId
+            }, tenantId);
+        } catch (err) {
+            console.error('[Finance Hook Error] Salon Plan Subscription:', err);
+        }
+
         res.json(sub);
     } catch (error) {
         console.error('Error creating plan subscription:', error);

@@ -67,6 +67,14 @@ module.exports = (sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: true,
         },
+        createdAt: {
+            type: DataTypes.DATE,
+            field: 'created_at'
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            field: 'updated_at'
+        },
         // NEW: Payment Status for individual appointments
         payment_status: {
             type: DataTypes.ENUM('pending', 'paid', 'linked_to_package', 'refunded'),
