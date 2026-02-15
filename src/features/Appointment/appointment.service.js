@@ -404,7 +404,7 @@ class AppointmentService {
     // --- PRIVATE HELPER: Handle side-effects of concluding an appointment (finance, stats, session count) ---
     async _handleStatusChangeSideEffects(appointmentInstance, status, tenantId, sessionsConsumed = 1) {
         const appointmentStatus = (appointmentInstance.status || '').toLowerCase();
-        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+        const completionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
         const isConcluding = completionStatuses.includes(status.toLowerCase());
         const wasConcluding = completionStatuses.includes(appointmentStatus);
         const updateData = {};
@@ -622,7 +622,7 @@ class AppointmentService {
 
     async cancel(id, tenantId, reason = null) {
         const appointment = await this.getById(id, tenantId);
-        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+        const completionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
         if (completionStatuses.includes(appointment.status.toLowerCase())) {
             return this.refund(id, reason || 'Cancelado pelo administrador', tenantId);
         }
@@ -641,7 +641,7 @@ class AppointmentService {
         if (!appointment) throw new Error('Agendamento não encontrado');
 
         const oldStatus = (appointment.status || '').toLowerCase();
-        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+        const completionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
 
         // Update appointment status and reason
         await appointment.update({

@@ -222,8 +222,13 @@ exports.updateSubscription = async (req, res) => {
 exports.deleteSubscription = async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const { id } = req.params;
+        let { id } = req.params;
         const { isVirtual, clientId } = req.query;
+
+        // Sanitize ID: Remove virtual prefixes like 'apt-' or 'legacy-'
+        if (typeof id === 'string' && (id.startsWith('apt-') || id.startsWith('legacy-'))) {
+            id = id.replace(/^(apt-|legacy-)/, '');
+        }
 
         if (isVirtual === 'true' && clientId) {
             console.log(`[Delete] Virtual Plan Subscription: planId=${id}, clientId=${clientId}`);

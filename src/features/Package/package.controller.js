@@ -379,8 +379,13 @@ exports.updateSubscription = async (req, res) => {
 exports.deleteSubscription = async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const { id } = req.params;
+        let { id } = req.params;
         const { isVirtual, clientId } = req.query;
+
+        // Sanitize ID: Remove virtual prefixes like 'apt-' or 'legacy-'
+        if (typeof id === 'string' && (id.startsWith('apt-') || id.startsWith('legacy-'))) {
+            id = id.replace(/^(apt-|legacy-)/, '');
+        }
 
         // Virtual items come from history without a formal subscription record
         if (isVirtual === 'true' && clientId) {

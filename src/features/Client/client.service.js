@@ -704,7 +704,7 @@ class ClientService {
         if (!client) return;
 
         const dbCompletionStatuses = ['concluido'];
-        const legacyCompletionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+        const legacyCompletionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
 
         // 1. Calculate total visits from ALL completed appointments (standalone or package)
         // Using raw SQL to bypass model issues with columns like created_at

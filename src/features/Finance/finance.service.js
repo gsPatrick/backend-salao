@@ -111,7 +111,7 @@ class FinanceService {
         console.log(`[Finance Summary] Filtered Receitas: ${receitasArr.length}, Total: ${receitas}`);
         console.log(`[Finance Summary] Filtered Despesas: ${despesasArr.length}, Total: ${despesas}`);
 
-        const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
+        const completionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
         const atendimentos = appointments.filter(a => completionStatuses.includes((a.status || '').toLowerCase())).length;
         const ticket_medio = atendimentos > 0 ? receitas / atendimentos : 0;
 
