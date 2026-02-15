@@ -379,16 +379,57 @@ exports.deleteSubscription = async (req, res) => {
     try {
         const tenantId = req.tenantId;
         const { id } = req.params;
+        const { isVirtual, clientId } = req.query;
 
-        // Delete all appointments associated with this subscription first
-        await Appointment.destroy({
-            where: {
-                package_subscription_id: id,
-                tenant_id: tenantId
+        // Virtual items come from history without a formal subscription record
+        if (isVirtual === 'true' && clientId) {
+            console.log(`[Delete] Virtual Package Subscription: packageId=${id}, clientId=${clientId}`);
+            await Appointment.destroy({
+                where: {
+                    package_id: id,
+                    client_id: clientId,
+                    tenant_id: tenantId
+                }
+            });
+            return res.json({ success: true, message: 'Agendamentos do pacote excluídos com sucesso' });
+        }
+
+        // For real subscriptions, we delete appointments linked to this subscription ID
+        // AND we attempt to delete the subscription itself
+        const subscription = await PackageSubscription.findOne({ where: { id, tenant_id: tenantId } });
+
+        if (subscription) {
+            // Delete appointments linked by subscription ID
+            await Appointment.destroy({
+                where: {
+                    package_subscription_id: id,
+                    tenant_id: tenantId
+                }
+            });
+
+            // FALLBACK: Also delete by (client_id + package_id) to catch loose appointments
+            if (subscription.client_id && subscription.package_id) {
+                await Appointment.destroy({
+                    where: {
+                        package_id: subscription.package_id,
+                        client_id: subscription.client_id,
+                        tenant_id: tenantId,
+                        package_subscription_id: null // Only if not already caught
+                    }
+                });
             }
-        });
 
-        await PackageSubscription.destroy({ where: { id, tenant_id: tenantId } });
+            await subscription.destroy();
+        } else {
+            // If subscription not found, just try cleaning up appointments for this ID as fallback
+            await Appointment.destroy({
+                where: {
+                    package_subscription_id: id,
+                    tenant_id: tenantId
+                }
+            });
+        }
+
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting subscription:', error);
