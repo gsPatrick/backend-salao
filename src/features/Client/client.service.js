@@ -166,24 +166,22 @@ class ClientService {
 
                 return {
                     id: apt.id,
-                    name,
-                    type,
-                    sessionInfo,
+                    name: apt.service?.name || apt.package?.name || apt.salon_plan?.name || 'Atendimento',
                     date: apt.date,
-                    time: apt.time,
+                    time: apt.time ? apt.time.substring(0, 5) : '00:00',
                     professional: apt.professional?.name || 'Profissional',
-                    professionalId: apt.professional?.id,
-                    professionalPhoto: apt.professional?.photo,
+                    professionalId: apt.professional_id,
                     status: apt.status,
-                    price: apt.price || apt.service?.price || '0',
-                    reviewed: apt.reviewed || false,
-                    rating: apt.rating,
-                    service_id: serviceId,
+                    // If height price is 0, try to get from package/plan for display purposes
+                    price: (parseFloat(apt.price) > 0) ? apt.price : (apt.package?.price || apt.salon_plan?.price || apt.service?.price || '0'),
                     package_id: apt.package_id,
                     salon_plan_id: apt.salon_plan_id,
-                    consumed_sessions: Number(apt.consumed_sessions || 0),
+                    type: apt.package_id ? 'Pacote' : (apt.salon_plan_id ? 'Plano' : 'Serviço'),
+                    total_sessions: apt.total_sessions || 0,
+                    consumed_sessions: apt.consumed_sessions || 0,
                     session_index: apt.session_index,
-                    total_sessions: Number(apt.total_sessions || (apt.package?.sessions ? parseInt(apt.package.sessions) : (apt.salon_plan?.sessions ? parseInt(apt.salon_plan.sessions) : 0)))
+                    service_id: apt.service_id,
+                    payment_status: apt.payment_status
                 };
             });
 
@@ -697,51 +695,89 @@ class ClientService {
         });
     }
     async updateStatistics(clientId) {
-        const { Appointment, Service, MonthlyPackage, SalonPlan } = require('../../models');
+        const { Appointment, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription } = require('../../models');
         const { Op } = require('sequelize');
 
         const completionStatuses = ['concluido', 'concluído', 'finalizado', 'atendido', 'pago'];
 
+        // 1. Get all completed standalone appointments
         const appointments = await Appointment.findAll({
             where: {
                 client_id: clientId,
-                status: { [Op.in]: completionStatuses }
+                status: { [Op.in]: completionStatuses },
+                package_id: null,
+                salon_plan_id: null
             },
-            include: [
-                { model: Service, as: 'service' },
-                { model: MonthlyPackage, as: 'package' },
-                { model: SalonPlan, as: 'salon_plan' }
-            ],
+            include: [{ model: Service, as: 'service' }],
             order: [['date', 'DESC'], ['time', 'DESC']]
         });
 
-        const totalVisits = appointments.length;
-        const lastVisit = appointments.length > 0 ? appointments[0].date : null;
+        // 2. Get all package subscriptions for this client
+        const packageSubs = await PackageSubscription.findAll({
+            where: { client_id: clientId, status: { [Op.ne]: 'canceled' } },
+            include: [{ model: MonthlyPackage, as: 'package' }]
+        });
+
+        // 3. Get all plan subscriptions for this client
+        const planSubs = await SalonPlanSubscription.findAll({
+            where: { client_id: clientId, status: { [Op.ne]: 'canceled' } },
+            include: [{ model: SalonPlan, as: 'plan' }]
+        });
+
+        // 4. Calculate total visits from ALL completed appointments (standalone or package)
+        const allCompleted = await Appointment.findAll({
+            where: {
+                client_id: clientId,
+                status: { [Op.in]: completionStatuses }
+            }
+        });
+        const totalVisits = allCompleted.length;
+        const lastVisit = allCompleted.length > 0 ? allCompleted[0].date : null;
 
         let totalSpent = 0;
         const serviceCounts = {};
 
+        // Sum standalone services
         appointments.forEach(apt => {
             let price = parseFloat(apt.price) || 0;
-
-            // SANITY CHECK: Fix for "20k vs 200" bug.
-            // If price uses comma as decimal separator in string, it might be parsed wrong or if stored as cents.
-            // However, primarily we suspect data entry error or cents conversion.
-            // Logic: If a single service costs > 5000, it's suspiciously high for a salon (unless it's a huge package).
-            // But if it's 20000 exactly, it's likely 200.00 * 100.
-            if (price > 10000 && price % 100 === 0) {
-                // Heuristic: If > 10k and multiple of 100, divide by 100.
-                price = price / 100;
-            }
-
+            if (price > 10000 && price % 100 === 0) price /= 100; // Heuristic fix
             totalSpent += price;
 
-            let name = 'Serviço';
-            if (apt.service?.name) name = apt.service.name;
-            else if (apt.package?.name) name = apt.package.name;
-            else if (apt.salon_plan?.name) name = apt.salon_plan.name;
-
+            let name = apt.service?.name || 'Serviço';
             serviceCounts[name] = (serviceCounts[name] || 0) + 1;
+        });
+
+        // Sum Package Subscriptions
+        packageSubs.forEach(sub => {
+            const price = parseFloat(sub.package?.price || 0);
+            totalSpent += price;
+            const name = sub.package?.name || 'Pacote';
+            serviceCounts[name] = (serviceCounts[name] || 0) + (sub.clicks || 0);
+        });
+
+        // Sum Plan Subscriptions
+        planSubs.forEach(sub => {
+            const price = parseFloat(sub.plan?.price || 0);
+            totalSpent += price;
+            const name = sub.plan?.name || 'Plano';
+            serviceCounts[name] = (serviceCounts[name] || 0) + (sub.used_sessions || 0);
+        });
+
+        // Special case: If user sees "Agendado" items with prices in history and wants them counted (like in the screenshot)
+        // those are often appointments that ALREADY have a price set manually.
+        const agendadoWithPrice = await Appointment.findAll({
+            where: {
+                client_id: clientId,
+                status: 'agendado',
+                price: { [Op.gt]: 0 },
+                package_id: null,
+                salon_plan_id: null
+            }
+        });
+        agendadoWithPrice.forEach(apt => {
+            let price = parseFloat(apt.price) || 0;
+            if (price > 10000 && price % 100 === 0) price /= 100;
+            totalSpent += price;
         });
 
         const averageTicket = totalVisits > 0 ? totalSpent / totalVisits : 0;
