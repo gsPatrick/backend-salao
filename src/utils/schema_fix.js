@@ -19,7 +19,7 @@ async function ensureCRMSchema(sequelize) {
             console.log('[Schema Fix] Column "classifications" not found. Adding it now...');
             await sequelize.query(`
                 ALTER TABLE crm_settings 
-                ADD COLUMN classifications JSONB DEFAULT '[{"text": "VIP", "icon": "👑"}, {"text": "Potencial", "icon": "💡"}, {"text": "Retorno", "icon": "🔄"}]'
+                ADD COLUMN classifications JSONB DEFAULT '[{"icon": "💎", "text": "Recorrente"}, {"icon": "⭐", "text": "Novo"}, {"icon": "✅", "text": "Agendado"}, {"icon": "❌", "text": "Faltou"}, {"icon": "⏳", "text": "Inativo"}]'
             `);
             console.log('[Schema Fix] Column "classifications" added successfully.');
         } else {
