@@ -21,6 +21,8 @@ class AppointmentService {
                 { model: Client, as: 'client' },
                 { model: Professional, as: 'professional' },
                 { model: Service, as: 'service' },
+                { model: MonthlyPackage, as: 'package' },
+                { model: SalonPlan, as: 'salon_plan' },
             ],
             order: [['date', 'ASC'], ['time', 'ASC']],
         });
@@ -59,6 +61,8 @@ class AppointmentService {
                 { model: Client, as: 'client' },
                 { model: Professional, as: 'professional' },
                 { model: Service, as: 'service' },
+                { model: MonthlyPackage, as: 'package' },
+                { model: SalonPlan, as: 'salon_plan' },
             ],
         });
         if (!appointment) throw new Error('Agendamento não encontrado');
