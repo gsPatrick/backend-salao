@@ -29,6 +29,18 @@ class CRMAutomationService {
                 await this.handleBirthdaysDaily(tenantId, birthdayStage, activeActions);
             }
         }
+
+        // Check for Inactive Clients (60+ days)
+        const inactiveStage = settings.funnel_stages.find(s => s.id === 'inactive');
+        if (inactiveStage) {
+            await this.handleInactiveDaily(tenantId, inactiveStage);
+        }
+
+        // Check for Recurrent Clients (active within 60 days)
+        const recurrentStage = settings.funnel_stages.find(s => s.id === 'recurrent');
+        if (recurrentStage) {
+            await this.handleRecurrentDaily(tenantId, recurrentStage);
+        }
     }
 
     // --- Real-time Handlers (triggered by Service Hooks) ---
@@ -135,6 +147,64 @@ class CRMAutomationService {
             await aiService.processMessage(tenantId, client.phone, `[SISTEMA: CRM - ${stage.title} - ${action.title}]`, false, context);
         } catch (error) {
             console.error(`[CRM Robot] Error triggering AI action '${action.title}' for ${client.phone}:`, error);
+        }
+    }
+    async handleInactiveDaily(tenantId, stage) {
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+        const dateStr = sixtyDaysAgo.toISOString().split('T')[0];
+
+        // Find clients with lastVisit older than 60 days AND not already in 'inactive' stage
+        const clients = await Client.findAll({
+            where: {
+                tenant_id: tenantId,
+                lastVisit: { [Op.lt]: dateStr },
+                crm_stage: { [Op.ne]: 'inactive' }
+            }
+        });
+
+        if (clients.length > 0) {
+            console.log(`[CRM Automation] Found ${clients.length} clients to move to Inactive (60+ days)`);
+            for (const client of clients) {
+                await client.update({ crm_stage: 'inactive', classification: 'Inativo' });
+
+                // Trigger AI Actions if any
+                if (stage.ai_actions && Array.isArray(stage.ai_actions)) {
+                    for (const action of stage.ai_actions) {
+                        if (action.active) {
+                            try {
+                                await this.triggerRobotAction(tenantId, client, stage, action);
+                            } catch (err) {
+                                console.error(`[CRM Automation] Error triggering action for inactive client ${client.id}:`, err);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    async handleRecurrentDaily(tenantId, stage) {
+        // Move clients who are NOT inactive (lastVisit < 60 days ago) 
+        // AND are currently in 'inactive' to 'recurrent' (revival)
+
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+        const dateStr = sixtyDaysAgo.toISOString().split('T')[0];
+
+        const clients = await Client.findAll({
+            where: {
+                tenant_id: tenantId,
+                lastVisit: { [Op.gte]: dateStr },
+                crm_stage: 'inactive'
+            }
+        });
+
+        if (clients.length > 0) {
+            console.log(`[CRM Automation] Found ${clients.length} clients to revive from Inactive to Recurrent`);
+            for (const client of clients) {
+                await client.update({ crm_stage: 'recurrent', classification: 'Recorrente' });
+            }
         }
     }
 }
