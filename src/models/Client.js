@@ -88,6 +88,10 @@ const Client = sequelize.define('client', {
         defaultValue: 'new', // 'new', 'contacted', 'scheduled', 'won', 'lost'
         allowNull: true
     },
+    classification: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     how_found_us: {
         type: DataTypes.STRING, // Acquisition Channel
         allowNull: true

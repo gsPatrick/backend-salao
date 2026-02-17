@@ -534,6 +534,7 @@ class ClientService {
         const oldPlanId = client.plan_id;
         const oldPackageId = client.package_id;
         const sanitizedData = this.sanitizeClientData(data);
+        console.log(`[ClientService] Sanitized data for client ${id}:`, JSON.stringify(sanitizedData));
         await client.update(sanitizedData);
 
         // Handle plan and package subscriptions

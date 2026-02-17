@@ -34,6 +34,7 @@ class ClientController {
 
     async update(req, res) {
         try {
+            console.log(`[ClientController] Updating client ${req.params.id} with data:`, JSON.stringify(req.body));
             const unitId = req.headers['x-unit-id'] || req.body.unitId;
             const client = await clientService.update(req.params.id, { ...req.body, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
 
