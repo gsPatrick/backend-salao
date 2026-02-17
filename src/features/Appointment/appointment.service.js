@@ -299,10 +299,39 @@ class AppointmentService {
                 payment_status: data.payment_status || ((packageSubId || salonPlanSubId) ? 'linked_to_package' : 'pending')
             }, { transaction: t });
 
-            // AUTOMATION: Move to 'scheduled' funnel if status is valid
+            // AUTOMATION: Move to 'scheduled' or 'recurrent' funnel if status is valid
             if (['agendado', 'confirmado'].includes(appointment.status)) {
+                // Check if client has other appointments (excluding this one) to determine recurrence
+                const existingAppointmentsCount = await Appointment.count({
+                    where: {
+                        client_id: appointment.client_id,
+                        id: { [Op.ne]: appointment.id }, // Exclude current
+                        status: { [Op.notIn]: ['cancelado', 'faltou'] } // Only count valid appointments
+                    },
+                    transaction: t
+                });
+
+                let newStage = 'scheduled';
+                let defaultIcon = '✅';
+                let defaultTitle = 'Agendados';
+
+                if (existingAppointmentsCount > 0) {
+                    newStage = 'recurrent';
+                    defaultIcon = '💎';
+                    defaultTitle = 'Recorrentes';
+                }
+
+                // Fetch dynamic tag from settings
+                const crmAutomationService = require('../../services/crm_automation.service');
+                const newClassification = await crmAutomationService.getStageClassification(
+                    appointment.tenant_id,
+                    newStage,
+                    defaultIcon,
+                    defaultTitle
+                );
+
                 await Client.update(
-                    { crm_stage: 'scheduled', classification: 'Agendado' },
+                    { crm_stage: newStage, classification: newClassification },
                     { where: { id: appointment.client_id }, transaction: t }
                 );
             }
@@ -612,10 +641,42 @@ class AppointmentService {
 
         await appointmentInstance.update(finalUpdates);
 
-        // AUTOMATION: Move to 'scheduled' funnel if status is valid
+        // AUTOMATION: Handle CRM Stage changes based on appointment status
         if (['agendado', 'confirmado'].includes(status)) {
+            // Re-evaluate if it should be 'scheduled' or 'recurrent'
+            const existingAppointmentsCount = await Appointment.count({
+                where: {
+                    client_id: appointmentInstance.client_id,
+                    id: { [Op.ne]: id }, // Exclude current
+                    status: { [Op.notIn]: ['cancelado', 'faltou'] }
+                }
+            });
+
+            let newStage = 'scheduled';
+            let newClassification = 'Agendado';
+
+            if (existingAppointmentsCount > 0) {
+                newStage = 'recurrent';
+                defaultIcon = '💎';
+                defaultTitle = 'Recorrentes';
+            }
+
+            // Fetch dynamic tag
+            const crmAutomationService = require('../../services/crm_automation.service');
+            newClassification = await crmAutomationService.getStageClassification(
+                tenantId,
+                newStage,
+                defaultIcon,
+                defaultTitle
+            );
+
             await Client.update(
-                { crm_stage: 'scheduled', classification: 'Agendado' },
+                { crm_stage: newStage, classification: newClassification },
+                { where: { id: appointmentInstance.client_id } }
+            );
+        } else if (status === 'faltou') {
+            await Client.update(
+                { crm_stage: 'absent', classification: 'Faltou' },
                 { where: { id: appointmentInstance.client_id } }
             );
         }

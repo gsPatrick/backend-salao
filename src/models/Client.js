@@ -92,6 +92,11 @@ const Client = sequelize.define('client', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    last_automated_move: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Timestamp of the last AI/Automation driven stage change'
+    },
     how_found_us: {
         type: DataTypes.STRING, // Acquisition Channel
         allowNull: true

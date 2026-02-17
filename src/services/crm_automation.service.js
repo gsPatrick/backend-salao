@@ -1,15 +1,36 @@
-const { Client, Appointment, CRMSettings, Tenant, AIChat } = require('../models');
-const { Op } = require('sequelize');
-const aiService = require('./ai.service');
-const whatsappService = require('./whatsapp.service');
+const crmAutomationExecutor = require('./crm_automation_executor.service');
+const { Plan } = require('../models');
 
 class CRMAutomationService {
+
+    async isAIEnabled(tenantId) {
+        const tenant = await Tenant.findByPk(tenantId, { include: [{ model: Plan, as: 'plan' }] });
+        if (!tenant || !tenant.plan) return false;
+        // Check for Pro/Premium or specific AI flag if added
+        const planName = tenant.plan.name.toLowerCase();
+        return ['pro', 'premium', 'superadmin', 'gold', 'diamond'].some(p => planName.includes(p));
+    }
+
     async runDailyChecks() {
         console.log('[CRM Automation] Starting daily checks...');
         const tenants = await Tenant.findAll();
 
         for (const tenant of tenants) {
             try {
+                // ROUTER: AI Daily Checks
+                if (await this.isAIEnabled(tenant.id)) {
+                    // Start Cron Job for this tenant via Executor (logic to occur in crm_cron)
+                    // But for now, we just skip legacy daily checks if we want full AI control
+                    // OR we let them run in parallel.
+                    // The plan said "Daily Cron Job... Checks inactivity".
+                    // We will implement that in a separate crm_cron.service.js as planned.
+                    // So here we might want to SKIP legacy checks to avoid double moves.
+                    console.log(`[CRM Automation] Tenant ${tenant.id} is AI Enabled. Creating Batch Job.`);
+                    const crmCron = require('./crm_automation_cron.service');
+                    await crmCron.processTenant(tenant.id);
+                    continue;
+                }
+
                 await this.processTenantCRM(tenant.id);
             } catch (error) {
                 console.error(`[CRM Automation] Error processing tenant ${tenant.id}:`, error);
@@ -46,6 +67,11 @@ class CRMAutomationService {
     // --- Real-time Handlers (triggered by Service Hooks) ---
 
     async handleNewClient(tenantId, client) {
+        // ROUTER: AI Real-time
+        if (await this.isAIEnabled(tenantId)) {
+            return crmAutomationExecutor.enqueue(tenantId, 'client_created', { clientId: client.id });
+        }
+
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         const stage = settings?.funnel_stages?.find(s => s.id === 'new');
         if (stage && stage.ai_actions && Array.isArray(stage.ai_actions)) {
@@ -58,14 +84,20 @@ class CRMAutomationService {
     }
 
     async handleScheduledToday(tenantId, client, appointment) {
+        // ROUTER: AI Real-time
+        if (await this.isAIEnabled(tenantId)) {
+            return crmAutomationExecutor.enqueue(tenantId, 'appointment_today', { clientId: client.id, appointmentId: appointment.id });
+        }
+
         const today = new Date().toISOString().split('T')[0];
         if (appointment.date !== today) return; // Only trigger for today's appointments
 
-        // Update Client CRM Stage
-        if (client.crm_stage !== 'scheduled') {
-            await client.update({ crm_stage: 'scheduled', classification: 'Agendado' });
-            console.log(`[CRM Automation] Client ${client.name} stage updated to 'scheduled'`);
-        }
+        // Update Client CRM Stage - HANDLED BY APPOINTMENT SERVICE NOW
+        // We do NOT want to overwrite 'recurrent' status here.
+        // if (client.crm_stage !== 'scheduled') {
+        //    await client.update({ crm_stage: 'scheduled', classification: 'Agendado' });
+        //    console.log(`[CRM Automation] Client ${client.name} stage updated to 'scheduled'`);
+        // }
 
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         const stage = settings?.funnel_stages?.find(s => s.id === 'scheduled');
@@ -79,6 +111,11 @@ class CRMAutomationService {
     }
 
     async handleAbsent(tenantId, client) {
+        // ROUTER: AI Real-time
+        if (await this.isAIEnabled(tenantId)) {
+            return crmAutomationExecutor.enqueue(tenantId, 'status_change_absent', { clientId: client.id });
+        }
+
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         const stage = settings?.funnel_stages?.find(s => s.id === 'absent');
         if (stage && stage.ai_actions && Array.isArray(stage.ai_actions)) {
@@ -91,6 +128,11 @@ class CRMAutomationService {
     }
 
     async handleRescheduled(tenantId, client, appointment) {
+        // ROUTER: AI Real-time
+        if (await this.isAIEnabled(tenantId)) {
+            return crmAutomationExecutor.enqueue(tenantId, 'status_change_rescheduled', { clientId: client.id, appointmentId: appointment.id });
+        }
+
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         const stage = settings?.funnel_stages?.find(s => s.id === 'rescheduled');
         if (stage && stage.ai_actions && Array.isArray(stage.ai_actions)) {
@@ -205,6 +247,19 @@ class CRMAutomationService {
             for (const client of clients) {
                 await client.update({ crm_stage: 'recurrent', classification: 'Recorrente' });
             }
+        }
+    }
+
+    async getStageClassification(tenantId, stageId, defaultIcon, defaultTitle) {
+        try {
+            const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
+            if (!settings || !settings.funnel_stages) return `${defaultIcon} ${defaultTitle}`;
+
+            const stage = settings.funnel_stages.find(s => s.id === stageId);
+            return stage ? `${stage.icon} ${stage.title}` : `${defaultIcon} ${defaultTitle}`;
+        } catch (error) {
+            console.error('[CRM Automation] Error fetching stage classification:', error);
+            return `${defaultIcon} ${defaultTitle}`;
         }
     }
 }

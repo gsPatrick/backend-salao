@@ -377,6 +377,7 @@ ${professionalsList}
             let messages = this.getSafeMessages(systemPrompt, historyCopy);
             let res = await this.openai.chat.completions.create({ model: "gpt-4o", messages, tools, tool_choice: "auto" });
             let assistantMessage = res.choices[0].message;
+
             while (assistantMessage.tool_calls) {
                 historyCopy.push(assistantMessage);
                 for (const toolCall of assistantMessage.tool_calls) {
@@ -387,8 +388,70 @@ ${professionalsList}
                 res = await this.openai.chat.completions.create({ model: "gpt-4o", messages, tools });
                 assistantMessage = res.choices[0].message;
             }
+
+            historyCopy.push(assistantMessage);
             return assistantMessage.content;
-        } catch (error) { return "Erro no processamento."; }
+        } catch (error) {
+            console.error('[AI V2.8 Test Error]:', error.message);
+            return "Erro no teste.";
+        }
+    }
+
+    async compileCRMActionRules(userDescription) {
+        if (!this.isConfigured()) return [];
+
+        const prompt = `
+        You are a CRM Rule Compiler.
+        Translate the User's Natural Language Description into a JSON Array of Rules.
+
+        # USER DESCRIPTION:
+        "${userDescription}"
+
+        # JSON SCHEMA OUTPUT (STRICT):
+        [
+          {
+            "trigger": "inactivity" | "time_in_stage" | "appointment_created" | "appointment_completed",
+            "conditions": {
+              "days_threshold": number (only for inactivity/time_in_stage),
+              "event_type": "created" | "completed" | "cancelled" (only for appointment events)
+            },
+            "action": {
+              "type": "move_client" | "send_message" | "notify_admin",
+              "params": {
+                 "target_stage": string (stage id or approximate name),
+                 "template": string (message content if sending message)
+              }
+            }
+          }
+        ]
+
+        # EXAMPLES:
+        Input: "Se o cliente ficar 30 dias sem vir, mova para Inativos."
+        Output: [{"trigger":"inactivity","conditions":{"days_threshold":30},"action":{"type":"move_client","params":{"target_stage":"inativos"}}}]
+
+        Input: "Quando o cliente agendar, mova para Agendados."
+        Output: [{"trigger":"appointment_created","conditions":{},"action":{"type":"move_client","params":{"target_stage":"scheduled"}}}]
+
+        RETURN ONLY JSON. NO MARKDOWN.
+        `;
+
+        try {
+            const response = await this.openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [{ role: "system", content: prompt }],
+                temperature: 0.1 // Deterministic
+            });
+
+            let content = response.choices[0].message.content.trim();
+            // Cleanup markdown if present
+            if (content.startsWith('```json')) content = content.replace(/^```json/, '').replace(/```$/, '');
+            else if (content.startsWith('```')) content = content.replace(/^```/, '').replace(/```$/, '');
+
+            return JSON.parse(content);
+        } catch (error) {
+            console.error('[AI Compiler] Error:', error);
+            return []; // Return empty array on failure
+        }
     }
 }
 
