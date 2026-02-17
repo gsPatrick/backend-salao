@@ -1,5 +1,5 @@
 const crmAutomationExecutor = require('./crm_automation_executor.service');
-const { Plan } = require('../models');
+const { Plan, Tenant } = require('../models');
 
 class CRMAutomationService {
 
