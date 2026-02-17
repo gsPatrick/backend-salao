@@ -63,7 +63,7 @@ class CRMAutomationService {
 
         // Update Client CRM Stage
         if (client.crm_stage !== 'scheduled') {
-            await client.update({ crm_stage: 'scheduled' });
+            await client.update({ crm_stage: 'scheduled', classification: 'Agendado' });
             console.log(`[CRM Automation] Client ${client.name} stage updated to 'scheduled'`);
         }
 
@@ -166,7 +166,7 @@ class CRMAutomationService {
         if (clients.length > 0) {
             console.log(`[CRM Automation] Found ${clients.length} clients to move to Inactive (60+ days)`);
             for (const client of clients) {
-                await client.update({ crm_stage: 'inactive', classification: 'Inativo' });
+                await client.update({ crm_stage: 'inactive', classification: 'Inativa' });
 
                 // Trigger AI Actions if any
                 if (stage.ai_actions && Array.isArray(stage.ai_actions)) {

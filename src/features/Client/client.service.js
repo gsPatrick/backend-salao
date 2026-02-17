@@ -511,7 +511,10 @@ class ClientService {
             unit_id: sanitizedData.unit_id,
             registration_date: sanitizedData.registration_date || new Date(),
             is_active: true,
-            is_complete_registration: sanitizedData.is_complete_registration !== undefined ? sanitizedData.is_complete_registration : true
+            is_complete_registration: sanitizedData.is_complete_registration !== undefined ? sanitizedData.is_complete_registration : true,
+            // CRM Defaults
+            crm_stage: sanitizedData.crm_stage || 'new',
+            classification: sanitizedData.classification || 'Nova'
         });
 
         // Create initial subscriptions if plan or package is provided on creation

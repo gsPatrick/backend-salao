@@ -299,6 +299,14 @@ class AppointmentService {
                 payment_status: data.payment_status || ((packageSubId || salonPlanSubId) ? 'linked_to_package' : 'pending')
             }, { transaction: t });
 
+            // AUTOMATION: Move to 'scheduled' funnel if status is valid
+            if (['agendado', 'confirmado'].includes(appointment.status)) {
+                await Client.update(
+                    { crm_stage: 'scheduled', classification: 'Agendado' },
+                    { where: { id: appointment.client_id }, transaction: t }
+                );
+            }
+
             // Update Client Statistics (Total Visits, Last Visit) - Absolute Sync
             const clientService = require('../Client/client.service');
             await clientService.updateStatistics(appointment.client_id);
@@ -398,6 +406,13 @@ class AppointmentService {
         } else if (data.status === 'agendado' && appointmentInstance.consumed_sessions > 0) {
             console.log(`[Status Safeguard] Appointment ${id} update blocking reversion to 'agendado' because consumed_sessions=${appointmentInstance.consumed_sessions}`);
             data.status = 'concluido';
+        }
+
+        if (data.status && ['agendado', 'confirmado'].includes(data.status)) {
+            await Client.update(
+                { crm_stage: 'scheduled', classification: 'Agendado' },
+                { where: { id: appointmentInstance.client_id } }
+            );
         }
 
         await appointmentInstance.update(data);
@@ -596,6 +611,14 @@ class AppointmentService {
         const finalUpdates = { status, ...sideEffectUpdates };
 
         await appointmentInstance.update(finalUpdates);
+
+        // AUTOMATION: Move to 'scheduled' funnel if status is valid
+        if (['agendado', 'confirmado'].includes(status)) {
+            await Client.update(
+                { crm_stage: 'scheduled', classification: 'Agendado' },
+                { where: { id: appointmentInstance.client_id } }
+            );
+        }
 
         // --- Post-update hooks (CRM, Client Status) ---
         const crmAutomationService = require('../../services/crm_automation.service');
