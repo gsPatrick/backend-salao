@@ -6,6 +6,7 @@ const { parseMonetaryValue } = require('../../utils/number');
 class AppointmentController {
     async getAll(req, res) {
         try {
+            console.log('[DEBUG] GET /appointments endpoint hit - Verifying Deployment');
             const unitId = req.headers['x-unit-id'] || req.query.unitId;
             const filters = { ...req.query };
             if (unitId) filters.unitId = unitId;
