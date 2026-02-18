@@ -1,5 +1,7 @@
 const crmAutomationExecutor = require('./crm_automation_executor.service');
-const { Plan, Tenant } = require('../models');
+const { Plan, Tenant, Client, CRMSettings } = require('../models');
+const { Op } = require('sequelize');
+const aiService = require('./ai.service');
 
 class CRMAutomationService {
 
