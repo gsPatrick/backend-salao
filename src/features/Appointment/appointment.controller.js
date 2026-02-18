@@ -54,13 +54,14 @@ class AppointmentController {
                     const professional = await Professional.findByPk(data.professional_id);
 
                     if (client && service && professional) {
-                        console.log(`[Appointment] Sending confirmation to ${client.phone}`);
-                        await whatsappService.sendAppointmentConfirmation(client, appointment, service, professional, { id: req.tenantId });
+                        console.log(`[Appointment] Queuing confirmation for ${client.phone}`);
+                        // Fire-and-forget: Don't await to prevent blocking the response
+                        whatsappService.sendAppointmentConfirmation(client, appointment, service, professional, { id: req.tenantId })
+                            .catch(err => console.error('[WhatsApp Hook Error] Failed to send confirmation:', err.message));
                     }
                 }
             } catch (msgError) {
-                console.error('Error sending appointment confirmation:', msgError.message);
-                // Don't block the response, just log
+                console.error('Error queuing appointment confirmation:', msgError.message);
             }
 
             res.status(201).json({ success: true, data: appointment });
