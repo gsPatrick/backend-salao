@@ -26,6 +26,7 @@ class AppointmentController {
     }
 
     async create(req, res) {
+        console.log('[AppointmentController] Create request received', { body: req.body, tenantId: req.tenantId });
         try {
             const unitId = req.headers['x-unit-id'] || req.body.unitId || req.body.unit_id;
             const sanitizedBody = { ...req.body };
@@ -40,7 +41,9 @@ class AppointmentController {
             if (!sanitizedBody.salon_plan_id && sanitizedBody.salonPlanId) sanitizedBody.salon_plan_id = sanitizedBody.salonPlanId;
 
             const data = { ...sanitizedBody, tenant_id: req.tenantId, unit_id: unitId };
+            console.log('[AppointmentController] Calling service.create...');
             const appointment = await appointmentService.create(data, req.tenantId, req.userId);
+            console.log('[AppointmentController] Service.create finished. Appointment ID:', appointment?.id);
 
             // --- Send Confirmation WhatsApp if Channel is Active ---
             try {
@@ -64,8 +67,10 @@ class AppointmentController {
                 console.error('Error queuing appointment confirmation:', msgError.message);
             }
 
+            console.log('[AppointmentController] Sending response 201');
             res.status(201).json({ success: true, data: appointment });
         } catch (error) {
+            console.error('[AppointmentController] Error in create:', error);
             res.status(400).json({ success: false, message: error.message });
         }
     }

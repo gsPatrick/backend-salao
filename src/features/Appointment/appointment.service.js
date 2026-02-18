@@ -117,8 +117,10 @@ class AppointmentService {
     }
 
     async create(data, tenantId, userId) {
+        console.log('[AppointmentService] Starting create transaction...');
         // Use a SERIALIZABLE transaction to prevent race conditions
         return sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE }, async (t) => {
+            console.log('[AppointmentService] Transaction started');
             // Normalize and Validate Status
             const allowedStatuses = ['agendado', 'confirmado', 'em_atendimento', 'concluido', 'faltou', 'cancelado', 'reagendado'];
             if (data.status) {
@@ -137,7 +139,8 @@ class AppointmentService {
                 throw error;
             }
 
-            // Check for conflicting appointment within transaction
+            // Check for conflict
+            console.log('[AppointmentService] Checking conflicts...');
             if (data.professional_id && data.date && data.time) {
                 const conflict = await Appointment.findOne({
                     where: {
@@ -287,6 +290,7 @@ class AppointmentService {
                 }
             }
 
+            console.log('[AppointmentService] Creating appointment record...');
             const appointment = await Appointment.create({
                 ...data,
                 tenant_id: tenantId,
@@ -298,6 +302,7 @@ class AppointmentService {
                 consumed_sessions: 0,
                 payment_status: data.payment_status || ((packageSubId || salonPlanSubId) ? 'linked_to_package' : 'pending')
             }, { transaction: t });
+            console.log('[AppointmentService] Appointment record created:', appointment.id);
 
             // AUTOMATION: Move to 'scheduled' or 'recurrent' funnel if status is valid
             if (['agendado', 'confirmado'].includes(appointment.status)) {
