@@ -117,10 +117,8 @@ class AppointmentService {
     }
 
     async create(data, tenantId, userId) {
-        console.log('[AppointmentService] Starting create transaction...');
         // Use a SERIALIZABLE transaction to prevent race conditions
-        return sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE }, async (t) => {
-            console.log('[AppointmentService] Transaction started');
+        return sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED }, async (t) => {
             // Normalize and Validate Status
             const allowedStatuses = ['agendado', 'confirmado', 'em_atendimento', 'concluido', 'faltou', 'cancelado', 'reagendado'];
             if (data.status) {
@@ -140,7 +138,6 @@ class AppointmentService {
             }
 
             // Check for conflict
-            console.log('[AppointmentService] Checking conflicts...');
             if (data.professional_id && data.date && data.time) {
                 const conflict = await Appointment.findOne({
                     where: {
@@ -167,6 +164,7 @@ class AppointmentService {
             }
 
             // Calculate end time based on item duration
+            console.log('--- DEBUG: resolving item ---');
             let item = null;
             let duration = 60; // Default duration
             let price = 0;
@@ -218,6 +216,7 @@ class AppointmentService {
             if (data.package_subscription_id) {
                 packageSubId = data.package_subscription_id;
             } else if (data.package_id) {
+                console.log('--- DEBUG: verifying package sub ---');
                 const pkg = item; // monthly package from previous block
                 const sessionsStr = pkg ? String(pkg.sessions || '') : '';
                 totalSessionsSnapshot = parseInt(sessionsStr, 10);
@@ -290,7 +289,7 @@ class AppointmentService {
                 }
             }
 
-            console.log('[AppointmentService] Creating appointment record...');
+            console.log('--- DEBUG: executing insert ---');
             const appointment = await Appointment.create({
                 ...data,
                 tenant_id: tenantId,
@@ -302,7 +301,7 @@ class AppointmentService {
                 consumed_sessions: 0,
                 payment_status: data.payment_status || ((packageSubId || salonPlanSubId) ? 'linked_to_package' : 'pending')
             }, { transaction: t });
-            console.log('[AppointmentService] Appointment record created:', appointment.id);
+            console.log('--- DEBUG: insert done ---');
 
             // AUTOMATION: Move to 'scheduled' or 'recurrent' funnel if status is valid
             if (['agendado', 'confirmado'].includes(appointment.status)) {
@@ -335,15 +334,23 @@ class AppointmentService {
                     defaultTitle
                 );
 
-                await Client.update(
-                    { crm_stage: newStage, classification: newClassification },
-                    { where: { id: appointment.client_id }, transaction: t }
-                );
+                // Move Client Update to afterCommit to avoid any locking issues with Appointment creation checks
+                t.afterCommit(() => {
+                    Client.update(
+                        { crm_stage: newStage, classification: newClassification },
+                        { where: { id: appointment.client_id } } // No transaction, autocommit
+                    ).catch(err => console.error('[CRM Update Error]', err));
+                });
             }
 
             // Update Client Statistics (Total Visits, Last Visit) - Absolute Sync
-            const clientService = require('../Client/client.service');
-            await clientService.updateStatistics(appointment.client_id);
+            // Fire-and-forget to prevent blocking response if stats calculation is slow
+            t.afterCommit(() => {
+                const clientService = require('../Client/client.service');
+                clientService.updateStatistics(appointment.client_id).catch(err => {
+                    console.error('[Statistics Hook Error] Failed to update client stats:', err);
+                });
+            });
 
             // If created directly as concluded, trigger side effects
             if (appointment.status === 'concluido') {
