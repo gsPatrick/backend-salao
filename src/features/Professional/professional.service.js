@@ -44,14 +44,15 @@ class ProfessionalService {
             order: [['name', 'ASC']],
         });
 
-        // Apply Social Name logic
+        // Apply Social Name logic (same as Client)
         return professionals.map(prof => {
             const data = prof.toJSON();
-            const useSocialName = data.use_social_name; // Professionals usually don't have preferences JSON yet
+            const useSocialName = data.use_social_name;
 
-            // Keep legal_name for consistency/legacy, but DO NOT swap data.name
             data.legal_name = data.name;
-
+            if (useSocialName && data.social_name) {
+                data.name = data.social_name;
+            }
             data.use_social_name = !!useSocialName;
             return data;
         });
@@ -65,10 +66,12 @@ class ProfessionalService {
         if (!professional) throw new Error('Profissional não encontrado');
 
         const data = professional.toJSON();
-        // Apply Social Name logic
+        // Apply Social Name logic (same as Client)
         const useSocialName = data.use_social_name;
-        // Keep legal_name for compatibility, but DO NOT swap name
         data.legal_name = data.name;
+        if (useSocialName && data.social_name) {
+            data.name = data.social_name;
+        }
         data.use_social_name = !!useSocialName;
 
         return data;
@@ -162,13 +165,15 @@ class ProfessionalService {
     }
 
     async delete(id, tenantId) {
-        const professional = await this.getById(id, tenantId);
+        const professional = await Professional.findOne({ where: { id, tenant_id: tenantId } });
+        if (!professional) throw new Error('Profissional não encontrado');
         await professional.update({ is_archived: true });
         return { message: 'Profissional arquivado' };
     }
 
     async purge(id, tenantId) {
-        const professional = await this.getById(id, tenantId);
+        const professional = await Professional.findOne({ where: { id, tenant_id: tenantId } });
+        if (!professional) throw new Error('Profissional não encontrado');
         try {
             await professional.destroy();
             return { message: 'Profissional excluído definitivamente' };
@@ -181,23 +186,27 @@ class ProfessionalService {
     }
 
     async suspend(id, tenantId) {
-        const professional = await this.getById(id, tenantId);
-        const current = professional.get('is_suspended');
-        professional.set('is_suspended', !current);
+        const professional = await Professional.findOne({ where: { id, tenant_id: tenantId } });
+        if (!professional) throw new Error('Profissional não encontrado');
+        professional.is_suspended = !professional.is_suspended;
         await professional.save();
-        return professional;
+        return this.getById(id, tenantId);
     }
 
     async archive(id, tenantId) {
-        const professional = await this.getById(id, tenantId);
-        const current = professional.get('is_archived');
-        professional.set('is_archived', !current);
+        const professional = await Professional.findOne({ where: { id, tenant_id: tenantId } });
+        if (!professional) throw new Error('Profissional não encontrado');
+        professional.is_archived = !professional.is_archived;
         await professional.save();
-        return professional;
+        return this.getById(id, tenantId);
     }
 
     async assignServices(id, serviceIds, tenantId) {
-        const professional = await this.getById(id, tenantId);
+        const professional = await Professional.findOne({
+            where: { id, tenant_id: tenantId },
+            include: [{ model: Service, as: 'services' }]
+        });
+        if (!professional) throw new Error('Profissional não encontrado');
         const services = await Service.findAll({
             where: { id: serviceIds, tenant_id: tenantId },
         });
