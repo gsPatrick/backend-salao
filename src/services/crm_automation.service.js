@@ -1,5 +1,5 @@
 const crmAutomationExecutor = require('./crm_automation_executor.service');
-const { Plan, Tenant, Client, CRMSettings } = require('../models');
+const { Plan, Tenant, Client, CRMSettings, AIChat } = require('../models');
 const { Op } = require('sequelize');
 const aiService = require('./ai.service');
 
@@ -41,10 +41,10 @@ class CRMAutomationService {
     }
 
     async processTenantCRM(tenantId) {
-        // Daily scan only for Birthdays (can't be real-time based on creation event)
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         if (!settings || !settings.funnel_stages) return;
 
+        // 1. Birthdays: Send message + apply tag "Parabéns"
         const birthdayStage = settings.funnel_stages.find(s => s.id === 'birthday');
         if (birthdayStage && birthdayStage.ai_actions && Array.isArray(birthdayStage.ai_actions)) {
             const activeActions = birthdayStage.ai_actions.filter(a => a.active);
@@ -53,13 +53,19 @@ class CRMAutomationService {
             }
         }
 
-        // Check for Inactive Clients (60+ days)
+        // 2. Remove birthday tags from yesterday's birthdays
+        await this.removeBirthdayTagsDaily(tenantId);
+
+        // 3. At-Risk Clients (30-59 days without visit)
+        await this.handleAtRiskDaily(tenantId, settings);
+
+        // 4. Inactive Clients (60+ days)
         const inactiveStage = settings.funnel_stages.find(s => s.id === 'inactive');
         if (inactiveStage) {
             await this.handleInactiveDaily(tenantId, inactiveStage);
         }
 
-        // Check for Recurrent Clients (active within 60 days)
+        // 5. Recurrent Clients (active within 60 days, revive from inactive)
         const recurrentStage = settings.funnel_stages.find(s => s.id === 'recurrent');
         if (recurrentStage) {
             await this.handleRecurrentDaily(tenantId, recurrentStage);
@@ -69,6 +75,12 @@ class CRMAutomationService {
     // --- Real-time Handlers (triggered by Service Hooks) ---
 
     async handleNewClient(tenantId, client) {
+        // Auto-qualify: apply 'Novo' tag
+        if (client.crm_stage !== 'new') {
+            await client.update({ crm_stage: 'new', classification: 'Novo' });
+            console.log(`[CRM Automation] Client ${client.name}: Tag 'Novo' applied`);
+        }
+
         // ROUTER: AI Real-time
         if (await this.isAIEnabled(tenantId)) {
             return crmAutomationExecutor.enqueue(tenantId, 'client_created', { clientId: client.id });
@@ -86,20 +98,19 @@ class CRMAutomationService {
     }
 
     async handleScheduledToday(tenantId, client, appointment) {
+        // Auto-qualify: apply 'Agendado' tag
+        if (!['birthday'].includes(client.classification)) {
+            await client.update({ crm_stage: 'scheduled', classification: 'Agendado' });
+            console.log(`[CRM Automation] Client ${client.name}: Tag 'Agendado' applied`);
+        }
+
         // ROUTER: AI Real-time
         if (await this.isAIEnabled(tenantId)) {
             return crmAutomationExecutor.enqueue(tenantId, 'appointment_today', { clientId: client.id, appointmentId: appointment.id });
         }
 
         const today = new Date().toISOString().split('T')[0];
-        if (appointment.date !== today) return; // Only trigger for today's appointments
-
-        // Update Client CRM Stage - HANDLED BY APPOINTMENT SERVICE NOW
-        // We do NOT want to overwrite 'recurrent' status here.
-        // if (client.crm_stage !== 'scheduled') {
-        //    await client.update({ crm_stage: 'scheduled', classification: 'Agendado' });
-        //    console.log(`[CRM Automation] Client ${client.name} stage updated to 'scheduled'`);
-        // }
+        if (appointment.date !== today) return;
 
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         const stage = settings?.funnel_stages?.find(s => s.id === 'scheduled');
@@ -113,6 +124,10 @@ class CRMAutomationService {
     }
 
     async handleAbsent(tenantId, client) {
+        // Auto-qualify: apply 'Faltou' tag
+        await client.update({ crm_stage: 'absent', classification: 'Faltou' });
+        console.log(`[CRM Automation] Client ${client.name}: Tag 'Faltou' applied`);
+
         // ROUTER: AI Real-time
         if (await this.isAIEnabled(tenantId)) {
             return crmAutomationExecutor.enqueue(tenantId, 'status_change_absent', { clientId: client.id });
@@ -152,6 +167,7 @@ class CRMAutomationService {
         const today = new Date();
         const month = today.getUTCMonth() + 1;
         const day = today.getUTCDate();
+        const currentYear = today.getUTCFullYear();
 
         const clients = await Client.findAll({
             where: {
@@ -165,9 +181,126 @@ class CRMAutomationService {
         });
 
         for (const client of clients) {
+            // Annual control: only send once per year
+            const prefs = client.preferences || {};
+            if (prefs.birthday_tag_sent_year === currentYear) {
+                console.log(`[CRM Automation] Birthday already sent for ${client.name} this year. Skipping.`);
+                continue;
+            }
+
+            // Apply "Parabéns" tag
+            const prevClassification = client.classification;
+            await client.update({
+                classification: 'Parabéns',
+                preferences: { ...prefs, birthday_tag_sent_year: currentYear, prev_classification: prevClassification }
+            });
+            console.log(`[CRM Automation] Birthday tag 'Parabéns' applied to ${client.name}`);
+
+            // Trigger AI actions (send birthday message)
             for (const action of activeActions) {
                 await this.triggerRobotAction(tenantId, client, stage, action);
             }
+        }
+    }
+
+    /**
+     * Remove birthday tags from yesterday's birthday clients
+     */
+    async removeBirthdayTagsDaily(tenantId) {
+        try {
+            const clients = await Client.findAll({
+                where: {
+                    tenant_id: tenantId,
+                    classification: 'Parabéns',
+                    is_active: true
+                }
+            });
+
+            const today = new Date();
+            const todayMonth = today.getUTCMonth() + 1;
+            const todayDay = today.getUTCDate();
+
+            for (const client of clients) {
+                if (!client.birth_date) continue;
+                const birthDate = new Date(client.birth_date);
+                const birthMonth = birthDate.getUTCMonth() + 1;
+                const birthDay = birthDate.getUTCDate();
+
+                // If today is NOT the client's birthday, remove the tag (it was yesterday or earlier)
+                if (birthMonth !== todayMonth || birthDay !== todayDay) {
+                    const prefs = client.preferences || {};
+                    const prevClassification = prefs.prev_classification || null;
+                    await client.update({ classification: prevClassification });
+                    console.log(`[CRM Automation] Birthday tag removed from ${client.name}, restored to '${prevClassification}'`);
+                }
+            }
+        } catch (error) {
+            console.error('[CRM Automation] Error removing birthday tags:', error.message);
+        }
+    }
+
+    /**
+     * Detect clients at risk of inactivity (30-59 days without visit)
+     */
+    async handleAtRiskDaily(tenantId, settings) {
+        try {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const sixtyDaysAgo = new Date();
+            sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+            const clients = await Client.findAll({
+                where: {
+                    tenant_id: tenantId,
+                    is_active: true,
+                    last_visit: {
+                        [Op.between]: [sixtyDaysAgo.toISOString().split('T')[0], thirtyDaysAgo.toISOString().split('T')[0]]
+                    },
+                    crm_stage: { [Op.notIn]: ['inactive', 'at_risk'] }
+                }
+            });
+
+            if (clients.length > 0) {
+                console.log(`[CRM Automation] Found ${clients.length} at-risk clients (30-59 days) for tenant ${tenantId}`);
+
+                // Find at_risk stage or use a default action
+                const atRiskStage = settings?.funnel_stages?.find(s => s.id === 'at_risk');
+
+                for (const client of clients) {
+                    await client.update({ crm_stage: 'at_risk', classification: 'Em Risco' });
+                    console.log(`[CRM Automation] Client ${client.name} moved to 'at_risk'`);
+
+                    // Trigger reactivation message if stage has actions
+                    if (atRiskStage && atRiskStage.ai_actions && Array.isArray(atRiskStage.ai_actions)) {
+                        for (const action of atRiskStage.ai_actions) {
+                            if (action.active) {
+                                try {
+                                    await this.triggerRobotAction(tenantId, client, atRiskStage, action);
+                                } catch (err) {
+                                    console.error(`[CRM Automation] Error triggering at-risk action for ${client.name}:`, err.message);
+                                }
+                            }
+                        }
+                    } else {
+                        // Default: send reactivation message via AI if no specific stage configured
+                        if (client.phone) {
+                            try {
+                                const context = `
+                                    Você é um assistente virtual de reativação.
+                                    O cliente ${client.name} não visita há mais de 30 dias.
+                                    Gere uma mensagem amigável e estratégica para trazê-lo de volta.
+                                    Mencione que sentimos falta dele e ofereça agendar um horário.
+                                `;
+                                await aiService.processMessage(tenantId, client.phone, '[SISTEMA: Reativação - Em Risco]', false, context);
+                            } catch (err) {
+                                console.error(`[CRM Automation] Error sending at-risk reactivation to ${client.name}:`, err.message);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[CRM Automation] Error in handleAtRiskDaily:', error.message);
         }
     }
 
@@ -175,6 +308,22 @@ class CRMAutomationService {
         if (!client.phone) return;
 
         console.log(`[CRM Robot] Triggering action '${action.title}' for client ${client.name} at stage: ${stage.title}`);
+
+        // Load chat history for context before contacting
+        let historyContext = '';
+        try {
+            const existingChat = await AIChat.findOne({ where: { tenant_id: tenantId, customer_phone: client.phone } });
+            if (existingChat && existingChat.history && existingChat.history.length > 0) {
+                const recentMsgs = existingChat.history.slice(-5);
+                historyContext = '\n## HISTÓRICO RECENTE DA CONVERSA COM ESTE CLIENTE:\n';
+                for (const msg of recentMsgs) {
+                    historyContext += `${msg.role === 'user' ? 'CLIENTE' : 'AGENTE'}: ${(msg.content || '').substring(0, 200)}\n`;
+                }
+                historyContext += 'Use este contexto para personalizar sua abordagem. NÃO repita mensagens anteriores.\n';
+            }
+        } catch (chatErr) {
+            console.error(`[CRM Robot] Error loading chat history:`, chatErr.message);
+        }
 
         const instruction = action.description;
         const context = `
@@ -185,6 +334,7 @@ class CRMAutomationService {
             Dados do Cliente: Nome: ${client.name}, Telefone: ${client.phone}.
             ${appointment ? `Agendamento: ${appointment.time} de hoje.` : ''}
             Gere uma mensagem curta e amigável para o WhatsApp.
+            ${historyContext}
         `;
 
         try {

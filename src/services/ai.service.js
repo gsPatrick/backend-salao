@@ -9,7 +9,7 @@ const FormData = require('form-data');
 const axios = require('axios');
 
 /**
- * AIService - Version 2.8 (Absolute Stability & Zero Hallucination)
+ * AIService - Version 3.0 (Full Feature Agent: Cancel, Reschedule, Sentiment, Confirmation)
  */
 class AIService {
     constructor() {
@@ -85,6 +85,17 @@ class AIService {
 
         const selectedUnit = unitId ? tenant.units.find(u => u.id === unitId) : null;
 
+        // Training files content
+        let trainingContent = '';
+        if (config?.training_files && Array.isArray(config.training_files) && config.training_files.length > 0) {
+            trainingContent = '\n## MATERIAL DE TREINAMENTO (Use estas informações para responder)\n';
+            for (const file of config.training_files) {
+                if (file.content) {
+                    trainingContent += `\n### ${file.name || 'Documento'}\n${file.content.substring(0, 3000)}\n`;
+                }
+            }
+        }
+
         return `
 Data de hoje: ${new Date().toISOString().split('T')[0]}
 Você é a recepcionista virtual do ${tenant.name}.
@@ -107,19 +118,36 @@ ${unitsList}
 2. **12:00** deve ser escrito sempre como "meio dia".
 3. Sempre use o sufixo "horas" (ex: "14 horas", "15:30 horas").
 
-## AGENDAMENTO
-1. **NOMES OBRIGATÓRIOS**: Você DEVE falar o nome do profissional (Wagner ou Carlos) em toda listagem de horários.
+## AGENDAMENTO & CANCELAMENTO & REAGENDAMENTO
+1. **NOMES OBRIGATÓRIOS**: Você DEVE falar o nome do profissional em toda listagem de horários.
 2. **PROATIVIDADE**: Se o cliente perguntar horários, chame 'consultarDisponibilidade' e apresente as opções IMEDIATAMENTE com os nomes.
 3. **ZERO ERROS**: NUNCA diga frases como "estou com dificuldades técnicas" ou "não consigo acessar". Se a lista de horários virem vazia, diga: "Para hoje não temos mais vagas, mas posso ver para amanhã?".
+4. **CANCELAMENTO**: Se o cliente pedir para cancelar, use 'cancelarAgendamento'. Pergunte o motivo antes de cancelar.
+5. **REAGENDAMENTO**: Se o cliente pedir para reagendar, use 'reagendarAgendamento'. Primeiro consulte a disponibilidade na nova data, depois reagende.
+
+## REQUISITOS PARA BOOKING
+- Para 'bookAppointment', você PRECISA de: Data, Horário, ID do Serviço, ID do Profissional (Obrigatório) e Nome.
+- Para 'cancelarAgendamento', você precisa apenas do telefone do cliente (já temos).
+- Para 'reagendarAgendamento', você PRECISA: nova Data e novo Horário.
+
+## CONFIRMAÇÃO DE PRESENÇA
+- Quando o cliente responder ao lembrete de agendamento, interprete como confirmação ou recusa.
+- Respostas como "sim", "ok", "estarei lá", "confirmado", "pode ser", "beleza" → use 'confirmarPresenca'.
+- Respostas como "não posso", "cancela", "remarcar", "outro dia" → pergunte se quer reagendar.
+
+## ANÁLISE DE SENTIMENTO (IMPORTANTE)
+- Ao final de CADA resposta que você gerar, adicione na ÚLTIMA LINHA uma tag oculta de sentimento:
+  - Se o cliente demonstrou satisfação, elogio ou agradecimento: [SENTIMENTO:POSITIVO]
+  - Se o cliente demonstrou insatisfação, reclamação ou frustração: [SENTIMENTO:NEGATIVO]
+  - Caso neutro: [SENTIMENTO:NEUTRO]
+- Esta tag será processada pelo sistema e NÃO será enviada ao cliente.
 
 ## SERVIÇOS
 ${servicesList}
 
 ## PROFISSIONAIS
 ${professionalsList}
-
-## REQUISITOS PARA BOOKING
-- Para 'bookAppointment', você PRECISA de: Data, Horário, ID do Serviço, ID do Profissional (Obrigatório) e Nome.
+${trainingContent}
  `;
     }
 
@@ -160,6 +188,48 @@ ${professionalsList}
                         required: ["data", "time", "serviceId", "professionalId", "unitId", "customerName"]
                     }
                 }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "cancelarAgendamento",
+                    description: "Cancela o próximo agendamento do cliente. Use quando o cliente pedir para cancelar.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            motivo: { type: "string", description: "Motivo do cancelamento informado pelo cliente" }
+                        },
+                        required: ["motivo"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "reagendarAgendamento",
+                    description: "Reagenda o próximo agendamento do cliente para uma nova data e horário.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            novaData: { type: "string", description: "Nova data no formato YYYY-MM-DD" },
+                            novoHorario: { type: "string", description: "Novo horário no formato HH:MM" },
+                            motivo: { type: "string", description: "Motivo do reagendamento" }
+                        },
+                        required: ["novaData", "novoHorario"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "confirmarPresenca",
+                    description: "Confirma a presença do cliente no próximo agendamento.",
+                    parameters: {
+                        type: "object",
+                        properties: {},
+                        required: []
+                    }
+                }
             }
         ];
     }
@@ -167,7 +237,7 @@ ${professionalsList}
     async handleToolCall(toolCall, tenantId, phone) {
         const { name } = toolCall.function;
         const args = JSON.parse(toolCall.function.arguments);
-        console.log(`[AI V2.8] Executing: ${name}`, args);
+        console.log(`[AI V3.0] Executing: ${name}`, args);
 
         if (name === 'consultarDisponibilidade') {
             try {
@@ -179,7 +249,7 @@ ${professionalsList}
                     lembrete: `Diga o nome ${result.professional.name} e use a dicção de horas (ex: 9 horas).`
                 };
             } catch (error) {
-                console.error(`[AI V2.8] Tool Error:`, error.message);
+                console.error(`[AI V3.0] Tool Error:`, error.message);
                 return { status: "vazio", mensagem: "Sem horários para esta data." };
             }
         }
@@ -200,7 +270,105 @@ ${professionalsList}
                 return { status: "sucesso", mensagem: "Agendado!" };
             } catch (error) { return { status: "erro", mensagem: error.message }; }
         }
-        return { error: "Não encontrada" };
+
+        if (name === 'cancelarAgendamento') {
+            try {
+                const client = await Client.findOne({ where: { phone, tenant_id: tenantId } });
+                if (!client) return { status: "erro", mensagem: "Cliente não encontrado." };
+
+                const { Op } = require('sequelize');
+                const today = new Date().toISOString().split('T')[0];
+                const nextAppointment = await Appointment.findOne({
+                    where: {
+                        client_id: client.id,
+                        tenant_id: tenantId,
+                        date: { [Op.gte]: today },
+                        status: { [Op.in]: ['agendado', 'confirmado'] }
+                    },
+                    order: [['date', 'ASC'], ['time', 'ASC']]
+                });
+
+                if (!nextAppointment) return { status: "erro", mensagem: "Nenhum agendamento futuro encontrado." };
+
+                await appointmentService.cancel(nextAppointment.id, tenantId, args.motivo || 'Cancelado via WhatsApp');
+                console.log(`[AI V3.0] Cancelled appointment ${nextAppointment.id} for client ${client.name}`);
+                return { status: "sucesso", mensagem: `Agendamento do dia ${nextAppointment.date} às ${nextAppointment.time} cancelado.` };
+            } catch (error) {
+                console.error(`[AI V3.0] Cancel Error:`, error.message);
+                return { status: "erro", mensagem: error.message };
+            }
+        }
+
+        if (name === 'reagendarAgendamento') {
+            try {
+                const client = await Client.findOne({ where: { phone, tenant_id: tenantId } });
+                if (!client) return { status: "erro", mensagem: "Cliente não encontrado." };
+
+                const { Op } = require('sequelize');
+                const today = new Date().toISOString().split('T')[0];
+                const nextAppointment = await Appointment.findOne({
+                    where: {
+                        client_id: client.id,
+                        tenant_id: tenantId,
+                        date: { [Op.gte]: today },
+                        status: { [Op.in]: ['agendado', 'confirmado'] }
+                    },
+                    order: [['date', 'ASC'], ['time', 'ASC']]
+                });
+
+                if (!nextAppointment) return { status: "erro", mensagem: "Nenhum agendamento futuro encontrado para reagendar." };
+
+                // Cancel old
+                await appointmentService.cancel(nextAppointment.id, tenantId, args.motivo || 'Reagendado via WhatsApp');
+
+                // Create new
+                await appointmentService.create({
+                    client_id: client.id,
+                    professional_id: nextAppointment.professional_id,
+                    service_id: nextAppointment.service_id,
+                    unit_id: nextAppointment.unit_id,
+                    date: args.novaData,
+                    time: args.novoHorario,
+                    status: 'confirmado'
+                }, tenantId, null);
+
+                console.log(`[AI V3.0] Rescheduled appointment for client ${client.name}: ${args.novaData} ${args.novoHorario}`);
+                return { status: "sucesso", mensagem: `Reagendado para ${args.novaData} às ${args.novoHorario}.` };
+            } catch (error) {
+                console.error(`[AI V3.0] Reschedule Error:`, error.message);
+                return { status: "erro", mensagem: error.message };
+            }
+        }
+
+        if (name === 'confirmarPresenca') {
+            try {
+                const client = await Client.findOne({ where: { phone, tenant_id: tenantId } });
+                if (!client) return { status: "erro", mensagem: "Cliente não encontrado." };
+
+                const { Op } = require('sequelize');
+                const today = new Date().toISOString().split('T')[0];
+                const nextAppointment = await Appointment.findOne({
+                    where: {
+                        client_id: client.id,
+                        tenant_id: tenantId,
+                        date: { [Op.gte]: today },
+                        status: 'agendado'
+                    },
+                    order: [['date', 'ASC'], ['time', 'ASC']]
+                });
+
+                if (!nextAppointment) return { status: "info", mensagem: "Não há agendamento pendente para confirmar." };
+
+                await nextAppointment.update({ status: 'confirmado' });
+                console.log(`[AI V3.0] Confirmed appointment ${nextAppointment.id} for client ${client.name}`);
+                return { status: "sucesso", mensagem: `Presença confirmada para ${nextAppointment.date} às ${nextAppointment.time}!` };
+            } catch (error) {
+                console.error(`[AI V3.0] Confirm Error:`, error.message);
+                return { status: "erro", mensagem: error.message };
+            }
+        }
+
+        return { error: "Ferramenta não encontrada" };
     }
 
     async transcribeAudio(audioBuffer) {
@@ -309,9 +477,48 @@ ${professionalsList}
             chat.last_message = assistantMessage.content;
             chat.changed('history', true);
             await chat.save();
-            return assistantMessage.content;
+
+            // --- Sentiment Analysis: Extract and process sentiment tag ---
+            let responseText = assistantMessage.content || '';
+            const sentimentMatch = responseText.match(/\[SENTIMENTO:(POSITIVO|NEGATIVO|NEUTRO)\]/);
+            if (sentimentMatch) {
+                // Remove tag from response before sending to client
+                responseText = responseText.replace(/\[SENTIMENTO:(POSITIVO|NEGATIVO|NEUTRO)\]/, '').trim();
+
+                const sentiment = sentimentMatch[1];
+                // Apply tags based on sentiment
+                try {
+                    const client = await Client.findOne({ where: { phone, tenant_id: tenantId } });
+                    if (client) {
+                        if (sentiment === 'POSITIVO') {
+                            await client.update({ classification: 'Cliente Satisfeito(a)' });
+                            console.log(`[AI V3.0 Sentiment] Client ${client.name}: POSITIVO → Tag 'Cliente Satisfeito(a)'`);
+                        } else if (sentiment === 'NEGATIVO') {
+                            await client.update({ classification: 'Atenção Humana' });
+                            console.log(`[AI V3.0 Sentiment] Client ${client.name}: NEGATIVO → Tag 'Atenção Humana'`);
+                            // Emit alert to staff via socket
+                            try {
+                                const { getIo } = require('../features/Chat/chat.socket');
+                                const io = getIo();
+                                if (io) {
+                                    io.to(`tenant:${tenantId}`).emit('client:alert', {
+                                        clientId: client.id,
+                                        clientName: client.name,
+                                        type: 'ATENCAO_HUMANA',
+                                        message: `⚠️ Cliente ${client.name} demonstrou insatisfação e precisa de atenção humana.`
+                                    });
+                                }
+                            } catch (socketErr) { /* ignore socket errors */ }
+                        }
+                    }
+                } catch (sentimentErr) {
+                    console.error('[AI V3.0 Sentiment] Error applying tag:', sentimentErr.message);
+                }
+            }
+
+            return responseText;
         } catch (error) {
-            console.error('[AI V2.8 Error]:', error.message);
+            console.error('[AI V3.0 Error]:', error.message);
             return "Um atendente humano irá te ajudar em breve.";
         }
     }
