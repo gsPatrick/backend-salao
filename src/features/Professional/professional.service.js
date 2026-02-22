@@ -110,7 +110,9 @@ class ProfessionalService {
     }
 
     async update(id, data, tenantId) {
-        const professional = await this.getById(id, tenantId);
+        // Must use the Sequelize model instance, NOT the plain JSON from getById()
+        const professional = await Professional.findOne({ where: { id, tenant_id: tenantId } });
+        if (!professional) throw new Error('Profissional não encontrado');
         const sanitizedData = this.sanitizeProfessionalData(data);
         await professional.update(sanitizedData);
         return this.getById(id, tenantId);
