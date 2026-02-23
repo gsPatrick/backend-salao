@@ -40,8 +40,8 @@ exports.listPackages = async (req, res) => {
             usageType: p.usage_type,
             createdAt: p.created_at,
             sessions: p.sessions,
-            category: p.category,
-            unit: p.unit
+            unit: p.unit,
+            unit_id: p.unit_id
         }));
 
         res.json(formatted);
@@ -103,8 +103,8 @@ function formatPackage(p) {
         usageType: p.usage_type,
         createdAt: p.created_at,
         sessions: p.sessions,
-        category: p.category,
-        unit: p.unit
+        unit: p.unit,
+        unit_id: p.unit_id
     };
 }
 
@@ -150,7 +150,8 @@ async function updateAndSend(pkg, data, res) {
         usage_type: data.usageType !== undefined ? data.usageType : pkg.usage_type,
         sessions: data.sessions !== undefined ? data.sessions : pkg.sessions,
         category: data.category !== undefined ? data.category : pkg.category,
-        unit: data.unit !== undefined ? data.unit : pkg.unit
+        unit: data.unit !== undefined ? data.unit : pkg.unit,
+        unit_id: data.unit_id !== undefined ? data.unit_id : (data.unitId !== undefined ? data.unitId : pkg.unit_id)
     });
     return res.json(formatPackage(pkg));
 }

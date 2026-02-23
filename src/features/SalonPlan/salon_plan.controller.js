@@ -316,6 +316,7 @@ function formatPlan(p) {
         sessions: p.sessions,
         category: p.category,
         unit: p.unit,
+        unit_id: p.unit_id,
         isActive: p.active,
         suspended: p.is_suspended,
         isFavorite: p.is_favorite,
