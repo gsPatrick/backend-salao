@@ -41,7 +41,8 @@ exports.listPackages = async (req, res) => {
             createdAt: p.created_at,
             sessions: p.sessions,
             unit: p.unit,
-            unit_id: p.unit_id
+            unit_id: p.unit_id,
+            category: p.category
         }));
 
         res.json(formatted);
@@ -104,7 +105,8 @@ function formatPackage(p) {
         createdAt: p.created_at,
         sessions: p.sessions,
         unit: p.unit,
-        unit_id: p.unit_id
+        unit_id: p.unit_id,
+        category: p.category
     };
 }
 
