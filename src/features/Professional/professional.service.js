@@ -95,21 +95,24 @@ class ProfessionalService {
             ? data.targetUnitIds
             : [data.unit_id];
 
+        const sanitizedData = this.sanitizeProfessionalData(data);
+
+        // Ensure 'name' is always the legal/full name in the database
+        // and 'social_name' is stored separately.
+        if (data.name) sanitizedData.name = data.name;
+
         let createdProfessional = null;
         for (const unitId of unitIds) {
             if (!unitId) continue;
-            // Create a record for each unit
-            // Note: If creating multiple, we assume 'Ambas' scenario.
-            // Future improvement: check if professional already exists in that unit to avoid dupes if re-submitting?
             const professional = await Professional.create({
-                ...data,
+                ...sanitizedData,
                 tenant_id: tenantId,
                 unit_id: unitId
             });
             if (!createdProfessional) createdProfessional = professional;
         }
-        const sanitizedData = this.sanitizeProfessionalData(data);
-        return Professional.create({ ...sanitizedData, tenant_id: tenantId });
+
+        return createdProfessional;
     }
 
     async update(id, data, tenantId) {
