@@ -49,10 +49,9 @@ class ProfessionalService {
             const data = prof.toJSON();
             const useSocialName = data.use_social_name;
 
+            // Keep legal_name for consistency/legacy
             data.legal_name = data.name;
-            if (useSocialName && data.social_name) {
-                data.name = data.social_name;
-            }
+
             data.use_social_name = !!useSocialName;
             return data;
         });
@@ -68,10 +67,8 @@ class ProfessionalService {
         const data = professional.toJSON();
         // Apply Social Name logic (same as Client)
         const useSocialName = data.use_social_name;
+        // Keep legal_name for consistency/legacy
         data.legal_name = data.name;
-        if (useSocialName && data.social_name) {
-            data.name = data.social_name;
-        }
         data.use_social_name = !!useSocialName;
 
         return data;
