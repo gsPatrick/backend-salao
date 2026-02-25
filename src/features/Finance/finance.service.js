@@ -67,21 +67,30 @@ class FinanceService {
         return transaction;
     }
 
-    async getSummary(tenantId, period = 'month', unitId = null) {
+    async getSummary(tenantId, period = 'mes', unitId = null) {
         const now = new Date();
         let dateFrom, dateTo;
 
-        if (period === 'today') {
-            dateFrom = dateTo = now.toISOString().split('T')[0];
-        } else if (period === 'week') {
-            const today = new Date();
-            const day = today.getDay();
-            const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday
-            dateFrom = new Date(today.setDate(diff)).toISOString().split('T')[0];
-            dateTo = now.toISOString().split('T')[0];
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+        if (period === 'hoje' || period === 'today') {
+            dateFrom = startOfToday.toISOString().split('T')[0];
+            dateTo = endOfToday.toISOString().split('T')[0];
+        } else if (period === 'semana' || period === 'week') {
+            const day = now.getDay();
+            const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
+            const monday = new Date(now.setDate(diff));
+            monday.setHours(0, 0, 0, 0);
+            dateFrom = monday.toISOString().split('T')[0];
+            dateTo = endOfToday.toISOString().split('T')[0];
+        } else if (period === 'ano' || period === 'year') {
+            dateFrom = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+            dateTo = endOfToday.toISOString().split('T')[0];
         } else {
+            // Default: month
             dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-            dateTo = now.toISOString().split('T')[0];
+            dateTo = endOfToday.toISOString().split('T')[0];
         }
 
         const transactions = await this.getAll(tenantId, { dateFrom, dateTo, unitId });
@@ -96,23 +105,35 @@ class FinanceService {
         });
 
         const totalTransCount = transactions.length;
-        const receitasArr = transactions.filter(t => (t.type === 'receita' || t.type === 'income') && (t.status === 'pago' || t.status === 'paid'));
-        const receitas = receitasArr.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const receitasArr = transactions.filter(t =>
+            (t.type === 'receita' || t.type === 'income') &&
+            (t.status === 'pago' || t.status === 'paid')
+        );
+        let receitas = receitasArr.reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
-        const despesasArr = transactions.filter(t => (t.type === 'despesa' || t.type === 'expense') && (t.status === 'pago' || t.status === 'paid'));
+        const despesasArr = transactions.filter(t =>
+            (t.type === 'despesa' || t.type === 'expense') &&
+            (t.status === 'pago' || t.status === 'paid')
+        );
         const despesas = despesasArr.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
         const pendentes = transactions.filter(t => t.status === 'pendente' || t.status === 'pending')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
         const vencidas = transactions.filter(t => t.status === 'vencida' || t.status === 'overdue')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
-        console.log(`[Finance Summary] Tenant: ${tenantId}, Period: ${period}, DateRange: ${dateFrom} to ${dateTo}`);
-        console.log(`[Finance Summary] Collected ${totalTransCount} transactions.`);
-        console.log(`[Finance Summary] Filtered Receitas: ${receitasArr.length}, Total: ${receitas}`);
-        console.log(`[Finance Summary] Filtered Despesas: ${despesasArr.length}, Total: ${despesas}`);
-
+        // REVENUE FALLBACK: If transaction revenue is 0, check concluded appointments
         const completionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
-        const atendimentos = appointments.filter(a => completionStatuses.includes((a.status || '').toLowerCase())).length;
+        const concludedAppointments = appointments.filter(a => completionStatuses.includes((a.status || '').toLowerCase()));
+        const atendimentos = concludedAppointments.length;
+
+        const appointmentBilling = concludedAppointments.reduce((sum, a) => sum + (parseFloat(a.price) || 0), 0);
+
+        if (receitas === 0 && appointmentBilling > 0) {
+            console.log(`[Finance Summary] Using Appointment billing fallback: ${appointmentBilling} for Tenant: ${tenantId}`);
+            receitas = appointmentBilling;
+        }
+
         const ticket_medio = atendimentos > 0 ? receitas / atendimentos : 0;
 
         // Generate chartData grouped by date
@@ -142,7 +163,7 @@ class FinanceService {
 
         const clientsWhere = {
             tenant_id: tenantId,
-            created_at: { [Op.between]: [dateFrom, dateTo] }
+            created_at: { [Op.between]: [new Date(dateFrom), new Date(dateTo + 'T23:59:59')] }
         };
         if (unitId) clientsWhere.unit_id = unitId;
 
