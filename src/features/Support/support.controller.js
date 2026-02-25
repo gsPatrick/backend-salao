@@ -41,6 +41,20 @@ class SupportController {
             res.status(500).json({ success: false, message: error.message });
         }
     }
+
+    async resolveTicket(req, res) {
+        try {
+            const { id } = req.params;
+            const ticket = await supportService.resolveTicket(id, req.userId);
+            res.json({ success: true, data: ticket });
+        } catch (error) {
+            console.error('Error resolving support ticket:', error);
+            res.status(error.message === 'Chamado não encontrado ou permissão negada' ? 404 : 500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
 }
 
 module.exports = new SupportController();

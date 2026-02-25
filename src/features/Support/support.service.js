@@ -57,6 +57,19 @@ class SupportService {
             order: [['created_at', 'DESC']]
         });
     }
+
+    async resolveTicket(id, userId) {
+        const ticket = await SupportTicket.findOne({
+            where: { id, user_id: userId }
+        });
+
+        if (!ticket) {
+            throw new Error('Chamado não encontrado ou permissão negada');
+        }
+
+        await ticket.update({ status: 'Resolvido' });
+        return ticket;
+    }
 }
 
 module.exports = new SupportService();
