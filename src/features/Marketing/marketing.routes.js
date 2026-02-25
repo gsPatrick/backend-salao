@@ -13,6 +13,7 @@ router.delete('/campaigns/:id', authMiddleware.authenticate, marketingController
 router.get('/channels', authMiddleware.authenticate, marketingController.listChannels);
 router.post('/channels', authMiddleware.authenticate, marketingController.createChannel);
 router.put('/channels/:id', authMiddleware.authenticate, marketingController.updateChannel);
+router.delete('/channels/:id', authMiddleware.authenticate, marketingController.deleteChannel);
 
 // Direct Mail Campaigns
 router.get('/direct-mail', authMiddleware.authenticate, marketingController.listDirectMail);

@@ -1,6 +1,7 @@
 const { SalonPlan, SalonPlanSubscription } = require('./salon_plan.model');
 const { Op } = require('sequelize');
 const { Appointment } = require('../../models');
+const { parseMonetaryValue } = require('../../utils/number');
 
 exports.list = async (req, res) => {
     try {
@@ -32,6 +33,8 @@ exports.create = async (req, res) => {
         const data = req.body;
         const unitId = data.unit_id || data.unitId || req.headers['x-unit-id'];
 
+        if (data.price) data.price = parseMonetaryValue(data.price);
+
         const plan = await SalonPlan.create({
             ...data,
             tenant_id: req.tenantId,
@@ -54,6 +57,7 @@ exports.update = async (req, res) => {
         });
         if (!plan) return res.status(404).json({ error: 'Plano não encontrado' });
         const data = req.body;
+        if (data.price) data.price = parseMonetaryValue(data.price);
         await plan.update({
             ...data,
             active: data.isActive !== undefined ? data.isActive : data.active !== undefined ? data.active : plan.active,

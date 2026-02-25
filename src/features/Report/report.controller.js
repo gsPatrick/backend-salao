@@ -21,7 +21,7 @@ exports.getFinancial = async (req, res) => {
             where.date = { [Op.between]: [startDate, endDate] };
         }
 
-        // Aggregate Income vs Expense
+        // 1. Sum Income vs Expense from Financial Transactions
         const transactions = await FinancialTransaction.findAll({
             where,
             attributes: [
@@ -36,7 +36,8 @@ exports.getFinancial = async (req, res) => {
             income: 0,
             expense: 0,
             balance: 0,
-            transactionCount: 0
+            transactionCount: 0,
+            appointmentBilling: 0 // New field for comparison
         };
 
         transactions.forEach(t => {
@@ -51,10 +52,31 @@ exports.getFinancial = async (req, res) => {
             result.transactionCount += count;
         });
 
+        // 2. Fallback check: Aggregate billing from concluded appointments that MIGHT NOT have explicit transactions
+        // (This happens during imports or legacy data sync)
+        const appointmentBilling = await Appointment.sum('price', {
+            where: {
+                tenant_id: tenantId,
+                unit_id: unitId || { [Op.ne]: null },
+                date: { [Op.between]: [startDate, endDate] },
+                status: { [Op.in]: ['concluido', 'finalizado', 'atendido', 'pago'] }
+            }
+        }) || 0;
+
+        result.appointmentBilling = parseFloat(appointmentBilling);
+
+        // If transaction income is less than concluded appointment billing, use appointment billing as primary income source
+        // to avoid "0" reporting for existing real services.
+        if (result.appointmentBilling > result.income) {
+            console.log(`[Reports] Using Appointment billing (${result.appointmentBilling}) as income fallback for Tenant ${tenantId}`);
+            result.income = result.appointmentBilling;
+        }
+
         result.balance = result.income - result.expense;
 
         res.json(result);
     } catch (error) {
+        console.error('[Reports Error] getFinancial:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -76,7 +98,7 @@ exports.getOperational = async (req, res) => {
             where.date = { [Op.between]: [startDate, endDate] };
         }
 
-        // Status counts
+        // Status counts - Ensuring we catch all variations
         const statusCounts = await Appointment.findAll({
             where,
             attributes: [
@@ -86,13 +108,23 @@ exports.getOperational = async (req, res) => {
             group: ['status']
         });
 
+        // Aggregated Concluded (Operational KPI)
+        const concludedCount = await Appointment.count({
+            where: {
+                ...where,
+                status: { [Op.in]: ['concluido', 'finalizado', 'atendido', 'pago'] }
+            }
+        });
+
         const totalAppointments = await Appointment.count({ where });
 
         res.json({
             statusBreakdown: statusCounts,
-            totalAppointments
+            totalAppointments,
+            concludedCount
         });
     } catch (error) {
+        console.error('[Reports Error] getOperational:', error);
         res.status(500).json({ error: error.message });
     }
 };

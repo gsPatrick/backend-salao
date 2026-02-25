@@ -112,6 +112,25 @@ exports.updateChannel = async (req, res) => {
     }
 };
 
+exports.deleteChannel = async (req, res) => {
+    try {
+        await marketingService.deleteChannel(req.params.id, req.tenantId);
+
+        await auditLogService.record(
+            req.tenantId,
+            req.user.id,
+            'exclusao',
+            'Canal de Aquisicao',
+            req.params.id,
+            `excluiu um canal de aquisição`
+        );
+
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 // --- Direct Mail Campaigns ---
 exports.listDirectMail = async (req, res) => {
     try {
@@ -160,9 +179,9 @@ exports.deleteDirectMail = async (req, res) => {
 
 exports.getAudienceCount = async (req, res) => {
     try {
-        const { audience } = req.query;
+        const { audience, gender } = req.query;
         const unitId = req.headers['x-unit-id'] || req.query.unitId;
-        const count = await marketingService.getAudienceCount(req.tenantId, audience, unitId);
+        const count = await marketingService.getAudienceCount(req.tenantId, audience, unitId, gender);
         res.json({ success: true, count });
     } catch (error) {
         res.status(500).json({ error: error.message });

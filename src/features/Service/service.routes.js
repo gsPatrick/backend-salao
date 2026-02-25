@@ -10,6 +10,7 @@ router.get('/:id', serviceController.getById);
 router.post('/', requireRoles('admin', 'gerente'), serviceController.create);
 router.put('/:id', requireRoles('admin', 'gerente'), serviceController.update);
 router.delete('/:id', requireRoles('admin', 'gerente'), serviceController.delete);
+router.delete('/category/:category', requireRoles('admin', 'gerente'), serviceController.deleteCategory);
 router.patch('/:id/professionals', requireRoles('admin', 'gerente'), serviceController.assignProfessionals);
 router.patch('/:id/suspend', requireRoles('admin', 'gerente'), serviceController.toggleSuspend);
 router.patch('/:id/favorite', requireRoles('admin', 'gerente'), serviceController.toggleFavorite);

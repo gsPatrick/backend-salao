@@ -146,6 +146,16 @@ class ServiceController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async deleteCategory(req, res) {
+        try {
+            const { category } = req.params;
+            const result = await serviceService.deleteCategory(category, req.tenantId);
+            res.json({ success: true, data: result });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new ServiceController();

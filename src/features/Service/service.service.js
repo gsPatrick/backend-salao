@@ -80,6 +80,13 @@ class ServiceService {
         await service.setProfessionals(professionals);
         return this.getById(id, tenantId);
     }
+
+    async deleteCategory(category, tenantId) {
+        return Service.update(
+            { category: '' },
+            { where: { category, tenant_id: tenantId } }
+        );
+    }
 }
 
 module.exports = new ServiceService();

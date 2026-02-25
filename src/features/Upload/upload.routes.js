@@ -50,7 +50,7 @@ const upload = multer({
     storage,
     fileFilter,
     limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB max
+        fileSize: 10 * 1024 * 1024, // 10MB max (Updated per user request)
     },
 });
 
@@ -176,6 +176,44 @@ router.delete('/', authenticate, (req, res) => {
     }
 });
 
+/**
+ * GET /api/upload/view/:type/:filename
+ * View a file in the browser
+ */
+router.get('/view/:type/:filename', (req, res) => {
+    try {
+        const { type, filename } = req.params;
+        const filePath = path.join(uploadDir, type, filename);
+
+        if (fs.existsSync(filePath)) {
+            res.sendFile(filePath);
+        } else {
+            res.status(404).send('Arquivo não encontrado');
+        }
+    } catch (error) {
+        res.status(500).send('Erro ao abrir arquivo');
+    }
+});
+
+/**
+ * GET /api/upload/download/:type/:filename
+ * Download a file
+ */
+router.get('/download/:type/:filename', (req, res) => {
+    try {
+        const { type, filename } = req.params;
+        const filePath = path.join(uploadDir, type, filename);
+
+        if (fs.existsSync(filePath)) {
+            res.download(filePath);
+        } else {
+            res.status(404).send('Arquivo não encontrado');
+        }
+    } catch (error) {
+        res.status(500).send('Erro ao baixar arquivo');
+    }
+});
+
 // Error handling middleware for multer
 router.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {
@@ -183,7 +221,7 @@ router.use((error, req, res, next) => {
 
         switch (error.code) {
             case 'LIMIT_FILE_SIZE':
-                message = 'Arquivo muito grande. Máximo permitido: 5MB';
+                message = 'Arquivo muito grande. Máximo permitido: 10MB';
                 break;
             case 'LIMIT_FILE_COUNT':
                 message = 'Muitos arquivos enviados. O limite foi excedido.';
