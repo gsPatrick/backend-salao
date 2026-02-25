@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ideaController = require('./idea.controller');
-const authMiddleware = require('../../middlewares/auth');
+const authMiddleware = require('../Auth/auth.middleware');
 
 router.get('/', authMiddleware.authenticate, ideaController.getAll);
 router.post('/', authMiddleware.authenticate, ideaController.create);
