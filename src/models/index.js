@@ -36,7 +36,9 @@ const models = {
     ChatMessage: require('../features/Chat/chat.model'),
     WhatsAppSession: require('./WhatsAppSession'),
     ScheduleBlock: require('./ScheduleBlock'),
-    AuditLog: require('./AuditLog')
+    AuditLog: require('./AuditLog'),
+    CommunityIdea: require('./CommunityIdea'),
+    CommunityIdeaVote: require('./CommunityIdeaVote')
 };
 
 // Initialize models
@@ -60,7 +62,7 @@ const {
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
     Lead, MarketingCampaign, SalonPlan, SalonPlanSubscription, Unit, ChatMessage, WhatsAppSession,
-    ScheduleBlock, AuditLog
+    ScheduleBlock, AuditLog, CommunityIdea, CommunityIdeaVote
 } = db;
 
 // Call associate for all models

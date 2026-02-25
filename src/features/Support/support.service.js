@@ -1,4 +1,5 @@
 const { SupportTicket, Notification, User } = require('../../models');
+const emailService = require('../../services/email.service');
 
 class SupportService {
     async createTicket(data, userId, tenantId) {
@@ -35,6 +36,16 @@ class SupportService {
         } catch (notifyError) {
             console.error('Error triggering support notification:', notifyError);
             // Don't fail the request if notification fails
+        }
+
+        // Send Email to Support
+        try {
+            const user = await User.findByPk(userId);
+            if (user) {
+                await emailService.sendSupportEmail(ticket, user);
+            }
+        } catch (emailError) {
+            console.error('Error sending support email:', emailError);
         }
 
         return ticket;

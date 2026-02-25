@@ -30,6 +30,7 @@ const unitRoutes = require('../features/Unit/unit.routes');
 const paymentRoutes = require('../features/Payment/payment.routes');
 const salonPlanRoutes = require('../features/SalonPlan/salon_plan.routes');
 const auditLogRoutes = require('../features/AuditLogs/auditLog.routes');
+const ideaRoutes = require('../features/CommunityIdea/idea.routes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -60,6 +61,7 @@ router.use('/support', supportRoutes);
 router.use('/units', unitRoutes);
 router.use('/salon-plans', salonPlanRoutes);
 router.use('/audit-logs', auditLogRoutes);
+router.use('/community-ideas', ideaRoutes);
 
 // Health Check
 router.get('/health', (req, res) => {
