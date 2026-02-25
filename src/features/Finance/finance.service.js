@@ -3,23 +3,92 @@ const { Op } = require('sequelize');
 
 class FinanceService {
     async getAll(tenantId, filters = {}) {
+        const { FinancialTransaction, Appointment, Client, Unit } = require('../../models');
+
         const where = { tenant_id: tenantId };
 
         if (filters.type) where.type = filters.type;
         if (filters.status) where.status = filters.status;
         if (filters.unitId) where.unit_id = filters.unitId;
-        // Also support legacy 'unit' filter string if needed, but prefer ID
+        // Also support legacy 'unit' filter string if needed
         if (filters.unit && !filters.unitId) where.unit = filters.unit;
 
         if (filters.dateFrom && filters.dateTo) {
             where.date = { [Op.between]: [filters.dateFrom, filters.dateTo] };
         }
 
-        return FinancialTransaction.findAll({
+        const transactions = await FinancialTransaction.findAll({
             where,
             include: [{ model: Appointment, as: 'appointment' }],
             order: [['date', 'DESC']],
         });
+
+        // Fetch Units to ensure consistent name-based filtering in frontend
+        const units = await Unit.findAll({ where: { tenant_id: tenantId } });
+        const unitMap = units.reduce((acc, u) => ({ ...acc, [u.id]: u.name }), {});
+
+        const mappedTransactions = transactions.map(t => {
+            const data = t.toJSON();
+            // Map status/type to frontend expected values (Pago, Pendente, etc.)
+            const status = (data.status || '').toLowerCase();
+            if (['pago', 'paid'].includes(status)) data.status = 'Pago';
+            else if (['pendente', 'pending'].includes(status)) data.status = 'Pendente';
+            else if (['vencida', 'overdue'].includes(status)) data.status = 'Vencida';
+            else data.status = 'Pendente';
+
+            const type = (data.type || '').toLowerCase();
+            data.type = (type === 'receita' || type === 'income') ? 'receita' : 'despesa';
+
+            // Ensure unit name matches selectedUnit string in frontend
+            if (!data.unit && data.unit_id && unitMap[data.unit_id]) {
+                data.unit = unitMap[data.unit_id];
+            }
+
+            return data;
+        });
+
+        // REVENUE FALLBACK: If raw income is zero, inject virtual transactions from appointments
+        const incomeTotal = mappedTransactions
+            .filter(t => t.type === 'receita' && t.status === 'Pago')
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+        if (incomeTotal === 0) {
+            console.log(`[Finance] No real income found. Injecting virtual transactions for Tenant: ${tenantId}`);
+            const apptWhere = { tenant_id: tenantId };
+            if (filters.unitId) apptWhere.unit_id = filters.unitId;
+            if (filters.dateFrom && filters.dateTo) {
+                apptWhere.date = { [Op.between]: [filters.dateFrom, filters.dateTo] };
+            }
+            const completionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
+            const concludedAppointments = await Appointment.findAll({
+                where: {
+                    ...apptWhere,
+                    status: completionStatuses
+                },
+                include: [{ model: Client, as: 'client' }]
+            });
+
+            concludedAppointments.forEach(appt => {
+                const price = parseFloat(appt.price) || 0;
+                if (price > 0) {
+                    mappedTransactions.push({
+                        id: `v-${appt.id}`,
+                        description: `Atendimento: ${appt.client?.name || 'Cliente'} (Virtual)`,
+                        amount: price,
+                        date: appt.date,
+                        type: 'receita',
+                        status: 'Pago',
+                        unit: unitMap[appt.unit_id] || '',
+                        unit_id: appt.unit_id,
+                        is_virtual: true
+                    });
+                }
+            });
+            // Re-sort if we added virtuals
+            mappedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+
+        return mappedTransactions;
     }
 
     async getById(id, tenantId) {
@@ -138,16 +207,46 @@ class FinanceService {
 
         // Generate chartData grouped by date
         const chartDataMap = {};
+
+        // Helper to ensure date exists in map
+        const ensureDate = (dateKey) => {
+            if (!chartDataMap[dateKey]) {
+                chartDataMap[dateKey] = { income: 0, expenses: 0, appointments: 0, clients: 0 };
+            }
+        };
+
+        appointments.forEach(a => {
+            const dateKey = a.date;
+            if (!dateKey) return;
+            ensureDate(dateKey);
+            if (completionStatuses.includes((a.status || '').toLowerCase())) {
+                chartDataMap[dateKey].appointments++;
+            }
+        });
+
         transactions.forEach(t => {
             const dateKey = t.date;
-            if (!chartDataMap[dateKey]) {
-                chartDataMap[dateKey] = { income: 0, expenses: 0 };
-            }
+            if (!dateKey) return;
+            ensureDate(dateKey);
             if ((t.type === 'receita' || t.type === 'income') && (t.status === 'pago' || t.status === 'paid')) {
                 chartDataMap[dateKey].income += parseFloat(t.amount);
             } else if ((t.type === 'despesa' || t.type === 'expense') && (t.status === 'pago' || t.status === 'paid')) {
                 chartDataMap[dateKey].expenses += parseFloat(t.amount);
             }
+        });
+
+        const clientsWhere = {
+            tenant_id: tenantId,
+            created_at: { [Op.between]: [new Date(dateFrom), new Date(dateTo + 'T23:59:59')] }
+        };
+        if (unitId) clientsWhere.unit_id = unitId;
+
+        const clientsFull = await Client.findAll({ where: clientsWhere });
+        clientsFull.forEach(c => {
+            const date = new Date(c.registrationDate || c.createdAt);
+            const dateKey = date.toISOString().split('T')[0];
+            ensureDate(dateKey);
+            chartDataMap[dateKey].clients++;
         });
 
         // Sort dates and create arrays
@@ -158,14 +257,10 @@ class FinanceService {
                 return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
             }),
             income: sortedDates.map(d => chartDataMap[d].income),
-            expenses: sortedDates.map(d => chartDataMap[d].expenses)
+            expenses: sortedDates.map(d => chartDataMap[d].expenses),
+            appointments: sortedDates.map(d => chartDataMap[d].appointments),
+            clients: sortedDates.map(d => chartDataMap[d].clients)
         };
-
-        const clientsWhere = {
-            tenant_id: tenantId,
-            created_at: { [Op.between]: [new Date(dateFrom), new Date(dateTo + 'T23:59:59')] }
-        };
-        if (unitId) clientsWhere.unit_id = unitId;
 
         return {
             receitas,
@@ -178,9 +273,7 @@ class FinanceService {
             agendamentos: appointments.length,
             ticket_medio,
             chartData,
-            clients_new: await Client.count({
-                where: clientsWhere
-            })
+            clients_new: clientsFull.length
         };
     }
 }

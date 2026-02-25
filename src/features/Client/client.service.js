@@ -20,15 +20,31 @@ class ClientService {
             where.created_at = { [Op.lte]: filters.endDate + ' 23:59:59' };
         }
 
+        const { Unit } = require('../../models');
         const clients = await Client.findAll({
             where,
             order: [['created_at', 'DESC']],
         });
 
-        // Apply Social Name logic
+        // Fetch Units for name mapping
+        const units = await Unit.findAll({ where: { tenant_id: tenantId } });
+        const unitMap = units.reduce((acc, u) => ({ ...acc, [u.id]: u.name }), {});
+
+        // Apply Social Name logic and standardization
         return clients.map(client => {
             const data = client.toJSON();
             const useSocialName = data.use_social_name || data.preferences?.useSocialName;
+
+            // Standardize registration fields for AccountPage/Overview
+            data.registrationDate = data.created_at;
+            data.createdAt = data.created_at;
+
+            // Ensure unit name matches frontend's name-based filtering
+            if (!data.unit && data.unit_id && unitMap[data.unit_id]) {
+                data.unit = unitMap[data.unit_id];
+            } else if (!data.unit && data.preferred_unit) {
+                data.unit = data.preferred_unit;
+            }
 
             // Keep legal_name for consistency/legacy, but DO NOT swap data.name
             data.legal_name = data.name;

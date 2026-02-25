@@ -27,9 +27,23 @@ class AppointmentService {
             order: [['date', 'ASC'], ['time', 'ASC']],
         });
 
-        // Apply Social Name mapping for associations
+        // Helper to standardize status
+        const mapStatus = (s) => {
+            const status = (s || '').toLowerCase();
+            if (['concluido', 'finalizado', 'atendido', 'pago', 'completed'].includes(status)) return 'Atendido';
+            if (['faltou', 'falta', 'no-show', 'absent'].includes(status)) return 'Falta';
+            if (['cancelado', 'canceled'].includes(status)) return 'Cancelado';
+            if (['confirmado', 'confirmed'].includes(status)) return 'Agendado';
+            return 'Agendado';
+        };
+
+        // Apply mapping for associations and status
         return appointments.map(apt => {
             const data = apt.toJSON();
+
+            // Standardize status for frontend (AccountPage, Dashboard, Reports)
+            data.status = mapStatus(data.status);
+
             if (data.client) {
                 const useSocial = data.client.use_social_name || data.client.preferences?.useSocialName;
                 if (useSocial && data.client.social_name) {
@@ -39,6 +53,10 @@ class AppointmentService {
                     data.client.legal_name = data.client.name;
                 }
                 data.client.use_social_name = !!useSocial;
+
+                // Ensure registrationDate is available for Reports
+                data.client.registrationDate = data.client.created_at;
+                data.clientName = data.client.name;
             }
             if (data.professional) {
                 const useSocial = data.professional.use_social_name;
@@ -49,7 +67,12 @@ class AppointmentService {
                     data.professional.legal_name = data.professional.name;
                 }
                 data.professional.use_social_name = !!useSocial;
+                data.professionalName = data.professional.name;
             }
+
+            // Ensure service name is at top level
+            data.service = data.service?.name || data.package?.name || data.salon_plan?.name || data.service_name || 'Serviço';
+
             return data;
         });
     }
