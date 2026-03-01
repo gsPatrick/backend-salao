@@ -1,4 +1,4 @@
-const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription, sequelize } = require('../../models');
+const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription, Unit, sequelize } = require('../../models');
 const { Op, Transaction } = require('sequelize');
 
 class AppointmentService {
@@ -137,6 +137,20 @@ class AppointmentService {
         }
 
         return Appointment.findOne({ where });
+    }
+    async _checkCancelNotice(appointment, bypassNotice = false) {
+        if (bypassNotice) return;
+
+        const unit = appointment.unit || await Unit.findByPk(appointment.unit_id);
+        const noticeHours = unit?.settings?.cancelNoticeHours || 24;
+
+        const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
+        const now = new Date();
+        const diffInHours = (appointmentDateTime - now) / (1000 * 60 * 60);
+
+        if (diffInHours < noticeHours) {
+            throw new Error(`O cancelamento só é permitido com pelo menos ${noticeHours} horas de antecedência.`);
+        }
     }
 
     async create(data, tenantId, userId) {
@@ -658,15 +672,20 @@ class AppointmentService {
         return updateData;
     }
 
-    async updateStatus(id, status, tenantId, sessionsConsumed = 1) {
+    async updateStatus(id, status, tenantId, sessionsConsumed = 1, bypassNotice = false) {
         const appointmentInstance = await Appointment.findOne({
             where: { id, tenant_id: tenantId },
             include: [
                 { model: Client, as: 'client' },
-                { model: Service, as: 'service' }
+                { model: Service, as: 'service' },
+                { model: Unit, as: 'unit' }
             ]
         });
         if (!appointmentInstance) throw new Error('Agendamento não encontrado');
+
+        if (status === 'cancelado' && appointmentInstance.status !== 'cancelado') {
+            await this._checkCancelNotice(appointmentInstance, bypassNotice);
+        }
 
         // Calculate side-effects updates
         const sideEffectUpdates = await this._handleStatusChangeSideEffects(appointmentInstance, status, tenantId, sessionsConsumed);
@@ -743,8 +762,15 @@ class AppointmentService {
         return this.getById(id, tenantId);
     }
 
-    async cancel(id, tenantId, reason = null) {
-        const appointment = await this.getById(id, tenantId);
+    async cancel(id, tenantId, reason = null, bypassNotice = false) {
+        const appointment = await Appointment.findOne({
+            where: { id, tenant_id: tenantId },
+            include: [{ model: Unit, as: 'unit' }]
+        });
+        if (!appointment) throw new Error('Agendamento não encontrado');
+
+        await this._checkCancelNotice(appointment, bypassNotice);
+
         const completionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
         if (completionStatuses.includes(appointment.status.toLowerCase())) {
             return this.refund(id, reason || 'Cancelado pelo administrador', tenantId);
@@ -880,7 +906,6 @@ class AppointmentService {
                 }
             });
         } else {
-            // Pick first professional of the specific unit if unitId is provided
             const profWhere = {
                 tenant_id: tenantId,
                 is_suspended: false,
@@ -898,98 +923,71 @@ class AppointmentService {
             throw new Error('Profissional não disponível para esta unidade ou serviço');
         }
 
-        // Fetch blocks for this professional
-        const { ScheduleBlock } = require('../../models');
-        const blocks = await ScheduleBlock.findAll({
-            where: {
-                tenant_id: tenantId,
-                professional_id: professionalId,
-                date: date
-            }
-        });
+        const { ScheduleBlock, Unit: UnitModel, Tenant: TenantModel } = require('../../models');
+        
+        // Fetch Unit first if unitId is provided or if professional has unit_id
+        let unit = null;
+        if (unitId) {
+            unit = await UnitModel.findByPk(unitId);
+        } else if (professional.unit_id) {
+            unit = await UnitModel.findByPk(professional.unit_id);
+        } else if (professional.unit) {
+            unit = await UnitModel.findOne({ where: { tenant_id: tenantId, name: professional.unit } });
+        }
 
-        // Fetch Tenant to check business hours
-        const { Tenant: TenantModel } = require('../../models');
         const tenant = await TenantModel.findByPk(tenantId);
         if (!tenant) throw new Error('Tenant não encontrado');
 
-        const defaultHours = [
-            { day: 'segunda-feira', open: true, start: '09:00', end: '22:00' },
-            { day: 'terça-feira', open: true, start: '09:00', end: '22:00' },
-            { day: 'quarta-feira', open: true, start: '09:00', end: '22:00' },
-            { day: 'quinta-feira', open: true, start: '09:00', end: '22:00' },
-            { day: 'sexta-feira', open: true, start: '09:00', end: '22:00' },
-            { day: 'sábado', open: false, start: '09:00', end: '13:00' },
-            { day: 'domingo', open: false, start: '09:00', end: '12:00' }
-        ];
+        // Setup Defaults
+        let startTime = '09:00';
+        let endTime = '18:00';
+        let lunchStart = '12:00';
+        let lunchEnd = '13:00';
+        let isOpen = true;
 
-        const businessHours = (Array.isArray(tenant.business_hours) && tenant.business_hours.length > 0)
-            ? tenant.business_hours
-            : defaultHours;
+        const dayOfWeekIndex = new Date(date + 'T00:00:00').getDay();
+        const days = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+        const dayOfWeekLabel = days[dayOfWeekIndex];
 
-        // --- NEW: Unit Specific Hours ---
-        let unitOpening = null;
-        let unitClosing = null;
-        if (professional && professional.unit) {
-            const { Unit: UnitModel } = require('../../models');
-            const unit = await UnitModel.findOne({
-                where: { tenant_id: tenantId, name: professional.unit }
-            });
-            if (unit) {
-                unitOpening = unit.opening_time;
-                unitClosing = unit.closing_time;
-                console.log(`[Availability] Using Unit (${unit.name}) hours: ${unitOpening} - ${unitClosing}`);
+        // Apply Tenant Hours first
+        const businessHours = tenant.business_hours || [];
+        const tenantDay = businessHours.find(bh => bh.day?.toLowerCase().trim() === dayOfWeekLabel);
+        if (tenantDay) {
+            isOpen = tenantDay.open;
+            startTime = tenantDay.start || startTime;
+            endTime = tenantDay.end || endTime;
+        }
+
+        // Override with Unit Hours
+        if (unit && Array.isArray(unit.working_hours)) {
+            const unitDay = unit.working_hours.find(wh =>
+                wh && wh.day && wh.day.toLowerCase().trim() === dayOfWeekLabel
+            );
+
+            if (unitDay) {
+                isOpen = unitDay.open;
+                startTime = unitDay.start || startTime;
+                endTime = unitDay.end || endTime;
+                lunchStart = unitDay.lunchStart || lunchStart;
+                lunchEnd = unitDay.lunchEnd || lunchEnd;
             }
-        }
-        // -------------------------------
-
-        const availabilityDate = new Date(date + 'T00:00:00');
-        const dayOfWeekIndex = availabilityDate.getDay();
-        const daysMap = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
-        const dayOfWeekLabel = daysMap[dayOfWeekIndex];
-
-        // Find salon hours for this day
-        const salonDay = businessHours.find(bh =>
-            bh && bh.day && bh.day.toLowerCase().trim() === dayOfWeekLabel
-        );
-
-        if (!salonDay || !salonDay.open) {
-            return []; // Salon is closed or day not found
+        } else if (unit) {
+            startTime = unit.opening_time || startTime;
+            endTime = unit.closing_time || endTime;
         }
 
-        // --- Intersect with Unit Hours if specified ---
-        let startTime = professional.start_time || '09:00';
-        let endTime = professional.end_time || '22:00';
-        let lunchStart = professional.lunch_start || '12:00';
-        let lunchEnd = professional.lunch_end || '13:00';
+        if (!isOpen) return { professional: { id: professional.id, name: professional.name }, slots: [] };
 
-        if (unitOpening) startTime = startTime > unitOpening ? startTime : unitOpening;
-        if (unitClosing) endTime = endTime < unitClosing ? endTime : unitClosing;
+        const blocks = await ScheduleBlock.findAll({
+            where: { tenant_id: tenantId, professional_id: professionalId, date: date }
+        });
 
-        // Override/Intersect with Salon Business Hours if present
-        if (salonDay && salonDay.start && salonDay.end) {
-            // Business logic: Professional cannot work before salon opens or after it closes
-            startTime = startTime > salonDay.start ? startTime : salonDay.start;
-            endTime = endTime < salonDay.end ? endTime : salonDay.end;
-
-            // Lunch override if business hours specify lunch (optional but consistent)
-            if (salonDay.lunchStart && salonDay.lunchEnd) {
-                lunchStart = salonDay.lunchStart;
-                lunchEnd = salonDay.lunchEnd;
-            }
-        }
-        // --------------------------------------------
-
-        // Get service duration (default 30 min)
         let serviceDuration = 30;
         if (serviceId) {
             const service = await Service.findByPk(serviceId);
-            if (service) {
-                serviceDuration = service.duration || 30;
-            }
+            if (service) serviceDuration = service.duration || 30;
         }
 
-        // Get existing appointments for this professional on this date
         const existingAppointments = await Appointment.findAll({
             where: {
                 tenant_id: tenantId,
@@ -1000,21 +998,21 @@ class AppointmentService {
             include: [{ model: Service, as: 'service' }]
         });
 
-        // Helper to convert time string to minutes
         const timeToMinutes = (time) => {
+            if (!time) return 0;
             const [h, m] = time.split(':').map(Number);
             return h * 60 + m;
         };
 
-        // Helper to convert minutes to time string
         const minutesToTime = (mins) => {
             const h = Math.floor(mins / 60);
             const m = mins % 60;
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
         };
 
-        // Generate all possible slots (every 30 minutes)
-        const slotInterval = 30;
+        const unitSettings = (unit || tenant).settings || {};
+        const slotInterval = unitSettings.appointmentInterval || 30;
+
         const dayStart = timeToMinutes(startTime);
         const dayEnd = timeToMinutes(endTime);
         const lunchBegin = timeToMinutes(lunchStart);
@@ -1022,57 +1020,38 @@ class AppointmentService {
 
         const allSlots = [];
         for (let t = dayStart; t + serviceDuration <= dayEnd; t += slotInterval) {
-            // Skip lunch time
             if (t >= lunchBegin && t < lunchFinish) continue;
-            // Skip if slot would overlap with lunch
             if (t < lunchBegin && t + serviceDuration > lunchBegin) continue;
-
             allSlots.push(t);
         }
 
-        // Filter out slots that conflict with existing appointments
         const availableSlots = allSlots.filter(slotStart => {
             const slotEnd = slotStart + serviceDuration;
-
             for (const appt of existingAppointments) {
                 const apptStart = timeToMinutes(appt.time);
                 const apptDuration = appt.service?.duration || 30;
                 const apptEnd = apptStart + apptDuration;
-
-                // Check for overlap
-                if (slotStart < apptEnd && slotEnd > apptStart) {
-                    return false;
-                }
+                if (slotStart < apptEnd && slotEnd > apptStart) return false;
             }
-
-            // Also check blocks
             for (const block of blocks) {
                 const blockStart = timeToMinutes(block.start_time);
                 const blockEnd = timeToMinutes(block.end_time);
-
-                if (slotStart < blockEnd && slotEnd > blockStart) {
-                    return false;
-                }
+                if (slotStart < blockEnd && slotEnd > blockStart) return false;
             }
-
             return true;
         });
 
         const now = new Date();
         const requestDate = new Date(date + 'T00:00:00');
+        let slots = [];
 
         if (requestDate.toDateString() === now.toDateString()) {
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
-            const slots = availableSlots
-                .filter(slot => slot > currentMinutes)
-                .map(minutesToTime);
-            return {
-                professional: { id: professional.id, name: professional.name },
-                slots
-            };
+            slots = availableSlots.filter(slot => slot > currentMinutes).map(minutesToTime);
+        } else {
+            slots = availableSlots.map(minutesToTime);
         }
 
-        const slots = availableSlots.map(minutesToTime);
         return {
             professional: { id: professional.id, name: professional.name },
             slots

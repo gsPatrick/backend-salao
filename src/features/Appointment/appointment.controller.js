@@ -94,9 +94,9 @@ class AppointmentController {
 
     async updateStatus(req, res) {
         try {
-            const { status, sessionsConsumed } = req.body;
+            const { status, sessionsConsumed, bypassNotice } = req.body;
             const appointment = await appointmentService.updateStatus(
-                req.params.id, status, req.tenantId, sessionsConsumed
+                req.params.id, status, req.tenantId, sessionsConsumed, bypassNotice
             );
             res.json({ success: true, data: appointment });
         } catch (error) {
@@ -106,8 +106,8 @@ class AppointmentController {
 
     async cancel(req, res) {
         try {
-            const { reason } = req.body;
-            const appointment = await appointmentService.cancel(req.params.id, req.tenantId, reason);
+            const { reason, bypassNotice } = req.body;
+            const appointment = await appointmentService.cancel(req.params.id, req.tenantId, reason, bypassNotice);
             res.json({ success: true, data: appointment });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -157,7 +157,7 @@ class AppointmentController {
 
     async getAvailability(req, res) {
         try {
-            const { date, professionalId, serviceId } = req.query;
+            const { date, professionalId, serviceId, unitId } = req.query;
 
             if (!date) {
                 return res.status(400).json({
@@ -170,7 +170,8 @@ class AppointmentController {
                 professionalId ? parseInt(professionalId) : null,
                 date,
                 serviceId ? parseInt(serviceId) : null,
-                req.tenantId
+                req.tenantId,
+                unitId ? parseInt(unitId) : null
             );
 
             res.json({ success: true, data: slots });

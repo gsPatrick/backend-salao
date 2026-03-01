@@ -38,6 +38,10 @@ module.exports = (sequelize) => {
             allowNull: true,
             defaultValue: 'https://i.pravatar.cc/150?u=default',
         },
+        cargo: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
+        },
         role: {
             type: DataTypes.ENUM('admin', 'gerente', 'recepcao', 'profissional', 'cliente'),
             allowNull: false,

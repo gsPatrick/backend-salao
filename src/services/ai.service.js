@@ -77,13 +77,17 @@ class AIService {
                 return `- ${p.name} (${unit ? `Unidade ${unit.name}` : 'Geral'}) (ID: ${p.id})`;
             }).join('\n');
 
-        const businessHours = (Array.isArray(tenant.business_hours) && tenant.business_hours.length > 0)
-            ? JSON.stringify(tenant.business_hours)
-            : "Segunda a Sexta das 09:00 às 18:00 (Sábado e Domingo fechado)";
-
-        const customBehavior = config?.prompt_behavior || config?.personality || "Seja cordial, profissional e prestativa.";
-
         const selectedUnit = unitId ? tenant.units.find(u => u.id === unitId) : null;
+        const unitSettings = selectedUnit?.settings || {};
+
+        const businessHours = (selectedUnit && Array.isArray(selectedUnit.working_hours) && selectedUnit.working_hours.length > 0)
+            ? JSON.stringify(selectedUnit.working_hours)
+            : (Array.isArray(tenant.business_hours) && tenant.business_hours.length > 0)
+                ? JSON.stringify(tenant.business_hours)
+                : "Segunda a Sexta das 09:00 às 18:00 (Sábado e Domingo fechado)";
+
+        const cancelNotice = unitSettings.cancelNoticeHours || 24;
+        const customBehavior = config?.prompt_behavior || config?.personality || "Seja cordial, profissional e prestativa.";
 
         // Training files content
         let trainingContent = '';
@@ -122,8 +126,8 @@ ${unitsList}
 1. **NOMES OBRIGATÓRIOS**: Você DEVE falar o nome do profissional em toda listagem de horários.
 2. **PROATIVIDADE**: Se o cliente perguntar horários, chame 'consultarDisponibilidade' e apresente as opções IMEDIATAMENTE com os nomes.
 3. **ZERO ERROS**: NUNCA diga frases como "estou com dificuldades técnicas" ou "não consigo acessar". Se a lista de horários virem vazia, diga: "Para hoje não temos mais vagas, mas posso ver para amanhã?".
-4. **CANCELAMENTO**: Se o cliente pedir para cancelar, use 'cancelarAgendamento'. Pergunte o motivo antes de cancelar.
-5. **REAGENDAMENTO**: Se o cliente pedir para reagendar, use 'reagendarAgendamento'. Primeiro consulte a disponibilidade na nova data, depois reagende.
+1. **CANCELAMENTO**: Se o cliente pedir para cancelar, use 'cancelarAgendamento'. Você DEVE avisar que o cancelamento só é permitido com pelo menos ${cancelNotice} horas de antecedência. Pergunte o motivo antes de cancelar.
+2. **REAGENDAMENTO**: Se o cliente pedir para reagendar, use 'reagendarAgendamento'. Primeiro consulte a disponibilidade na nova data, depois reagende. Regra das ${cancelNotice} horas também se aplica.
 
 ## REQUISITOS PARA BOOKING
 - Para 'bookAppointment', você PRECISA de: Data, Horário, ID do Serviço, ID do Profissional (Obrigatório) e Nome.
@@ -234,14 +238,15 @@ ${trainingContent}
         ];
     }
 
-    async handleToolCall(toolCall, tenantId, phone) {
+    async handleToolCall(toolCall, tenantId, phone, contextUnitId = null) {
         const { name } = toolCall.function;
         const args = JSON.parse(toolCall.function.arguments);
-        console.log(`[AI V3.0] Executing: ${name}`, args);
+        const unitId = args.unitId || contextUnitId;
+        console.log(`[AI V3.0] Executing: ${name} (Unit: ${unitId})`, args);
 
         if (name === 'consultarDisponibilidade') {
             try {
-                const result = await appointmentService.getAvailability(args.professionalId, args.data, args.serviceId, tenantId, args.unitId);
+                const result = await appointmentService.getAvailability(args.professionalId, args.data, args.serviceId, tenantId, unitId);
                 return {
                     status: "sucesso",
                     profissional: result.professional.name,
@@ -262,7 +267,7 @@ ${trainingContent}
                     client_id: client.id,
                     professional_id: args.professionalId,
                     service_id: args.serviceId,
-                    unit_id: args.unitId,
+                    unit_id: unitId,
                     date: args.data,
                     time: args.time,
                     status: 'confirmado'
@@ -282,6 +287,7 @@ ${trainingContent}
                     where: {
                         client_id: client.id,
                         tenant_id: tenantId,
+                        unit_id: unitId || { [Op.not]: null },
                         date: { [Op.gte]: today },
                         status: { [Op.in]: ['agendado', 'confirmado'] }
                     },
@@ -310,6 +316,7 @@ ${trainingContent}
                     where: {
                         client_id: client.id,
                         tenant_id: tenantId,
+                        unit_id: unitId || { [Op.not]: null },
                         date: { [Op.gte]: today },
                         status: { [Op.in]: ['agendado', 'confirmado'] }
                     },
@@ -351,6 +358,7 @@ ${trainingContent}
                     where: {
                         client_id: client.id,
                         tenant_id: tenantId,
+                        unit_id: unitId || { [Op.not]: null },
                         date: { [Op.gte]: today },
                         status: 'agendado'
                     },
@@ -464,7 +472,7 @@ ${trainingContent}
             while (assistantMessage.tool_calls) {
                 history.push(assistantMessage);
                 for (const toolCall of assistantMessage.tool_calls) {
-                    const result = await this.handleToolCall(toolCall, tenantId, phone);
+                    const result = await this.handleToolCall(toolCall, tenantId, phone, chat.unit_id);
                     history.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) });
                 }
                 messages = this.getSafeMessages(systemPrompt, history, 30);
@@ -588,7 +596,7 @@ ${trainingContent}
             while (assistantMessage.tool_calls) {
                 historyCopy.push(assistantMessage);
                 for (const toolCall of assistantMessage.tool_calls) {
-                    const result = await this.handleToolCall(toolCall, tenantId, "TEST");
+                    const result = await this.handleToolCall(toolCall, tenantId, "TEST", null);
                     historyCopy.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) });
                 }
                 messages = this.getSafeMessages(systemPrompt, historyCopy, 30);
