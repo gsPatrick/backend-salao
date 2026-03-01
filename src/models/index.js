@@ -150,6 +150,10 @@ MonthlyPackage.hasMany(Appointment, { foreignKey: 'package_id' });
 Appointment.belongsTo(SalonPlan, { foreignKey: 'salon_plan_id', as: 'salon_plan' });
 SalonPlan.hasMany(Appointment, { foreignKey: 'salon_plan_id' });
 
+// Appointment-Unit association
+Appointment.belongsTo(Unit, { foreignKey: 'unit_id', as: 'unit' });
+Unit.hasMany(Appointment, { foreignKey: 'unit_id' });
+
 Appointment.belongsTo(PackageSubscription, { foreignKey: 'package_subscription_id', as: 'package_subscription' });
 PackageSubscription.hasMany(Appointment, { foreignKey: 'package_subscription_id' });
 
