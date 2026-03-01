@@ -26,6 +26,24 @@ async function ensureCRMSchema(sequelize) {
             console.log('[Schema Fix] Column "classifications" already exists.');
         }
 
+        // 2. Check if 'cnpj_cpf' column exists in 'package_subscriptions'
+        const [cnpjResults] = await sequelize.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'package_subscriptions' AND column_name = 'cnpj_cpf'
+        `);
+
+        if (cnpjResults.length === 0) {
+            console.log('[Schema Fix] Column "cnpj_cpf" not found in package_subscriptions. Adding it now...');
+            await sequelize.query(`
+                ALTER TABLE package_subscriptions 
+                ADD COLUMN cnpj_cpf VARCHAR(255) DEFAULT NULL
+            `);
+            console.log('[Schema Fix] Column "cnpj_cpf" added successfully.');
+        } else {
+            console.log('[Schema Fix] Column "cnpj_cpf" already exists.');
+        }
+
         return true;
     } catch (error) {
         console.error('[Schema Fix] Error fixing CRM schema:', error);
