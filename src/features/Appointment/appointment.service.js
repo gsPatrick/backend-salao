@@ -343,27 +343,11 @@ class AppointmentService {
             }, { transaction: t });
             console.log('--- DEBUG: insert done ---');
 
-            // AUTOMATION: Move to 'scheduled' or 'recurrent' funnel if status is valid
+            // AUTOMATION: Always move to 'scheduled' (Agendados) when a new appointment is created
             if (['agendado', 'confirmado'].includes(appointment.status)) {
-                // Check if client has other appointments (excluding this one) to determine recurrence
-                const existingAppointmentsCount = await Appointment.count({
-                    where: {
-                        client_id: appointment.client_id,
-                        id: { [Op.ne]: appointment.id }, // Exclude current
-                        status: { [Op.notIn]: ['cancelado', 'faltou'] } // Only count valid appointments
-                    },
-                    transaction: t
-                });
-
-                let newStage = 'scheduled';
-                let defaultIcon = '✅';
-                let defaultTitle = 'Agendados';
-
-                if (existingAppointmentsCount > 0) {
-                    newStage = 'recurrent';
-                    defaultIcon = '💎';
-                    defaultTitle = 'Recorrentes';
-                }
+                const newStage = 'scheduled';
+                const defaultIcon = '✅';
+                const defaultTitle = 'Agendados';
 
                 // Fetch dynamic tag from settings
                 const crmAutomationService = require('../../services/crm_automation.service');
@@ -433,9 +417,8 @@ class AppointmentService {
             }
         }
 
-        // Real-time CRM hook
-        const today = new Date().toISOString().split('T')[0];
-        if (data.date === today) {
+        // Real-time CRM hook - trigger for ALL appointments, not just today's
+        {
             const crmAutomationService = require('../../services/crm_automation.service');
             Client.findByPk(data.client_id).then(client => {
                 if (client) {

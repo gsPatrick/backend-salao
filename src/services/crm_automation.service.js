@@ -109,9 +109,6 @@ class CRMAutomationService {
             return crmAutomationExecutor.enqueue(tenantId, 'appointment_today', { clientId: client.id, appointmentId: appointment.id });
         }
 
-        const today = new Date().toISOString().split('T')[0];
-        if (appointment.date !== today) return;
-
         const settings = await CRMSettings.findOne({ where: { tenant_id: tenantId } });
         const stage = settings?.funnel_stages?.find(s => s.id === 'scheduled');
         if (stage && stage.ai_actions && Array.isArray(stage.ai_actions)) {
