@@ -1,4 +1,4 @@
-const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage, SalonPlan, SalonPlanSubscription, sequelize } = require('../../models');
+const { Client, Appointment, Service, Professional, PackageSubscription, MonthlyPackage, SalonPlan, SalonPlanSubscription, Notification, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
 class ClientService {
@@ -25,6 +25,9 @@ class ClientService {
             where,
             order: [['created_at', 'DESC']],
         });
+
+        // Trigger birthday check (non-blocking)
+        this.checkBirthdays(tenantId, unitId).catch(err => console.error('[Birthday Check Error]:', err));
 
         // Fetch Units for name mapping
         const units = await Unit.findAll({ where: { tenant_id: tenantId } });
@@ -811,6 +814,51 @@ class ClientService {
 
         console.log(`[Stats Update] Client ${clientId}: ${totalVisits} visits, total spent: ${totalSpent.toFixed(2)}, avg ticket: ${averageTicket.toFixed(2)}`);
     }
+    async checkBirthdays(tenantId, unitId) {
+        const { Op } = require('sequelize');
+        const today = new Date();
+        const month = today.getMonth() + 1;
+        const day = today.getDate();
+
+        // Find clients with birthday today
+        const clients = await Client.findAll({
+            where: {
+                tenant_id: tenantId,
+                is_active: true,
+                [Op.and]: [
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('MONTH FROM birth_date')), month),
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('DAY FROM birth_date')), day)
+                ]
+            }
+        });
+
+        if (clients.length === 0) return;
+
+        const notificationService = require('../Notification/notification.service');
+
+        for (const client of clients) {
+            const title = 'Aniversariante do Dia';
+            const message = `É o aniversário de ${client.name} hoje!`;
+
+            // Check if already notified today to prevent duplicates
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            const existing = await Notification.findOne({
+                where: {
+                    tenant_id: tenantId,
+                    title,
+                    message: { [Op.like]: `%${client.name}%` },
+                    created_at: { [Op.gte]: todayStart }
+                }
+            });
+
+            if (!existing) {
+                await notificationService.notifyManagers(tenantId, unitId, title, message, 'info');
+            }
+        }
+    }
 }
+
 
 module.exports = new ClientService();

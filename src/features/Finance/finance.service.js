@@ -1,4 +1,4 @@
-const { FinancialTransaction, Appointment, Client, sequelize } = require('../../models');
+const { FinancialTransaction, Appointment, Client, Notification, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
 class FinanceService {
@@ -87,6 +87,9 @@ class FinanceService {
             // Re-sort if we added virtuals
             mappedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
         }
+
+        // Trigger upcoming bills check (non-blocking)
+        this.checkUpcomingBills(tenantId).catch(err => console.error('[Finance Check Error]:', err));
 
         return mappedTransactions;
     }
@@ -276,6 +279,58 @@ class FinanceService {
             clients_new: clientsFull.length
         };
     }
+    async checkUpcomingBills(tenantId) {
+        const { Op } = require('sequelize');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const next3Days = new Date();
+        next3Days.setDate(today.getDate() + 3);
+
+        const upcomingBills = await FinancialTransaction.findAll({
+            where: {
+                tenant_id: tenantId,
+                status: ['pendente', 'pending'],
+                type: ['despesa', 'expense'],
+                date: {
+                    [Op.between]: [
+                        today.toISOString().split('T')[0],
+                        next3Days.toISOString().split('T')[0]
+                    ]
+                }
+            }
+        });
+
+        if (upcomingBills.length === 0) return;
+
+        const notificationService = require('../Notification/notification.service');
+        for (const bill of upcomingBills) {
+            const dueDate = new Date(bill.date + 'T12:00:00'); // Use noon to avoid TZ issues
+            const diffTime = dueDate.getTime() - today.getTime();
+            const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+            const title = 'Vencimento de Fatura';
+            const message = `Fatura ${bill.description} vence em ${daysRemaining} dias`;
+
+            // Prevent duplicates for today
+            const { Notification } = require('../../models');
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            const existing = await Notification.findOne({
+                where: {
+                    tenant_id: tenantId,
+                    title,
+                    message: { [Op.like]: `%${bill.description}%` },
+                    created_at: { [Op.gte]: todayStart }
+                }
+            });
+
+            if (!existing) {
+                await notificationService.notifyManagers(tenantId, bill.unit_id, title, message, 'warning');
+            }
+        }
+    }
 }
+
 
 module.exports = new FinanceService();

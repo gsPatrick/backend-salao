@@ -1,4 +1,4 @@
-const { Product, StockTransaction } = require('../../models');
+const { Product, StockTransaction, Notification } = require('../../models');
 
 class StockService {
     async listProducts(tenantId, unitId = null) {
@@ -58,6 +58,9 @@ class StockService {
             user_id: userId
         });
 
+        // Check for low stock alert
+        this.checkLowStock(product, tenantId).catch(err => console.error('[Stock Alert Error]:', err));
+
         return { product, transaction };
     }
 
@@ -96,7 +99,11 @@ class StockService {
             user_id: userId
         });
 
+        // Check for low stock alert
+        this.checkLowStock(product, tenantId).catch(err => console.error('[Stock Alert Error]:', err));
+
         return product;
+
     }
 
     async deleteCategory(category, tenantId) {
@@ -105,6 +112,32 @@ class StockService {
             { where: { category, tenant_id: tenantId } }
         );
     }
+    async checkLowStock(product, tenantId) {
+        if (product.stock_quantity <= product.min_stock_level) {
+            const notificationService = require('../Notification/notification.service');
+            const title = 'Estoque Baixo';
+            const message = `Estoque baixo: ${product.name} (${product.stock_quantity} unidades restantes)`;
+
+            // Check if already notified today to prevent duplicates
+            const { Op } = require('sequelize');
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            const existing = await Notification.findOne({
+                where: {
+                    tenant_id: tenantId,
+                    title,
+                    message: { [Op.like]: `%${product.name}%` },
+                    created_at: { [Op.gte]: todayStart }
+                }
+            });
+
+            if (!existing) {
+                await notificationService.notifyManagers(tenantId, product.unit_id, title, message, 'warning');
+            }
+        }
+    }
 }
+
 
 module.exports = new StockService();

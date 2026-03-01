@@ -1,4 +1,4 @@
-const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription, Unit, sequelize } = require('../../models');
+const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription, Unit, Notification, sequelize } = require('../../models');
 const { Op, Transaction } = require('sequelize');
 
 class AppointmentService {
@@ -439,6 +439,9 @@ class AppointmentService {
                     crmAutomationService.handleScheduledToday(tenantId, client, createdAppointment).catch(err =>
                         console.error('[CRM Hook Error] handleScheduledToday:', err)
                     );
+                    // Pass client to trigger notifications
+                    const appWithClient = { ...createdAppointment.toJSON(), client };
+                    this.triggerStoreFlowNotification(appWithClient, tenantId, 'novo').catch(err => console.error('[Notification Alert Error]:', err));
                 }
             });
         }
@@ -759,6 +762,9 @@ class AppointmentService {
             );
         }
 
+        // Trigger notifications for status changes (appointmentInstance already has client if updated via updateStatus)
+        this.triggerStoreFlowNotification(appointmentInstance, tenantId, status).catch(err => console.error('[Notification Alert Error]:', err));
+
         return this.getById(id, tenantId);
     }
 
@@ -924,7 +930,7 @@ class AppointmentService {
         }
 
         const { ScheduleBlock, Unit: UnitModel, Tenant: TenantModel } = require('../../models');
-        
+
         // Fetch Unit first if unitId is provided or if professional has unit_id
         let unit = null;
         if (unitId) {
@@ -1084,6 +1090,51 @@ class AppointmentService {
         const result = await ScheduleBlock.destroy({ where: { id, tenant_id: tenantId } });
         return result > 0;
     }
+    async triggerStoreFlowNotification(appointment, tenantId, type) {
+        const notificationService = require('../Notification/notification.service');
+        const clientName = (appointment.client?.name || appointment.clientName || 'Cliente');
+        const time = appointment.time || '00:00';
+
+        let title = '';
+        let message = '';
+        let nType = 'info';
+
+        const status = type.toLowerCase();
+
+        if (status === 'cancelado') {
+            title = 'Agendamento Cancelado';
+            message = `Agendamento cancelado: ${clientName} às ${time}`;
+            nType = 'warning';
+        } else if (status === 'em_espera') {
+            title = 'Cliente na Espera';
+            message = `Cliente na espera: ${clientName}`;
+            nType = 'info';
+        } else if (status === 'chegou') {
+            title = 'Cliente Chegou';
+            message = `Cliente chegou: ${clientName}`;
+            nType = 'success';
+        } else if (status === 'novo') {
+            title = 'Novo Agendamento';
+            message = `Novo agendamento: ${clientName} às ${time}`;
+            nType = 'success';
+
+            // Special VIP Check
+            if (appointment.client?.classification === 'VIP' || parseFloat(appointment.client?.total_spent) > 1000) {
+                setTimeout(() => {
+                    this.triggerStoreFlowNotification(appointment, tenantId, 'vip_a_caminho').catch(err => console.error('[Notification Alert Error]:', err));
+                }, 500);
+            }
+        } else if (status === 'vip_a_caminho') {
+            title = 'Cliente VIP a Caminho';
+            message = `Cliente VIP a caminho: ${clientName}`;
+            nType = 'info';
+        }
+
+        if (title) {
+            await notificationService.notifyManagers(tenantId, appointment.unit_id, title, message, nType);
+        }
+    }
 }
+
 
 module.exports = new AppointmentService();
