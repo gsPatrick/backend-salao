@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { authenticate } = require('../features/Auth/auth.middleware');
+const { authenticate } = require('../Auth/auth.middleware');
 
 // Ensure upload directory exists
 const uploadDir = path.join(__dirname, '../../public/uploads');
