@@ -235,6 +235,7 @@ exports.listSubscriptions = async (req, res) => {
         const formatted = subscriptions.map(s => ({
             id: s.id,
             clientName: s.client_name,
+            cnpjCpf: s.cnpj_cpf,
             address: s.client_address,
             phone: s.client_phone,
             email: s.client_email,
@@ -249,6 +250,7 @@ exports.listSubscriptions = async (req, res) => {
             status: s.status,
             notes: s.notes,
             clicks: s.clicks,
+            totalSessions: s.total_sessions,
             createdAt: s.created_at
         }));
 
@@ -282,6 +284,7 @@ exports.createSubscription = async (req, res) => {
             package_id: data.packageId,
             client_id: data.clientId, // Ensure clientId is used if provided
             client_name: data.clientName,
+            cnpj_cpf: data.cnpjCpf,
             client_email: data.email,
             client_phone: data.phone,
             client_address: data.address,
@@ -336,6 +339,7 @@ function formatSubscription(s) {
     return {
         id: s.id,
         clientName: s.client_name,
+        cnpjCpf: s.cnpj_cpf,
         address: s.client_address,
         phone: s.client_phone,
         email: s.client_email,
@@ -350,6 +354,7 @@ function formatSubscription(s) {
         status: s.status,
         notes: s.notes,
         clicks: s.clicks,
+        totalSessions: s.total_sessions,
         createdAt: s.created_at
     };
 }
@@ -369,7 +374,13 @@ exports.updateSubscription = async (req, res) => {
         await sub.update({
             notes: data.notes,
             status: data.status,
-            active: data.status === 'active'
+            active: data.status === 'active',
+            cnpj_cpf: data.cnpjCpf !== undefined ? data.cnpjCpf : sub.cnpj_cpf,
+            client_name: data.clientName !== undefined ? data.clientName : sub.client_name,
+            responsible_name: data.responsible !== undefined ? data.responsible : sub.responsible_name,
+            client_phone: data.phone !== undefined ? data.phone : sub.client_phone,
+            client_email: data.email !== undefined ? data.email : sub.client_email,
+            client_address: data.address !== undefined ? data.address : sub.client_address
         });
 
         res.json(formatSubscription(sub));

@@ -120,6 +120,10 @@ const PackageSubscription = sequelize.define('PackageSubscription', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    cnpj_cpf: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     start_date: {
         type: DataTypes.DATEONLY,
         allowNull: false
