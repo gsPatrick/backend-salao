@@ -8,5 +8,6 @@ router.put('/settings', authMiddleware.authenticate, crmController.updateSetting
 router.get('/leads', authMiddleware.authenticate, crmController.listLeads);
 router.post('/leads', authMiddleware.authenticate, crmController.createLead);
 router.patch('/leads/:id/status', authMiddleware.authenticate, crmController.updateLeadStatus);
+router.post('/settings/preview-rules', authMiddleware.authenticate, crmController.previewRules);
 
 module.exports = router;

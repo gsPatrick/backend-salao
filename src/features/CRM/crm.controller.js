@@ -52,3 +52,20 @@ exports.updateLeadStatus = async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 };
+
+exports.previewRules = async (req, res) => {
+    try {
+        if (!req.user.tenant_id) {
+            return res.status(400).json({ error: 'Tenant context required' });
+        }
+        const { description } = req.body;
+        if (!description) {
+            return res.status(400).json({ error: 'Description is required' });
+        }
+        const crmRuleCompiler = require('../../services/crm_rule_compiler.service');
+        const compiled_rules = await crmRuleCompiler.compileRules(description);
+        res.json({ compiled_rules });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
