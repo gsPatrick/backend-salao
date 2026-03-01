@@ -309,6 +309,17 @@ class CRMAutomationService {
 
         console.log(`[CRM Robot] Triggering action '${action.title}' for client ${client.name} at stage: ${stage.title}`);
 
+        // CORE FIX: Always move client to this stage when an action is triggered
+        // This ensures the funnel matches the action/tag being applied
+        if (stage.id && client.crm_stage !== stage.id) {
+            const classification = `${stage.icon || ''} ${stage.title}`.trim();
+            await Client.update(
+                { crm_stage: stage.id, classification },
+                { where: { id: client.id } }
+            );
+            console.log(`[CRM Robot] Client ${client.name} moved to funnel: ${stage.id} (${classification})`);
+        }
+
         // Load chat history for context before contacting
         let historyContext = '';
         try {

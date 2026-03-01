@@ -89,7 +89,7 @@ class CRMAutomationExecutor {
                     }
                 }
 
-                await this.executeAction(rule, client, tenantId, context);
+                await this.executeAction(rule, client, tenantId, context, settings);
 
                 // CONFLICT PROTECTION
                 break;
@@ -184,16 +184,31 @@ class CRMAutomationExecutor {
         }
     }
 
-    async executeAction(rule, client, tenantId, context) {
+    async executeAction(rule, client, tenantId, context, settings) {
         const { action } = rule;
         console.log(`[Automação IA] Cliente: ${client.name} | Ação: ${action.type} | Motivo: Regra ${rule.trigger}`);
 
-        if (action.type === 'move_client') {
+        // CORE FIX: Always move client to the rule's origin stage when any action executes
+        // This ensures the funnel matches the action/tag being applied
+        if (rule.origin_stage_id && client.crm_stage !== rule.origin_stage_id) {
+            const stageClassification = this._getStageClassificationSync(rule.origin_stage_id, settings);
             await client.update({
-                crm_stage: action.params.target_stage,
+                crm_stage: rule.origin_stage_id,
+                classification: stageClassification,
                 last_automated_move: new Date()
             });
-            // Update classification/tags if possible logic exists
+            console.log(`[Automação IA] Cliente: ${client.name} | Funil atualizado para: ${rule.origin_stage_id} (${stageClassification})`);
+        }
+
+        if (action.type === 'move_client') {
+            const targetStage = action.params.target_stage;
+            const stageClassification = this._getStageClassificationSync(targetStage, settings);
+            await client.update({
+                crm_stage: targetStage,
+                classification: stageClassification,
+                last_automated_move: new Date()
+            });
+            console.log(`[Automação IA] Cliente: ${client.name} | Movido para: ${targetStage} (${stageClassification})`);
         }
         else if (action.type === 'send_message') {
             // Call AI to generate message if template is dynamic
@@ -214,6 +229,15 @@ class CRMAutomationExecutor {
                 console.error(`[CRM Executor] Tenant ${tenantId} not found for sending WhatsApp.`);
             }
         }
+    }
+
+    /**
+     * Get classification string for a stage from settings (synchronous helper)
+     */
+    _getStageClassificationSync(stageId, settings) {
+        if (!settings || !settings.funnel_stages) return stageId;
+        const stage = settings.funnel_stages.find(s => s.id === stageId);
+        return stage ? `${stage.icon || ''} ${stage.title}`.trim() : stageId;
     }
 }
 
