@@ -51,6 +51,18 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: 'todos',
         },
+        target_state: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        target_city: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        target_neighborhood: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
         order: {
             type: DataTypes.INTEGER,
             allowNull: false,

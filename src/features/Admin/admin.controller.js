@@ -17,6 +17,21 @@ class AdminController {
                 };
             }
 
+            const { Op } = require('sequelize');
+            const userAddress = req.userRole === 'cliente'
+                ? (req.user.address || {})
+                : (req.user.tenant?.address || {});
+
+            if (userAddress.state) {
+                where.target_state = { [Op.or]: [null, '', userAddress.state] };
+            }
+            if (userAddress.city) {
+                where.target_city = { [Op.or]: [null, '', userAddress.city] };
+            }
+            if (userAddress.neighborhood) {
+                where.target_neighborhood = { [Op.or]: [null, '', userAddress.neighborhood] };
+            }
+
             const banners = await AdBanner.findAll({
                 where,
                 order: [['order', 'ASC']]
@@ -33,6 +48,9 @@ class AdminController {
                 link: banner.link_url || '#',
                 call_to_action: banner.call_to_action,
                 target_area: banner.target_area,
+                target_state: banner.target_state,
+                target_city: banner.target_city,
+                target_neighborhood: banner.target_neighborhood,
                 is_active: banner.is_active,
                 click_count: banner.click_count
             }));
@@ -57,6 +75,9 @@ class AdminController {
                 link_url: data.link_url || data.link,
                 button_text: data.button_text,
                 target_area: data.target_area || 'todos',
+                target_state: data.target_state || null,
+                target_city: data.target_city || null,
+                target_neighborhood: data.target_neighborhood || null,
                 is_active: data.is_active !== undefined ? data.is_active : true,
                 order: data.order || 0
             });
@@ -84,6 +105,9 @@ class AdminController {
                 link_url: data.link_url || data.link,
                 button_text: data.button_text,
                 target_area: data.target_area,
+                target_state: data.target_state || null,
+                target_city: data.target_city || null,
+                target_neighborhood: data.target_neighborhood || null,
                 is_active: data.is_active,
                 order: data.order
             });
