@@ -1,5 +1,6 @@
 const financeService = require('./finance.service');
 const { parseMonetaryValue } = require('../../utils/number');
+const auditLogService = require('../../services/auditLog.service');
 
 class FinanceController {
     async getAll(req, res) {
@@ -33,6 +34,17 @@ class FinanceController {
 
             const data = { ...sanitizedBody, tenant_id: req.tenantId, unit_id: unitId };
             const transaction = await financeService.create(data, req.tenantId);
+
+            await auditLogService.record(
+                req.tenantId,
+                req.userId,
+                'cadastro',
+                'Financeiro',
+                transaction.id,
+                `criou uma transação: ${transaction.description} (R$ ${transaction.amount})`,
+                { unitId, ip: req.ip, userAgent: req.get('User-Agent') }
+            );
+
             res.status(201).json({ success: true, data: transaction });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -48,6 +60,17 @@ class FinanceController {
             if (sanitizedBody.amount) sanitizedBody.amount = parseMonetaryValue(sanitizedBody.amount);
 
             const transaction = await financeService.update(req.params.id, { ...sanitizedBody, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
+
+            await auditLogService.record(
+                req.tenantId,
+                req.userId,
+                'edicao',
+                'Financeiro',
+                transaction.id,
+                `editou a transação: ${transaction.description}`,
+                { unitId, ip: req.ip, userAgent: req.get('User-Agent') }
+            );
+
             res.json({ success: true, data: transaction });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -57,6 +80,17 @@ class FinanceController {
     async delete(req, res) {
         try {
             const result = await financeService.delete(req.params.id, req.tenantId);
+
+            await auditLogService.record(
+                req.tenantId,
+                req.userId,
+                'exclusao',
+                'Financeiro',
+                req.params.id,
+                `excluiu a transação ID: ${req.params.id}`,
+                { ip: req.ip, userAgent: req.get('User-Agent') }
+            );
+
             res.json({ success: true, message: result.message });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -66,6 +100,17 @@ class FinanceController {
     async markAsPaid(req, res) {
         try {
             const transaction = await financeService.markAsPaid(req.params.id, req.tenantId);
+
+            await auditLogService.record(
+                req.tenantId,
+                req.userId,
+                'edicao',
+                'Financeiro',
+                transaction.id,
+                `marcou como paga a transação: ${transaction.description}`,
+                { unitId: transaction.unit_id, ip: req.ip, userAgent: req.get('User-Agent') }
+            );
+
             res.json({ success: true, data: transaction });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

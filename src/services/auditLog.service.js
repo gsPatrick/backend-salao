@@ -14,10 +14,17 @@ class AuditLogService {
      */
     async record(tenantId, userId, action, entity, entityId, details, metadata = {}) {
         try {
+            // Sanitize unitId to ensure it's a valid integer or null
+            let unit_id = metadata.unitId;
+            if (unit_id) {
+                const parsedUnitId = parseInt(unit_id);
+                unit_id = isNaN(parsedUnitId) ? null : parsedUnitId;
+            }
+
             const logData = {
-                tenant_id: tenantId,
-                unit_id: metadata.unitId || null,
-                user_id: userId,
+                tenant_id: tenantId || null,
+                unit_id: unit_id || null,
+                user_id: userId || null,
                 action,
                 entity,
                 entity_id: entityId,
@@ -38,9 +45,16 @@ class AuditLogService {
      * Gets logs for a specific tenant.
      */
     async getLogs(tenantId, filters = {}) {
-        const { limit = 50, offset = 0, unitId } = filters;
-        const where = { tenant_id: tenantId };
-        if (unitId) where.unit_id = unitId;
+        const limit = parseInt(filters.limit) || 50;
+        const offset = parseInt(filters.offset) || 0;
+        const unitId = filters.unitId;
+
+        const where = {};
+        if (tenantId) where.tenant_id = tenantId;
+
+        if (unitId && !isNaN(parseInt(unitId))) {
+            where.unit_id = parseInt(unitId);
+        }
 
         return await AuditLog.findAll({
             where,

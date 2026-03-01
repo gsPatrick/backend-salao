@@ -241,14 +241,15 @@ class AuthController {
      */
     async logout(req, res) {
         try {
-            if (req.userId && req.user?.tenant_id) {
+            if (req.userId) {
                 await auditLogService.record(
-                    req.user.tenant_id,
+                    req.tenantId,
                     req.userId,
                     'logout',
                     null,
                     null,
-                    'saiu do sistema'
+                    'saiu do sistema',
+                    { ip: req.ip, userAgent: req.get('User-Agent') }
                 );
             }
         } catch (error) {
