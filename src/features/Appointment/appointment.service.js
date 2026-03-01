@@ -154,6 +154,9 @@ class AppointmentService {
     }
 
     async create(data, tenantId, userId) {
+        // Map 'finalizado' to 'concluido' to prevent enum errors if the UI sends it
+        if (data.status === 'finalizado') data.status = 'concluido';
+
         // Use a SERIALIZABLE transaction to prevent race conditions
         return sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED }, async (t) => {
             // Normalize and Validate Status
@@ -452,6 +455,9 @@ class AppointmentService {
     async update(id, data, tenantId) {
         const appointmentInstance = await Appointment.findOne({ where: { id, tenant_id: tenantId } });
         if (!appointmentInstance) throw new Error('Agendamento não encontrado');
+
+        // Map 'finalizado' to 'concluido' to prevent enum errors if the UI sends it
+        if (data.status === 'finalizado') data.status = 'concluido';
 
         const appointmentData = appointmentInstance.toJSON();
 
