@@ -231,8 +231,44 @@ class AuthService {
      */
     formatClientResponse(client) {
         const clientData = client.toJSON();
-        console.log(`[DEBUG-AUTH] Formatting client ${clientData.id}. Subscriptions:`, (clientData.subscriptions || []).length, 'Plans:', (clientData.plan_subscriptions || []).length);
         
+        // Merge JSONB packages with associated subscriptions
+        const jsonPackages = Array.isArray(clientData.packages) ? clientData.packages : [];
+        
+        const mappedPackages = [
+            ...jsonPackages.map(pkg => ({
+                name: pkg.name || 'Pacote/Plano',
+                completedSessions: Number(pkg.used_sessions || pkg.clicks || 0),
+                totalSessions: Number(pkg.total_sessions || pkg.sessions || 0),
+                type: pkg.type || 'package'
+            })),
+            ...(clientData.subscriptions || []).map(s => ({
+                name: s.package?.name || 'Pacote',
+                completedSessions: Number(s.clicks || 0),
+                totalSessions: Number(s.package?.sessions || s.total_sessions || 0),
+                type: 'package'
+            })),
+            ...(clientData.plan_subscriptions || []).map(s => ({
+                name: s.plan?.name || 'Plano',
+                completedSessions: Number(s.used_sessions || s.clicks || 0),
+                totalSessions: Number(s.plan?.sessions || s.total_sessions || 0),
+                type: 'plan'
+            }))
+        ];
+
+        // Deduplicate by name if necessary (optional, but good for data consistency)
+        const uniquePackages = [];
+        const seenNames = new Set();
+        for (const pkg of mappedPackages) {
+            const key = `${pkg.name}-${pkg.type}`;
+            if (!seenNames.has(key)) {
+                uniquePackages.push(pkg);
+                seenNames.add(key);
+            }
+        }
+
+        console.log(`[DEBUG-AUTH] Formatting client ${clientData.id}. Total Unique Packages:`, uniquePackages.length);
+
         return {
             id: clientData.id,
             name: clientData.name,
@@ -241,7 +277,7 @@ class AuthService {
             role: 'cliente',
             is_super_admin: false,
             tenant_id: clientData.tenant_id,
-            permissions: {}, // Clients have limited/no specific permissions object usually
+            permissions: {},
             tenant: clientData.tenant ? {
                 id: clientData.tenant.id,
                 name: clientData.tenant.name,
@@ -259,20 +295,7 @@ class AuthService {
                     marketing_campaigns: clientData.tenant.plan.marketing_campaigns,
                 } : null,
             } : null,
-            packages: [
-                ...(clientData.subscriptions || []).map(s => ({
-                    name: s.package?.name || 'Pacote',
-                    completedSessions: s.clicks || 0,
-                    totalSessions: s.package?.sessions || s.total_sessions || 0,
-                    type: 'package'
-                })),
-                ...(clientData.plan_subscriptions || []).map(s => ({
-                    name: s.plan?.name || 'Plano',
-                    completedSessions: s.used_sessions || s.clicks || 0,
-                    totalSessions: s.plan?.sessions || s.total_sessions || 0,
-                    type: 'plan'
-                }))
-            ]
+            packages: uniquePackages
         };
     }
 
