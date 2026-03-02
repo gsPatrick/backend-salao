@@ -63,6 +63,43 @@ class EmailService {
             console.log('-------------------');
         }
     }
+
+    async sendPasswordRecoveryEmail(user, password) {
+        if (!this.transporter) await this.init();
+
+        const subject = `[Salão24h] Recuperação de Senha`;
+        const html = `
+            <h2>Recuperação de Senha</h2>
+            <p>Olá, <strong>${user.name}</strong>,</p>
+            <p>Você solicitou a recuperação da sua senha no sistema Salão24h.</p>
+            <p>A sua senha de acesso é: <strong>${password}</strong></p>
+            <br>
+            <p>Por favor, acesse o sistema utilizando esta senha.</p>
+            <p>Se você não solicitou esta recuperação, por favor, ignore este e-mail.</p>
+            <hr/>
+            <p><em>Enviado automaticamente pelo Sistema Salão24h</em></p>
+        `;
+
+        if (this.transporter) {
+            try {
+                await this.transporter.sendMail({
+                    from: `"Suporte Salão24h" <${process.env.SMTP_USER || this.supportEmail}>`,
+                    to: user.email,
+                    subject,
+                    html,
+                });
+                console.log(`[EmailService] Password recovery email sent to ${user.email}`);
+            } catch (error) {
+                console.error('[EmailService] Error sending email:', error);
+            }
+        } else {
+            console.log('--- MOCK EMAIL ---');
+            console.log('To:', user.email);
+            console.log('Subject:', subject);
+            console.log('Body:', html);
+            console.log('-------------------');
+        }
+    }
 }
 
 module.exports = new EmailService();

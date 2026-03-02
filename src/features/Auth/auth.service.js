@@ -503,6 +503,55 @@ class AuthService {
             .replace(/(^-|-$)/g, '')
             + '-' + Date.now().toString(36);
     }
+
+    /**
+     * Forgot Password
+     */
+    async forgotPassword(email) {
+        const sanitizedEmail = email.trim().toLowerCase();
+        
+        // 1. Check in User table (Colaborators)
+        const user = await User.findOne({ where: { email: sanitizedEmail } });
+        if (user) {
+            // Generate temporary 6 digit password
+            const tempPassword = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            // Update user password (presumed hook will hash it)
+            await user.update({ password: tempPassword });
+            
+            // Call email service
+            const emailService = require('../../services/email.service');
+            await emailService.sendPasswordRecoveryEmail(user, tempPassword);
+            
+            return {
+                success: true,
+                message: 'Um link com a nova senha temporária foi enviado para o seu e-mail.'
+            };
+        }
+
+        // 2. Check in Client table
+        const client = await this.getClientByEmail(sanitizedEmail);
+        if (client) {
+            // Client passwords are plain text in current database architecture
+            const currentPassword = client.password;
+
+            if (!currentPassword) {
+                 throw new Error('Nenhuma senha encontrada para este usuário. Entre em contato com o suporte.');
+            }
+
+            // Call email service
+            const emailService = require('../../services/email.service');
+            await emailService.sendPasswordRecoveryEmail(client, currentPassword);
+
+            return {
+                success: true,
+                message: 'Sua senha foi enviada para o e-mail cadastrado.'
+            };
+        }
+
+        // If not found in either
+        throw new Error('O e-mail informado não foi encontrado.');
+    }
 }
 
 module.exports = new AuthService();

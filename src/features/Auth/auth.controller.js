@@ -268,12 +268,17 @@ class AuthController {
     async forgotPassword(req, res) {
         try {
             const { email } = req.body;
-            // In a real app, we'd check if user exists and send a real link.
-            // For E2E tests, we return status indicating the process started.
-            res.status(202).json({
-                success: true,
-                message: 'Se o e-mail existir, um link de recuperação será enviado.',
-            });
+            
+            if (!email) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'O e-mail é obrigatório.',
+                });
+            }
+
+            const result = await authService.forgotPassword(email);
+
+            res.status(200).json(result);
         } catch (error) {
             res.status(400).json({
                 success: false,
