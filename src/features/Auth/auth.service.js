@@ -231,6 +231,8 @@ class AuthService {
      */
     formatClientResponse(client) {
         const clientData = client.toJSON();
+        console.log(`[DEBUG-AUTH] Formatting client ${clientData.id}. Subscriptions:`, (clientData.subscriptions || []).length, 'Plans:', (clientData.plan_subscriptions || []).length);
+        
         return {
             id: clientData.id,
             name: clientData.name,
@@ -266,7 +268,7 @@ class AuthService {
                 })),
                 ...(clientData.plan_subscriptions || []).map(s => ({
                     name: s.plan?.name || 'Plano',
-                    completedSessions: s.clicks || 0,
+                    completedSessions: s.used_sessions || s.clicks || 0,
                     totalSessions: s.plan?.sessions || s.total_sessions || 0,
                     type: 'plan'
                 }))
@@ -315,7 +317,23 @@ class AuthService {
 
             // Reload client with relationships
             const fullClient = await Client.findByPk(client.id, {
-                include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
+                include: [
+                    {
+                        model: Tenant,
+                        as: 'tenant',
+                        include: [{ model: Plan, as: 'plan' }]
+                    },
+                    {
+                        model: PackageSubscription,
+                        as: 'subscriptions',
+                        include: [{ model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions'] }]
+                    },
+                    {
+                        model: SalonPlanSubscription,
+                        as: 'plan_subscriptions',
+                        include: [{ model: SalonPlan, as: 'plan', attributes: ['id', 'name', 'sessions'] }]
+                    }
+                ],
             });
 
             // Generate token
@@ -422,6 +440,45 @@ class AuthService {
      * Refresh JWT token
      */
     async refreshToken(currentUser) {
+        if (currentUser.role === 'cliente') {
+            const client = await Client.findByPk(currentUser.id, {
+                include: [
+                    {
+                        model: Tenant,
+                        as: 'tenant',
+                        include: [{ model: Plan, as: 'plan' }]
+                    },
+                    {
+                        model: PackageSubscription,
+                        as: 'subscriptions',
+                        include: [{ model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions'] }]
+                    },
+                    {
+                        model: SalonPlanSubscription,
+                        as: 'plan_subscriptions',
+                        include: [{ model: SalonPlan, as: 'plan', attributes: ['id', 'name', 'sessions'] }]
+                    }
+                ],
+            });
+
+            if (!client || !client.is_active) {
+                throw new Error('Cliente inválido');
+            }
+
+            const token = this.generateToken({
+                id: client.id,
+                email: client.email,
+                tenant_id: client.tenant_id,
+                is_super_admin: false,
+                role: 'cliente'
+            });
+
+            return {
+                token,
+                user: this.formatClientResponse(client),
+            };
+        }
+
         const user = await User.findByPk(currentUser.id, {
             include: [
                 {
@@ -447,7 +504,35 @@ class AuthService {
     /**
      * Get current user profile
      */
-    async getProfile(userId) {
+    async getProfile(userId, role) {
+        if (role === 'cliente') {
+            const client = await Client.findByPk(userId, {
+                include: [
+                    {
+                        model: Tenant,
+                        as: 'tenant',
+                        include: [{ model: Plan, as: 'plan' }]
+                    },
+                    {
+                        model: PackageSubscription,
+                        as: 'subscriptions',
+                        include: [{ model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions'] }]
+                    },
+                    {
+                        model: SalonPlanSubscription,
+                        as: 'plan_subscriptions',
+                        include: [{ model: SalonPlan, as: 'plan', attributes: ['id', 'name', 'sessions'] }]
+                    }
+                ],
+            });
+
+            if (!client) {
+                throw new Error('Cliente não encontrado');
+            }
+
+            return this.formatClientResponse(client);
+        }
+
         const user = await User.findByPk(userId, {
             include: [
                 {
