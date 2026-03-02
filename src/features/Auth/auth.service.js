@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
-const { User, Tenant, Plan, Unit, Client } = require('../../models');
+const { User, Tenant, Plan, Unit, Client, PackageSubscription, SalonPlanSubscription, MonthlyPackage, SalonPlan } = require('../../models');
 
 class AuthService {
     /**
@@ -92,7 +92,23 @@ class AuthService {
                 ]
             },
             order: [['is_active', 'DESC']],
-            include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
+            include: [
+                {
+                    model: Tenant,
+                    as: 'tenant',
+                    include: [{ model: Plan, as: 'plan' }]
+                },
+                {
+                    model: PackageSubscription,
+                    as: 'subscriptions',
+                    include: [{ model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions'] }]
+                },
+                {
+                    model: SalonPlanSubscription,
+                    as: 'plan_subscriptions',
+                    include: [{ model: SalonPlan, as: 'plan', attributes: ['id', 'name', 'sessions'] }]
+                }
+            ],
         });
     }
 
@@ -149,7 +165,23 @@ class AuthService {
 
         // Reload client with relationships
         const fullClient = await Client.findByPk(client.id, {
-            include: [{ model: Tenant, as: 'tenant', include: [{ model: Plan, as: 'plan' }] }],
+            include: [
+                {
+                    model: Tenant,
+                    as: 'tenant',
+                    include: [{ model: Plan, as: 'plan' }]
+                },
+                {
+                    model: PackageSubscription,
+                    as: 'subscriptions',
+                    include: [{ model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions'] }]
+                },
+                {
+                    model: SalonPlanSubscription,
+                    as: 'plan_subscriptions',
+                    include: [{ model: SalonPlan, as: 'plan', attributes: ['id', 'name', 'sessions'] }]
+                }
+            ],
         });
 
         // Generate token
@@ -225,6 +257,20 @@ class AuthService {
                     marketing_campaigns: clientData.tenant.plan.marketing_campaigns,
                 } : null,
             } : null,
+            packages: [
+                ...(clientData.subscriptions || []).map(s => ({
+                    name: s.package?.name || 'Pacote',
+                    completedSessions: s.clicks || 0,
+                    totalSessions: s.package?.sessions || s.total_sessions || 0,
+                    type: 'package'
+                })),
+                ...(clientData.plan_subscriptions || []).map(s => ({
+                    name: s.plan?.name || 'Plano',
+                    completedSessions: s.clicks || 0,
+                    totalSessions: s.plan?.sessions || s.total_sessions || 0,
+                    type: 'plan'
+                }))
+            ]
         };
     }
 
