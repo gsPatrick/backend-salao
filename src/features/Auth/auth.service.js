@@ -335,7 +335,7 @@ class AuthService {
      * Register a new tenant with admin user or a new client
      */
     async register(data) {
-        const { tenantName, userName, email, password, planId, userType, tenantId, phone, cnpj_cpf } = data;
+        const { tenantName, userName, email, password, planId, userType, tenantId, phone, cnpj_cpf, segmentType } = data;
 
         if (userType === 'client') {
             const sanitizedEmail = email.trim().toLowerCase();
@@ -434,6 +434,8 @@ class AuthService {
             name: tenantName,
             slug,
             cnpj_cpf,
+            logo_url: '/sa-sq.png',
+            settings: { segment: segmentType },
             plan_id: plan.id,
             subscription_status: 'trial',
             trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days trial

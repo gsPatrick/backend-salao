@@ -48,7 +48,7 @@ class AuthController {
      */
     async register(req, res) {
         try {
-            const { tenantName, userName, email, password, planId, tenantId, phone, cnpj_cpf } = req.body;
+            const { tenantName, userName, email, password, planId, tenantId, phone, cnpj_cpf, segmentType } = req.body;
             const userType = req.body.userType || req.body.user_type;
 
             if (userType !== 'client' && (!tenantName || !userName || !email || !password)) {
@@ -75,6 +75,7 @@ class AuthController {
                 tenantId,
                 phone,
                 cnpj_cpf,
+                segmentType,
             });
 
             res.status(201).json({
