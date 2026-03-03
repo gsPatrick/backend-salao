@@ -50,7 +50,7 @@ class AuthService {
 
                 return {
                     token,
-                    user: this.formatClientResponse(client)
+                    user: await this.formatClientResponse(client)
                 };
             }
 
@@ -195,7 +195,7 @@ class AuthService {
 
         return {
             token,
-            user: this.formatClientResponse(fullClient),
+            user: await this.formatClientResponse(fullClient),
             linkedClient: {
                 name: client.name,
                 unit_id: client.unit_id,
@@ -229,45 +229,77 @@ class AuthService {
     /**
      * Format client response (similar to user)
      */
-    formatClientResponse(client) {
+    async formatClientResponse(client) {
         const clientData = client.toJSON();
+        const { Appointment } = require('../../models');
+        const { Op } = require('sequelize');
         
         // Merge JSONB packages with associated subscriptions
         const jsonPackages = Array.isArray(clientData.packages) ? clientData.packages : [];
         
         const mappedPackages = [
             ...jsonPackages.map(pkg => ({
+                id: pkg.id,
                 name: pkg.name || 'Pacote/Plano',
-                completedSessions: Number(pkg.used_sessions || pkg.clicks || 0),
-                totalSessions: Number(pkg.total_sessions || pkg.sessions || 0),
+                package_id: pkg.package_id,
+                plan_id: pkg.plan_id,
                 type: pkg.type || 'package'
             })),
             ...(clientData.subscriptions || []).map(s => ({
+                id: s.id,
                 name: s.package?.name || 'Pacote',
-                completedSessions: Number(s.clicks || 0),
-                totalSessions: Number(s.package?.sessions || s.total_sessions || 0),
+                package_id: s.package_id,
                 type: 'package'
             })),
             ...(clientData.plan_subscriptions || []).map(s => ({
+                id: s.id,
                 name: s.plan?.name || 'Plano',
-                completedSessions: Number(s.used_sessions || s.clicks || 0),
-                totalSessions: Number(s.plan?.sessions || s.total_sessions || 0),
+                plan_id: s.plan_id,
                 type: 'plan'
             }))
         ];
 
-        // Deduplicate by name if necessary (optional, but good for data consistency)
-        const uniquePackages = [];
+        // Deduplicate by name + type
+        const uniqueTemplates = [];
         const seenNames = new Set();
         for (const pkg of mappedPackages) {
             const key = `${pkg.name}-${pkg.type}`;
             if (!seenNames.has(key)) {
-                uniquePackages.push(pkg);
+                uniqueTemplates.push(pkg);
                 seenNames.add(key);
             }
         }
 
-        console.log(`[DEBUG-AUTH] Formatting client ${clientData.id}. Total Unique Packages:`, uniquePackages.length);
+        // DYNAMISM: Tally sessions from Appointment table to match Admin Panel
+        const finalPackages = await Promise.all(uniqueTemplates.map(async (tpl) => {
+            const where = {
+                client_id: clientData.id,
+                tenant_id: clientData.tenant_id,
+                status: { [Op.notIn]: ['cancelado', 'faltou'] }
+            };
+
+            let total = 0;
+            if (tpl.type === 'package') {
+                where.package_id = tpl.package_id;
+                const pkgDef = await MonthlyPackage.findByPk(tpl.package_id);
+                total = pkgDef ? parseInt(pkgDef.sessions) || 0 : 0;
+            } else {
+                where.salon_plan_id = tpl.plan_id;
+                const planDef = await SalonPlan.findByPk(tpl.plan_id);
+                total = planDef ? parseInt(planDef.sessions) || 0 : 0;
+            }
+
+            const count = await Appointment.count({ where });
+
+            return {
+                name: tpl.name,
+                completedSessions: count,
+                totalSessions: total,
+                type: tpl.type
+            };
+        }));
+
+        console.log(`[DEBUG-AUTH] Formatting client ${clientData.id}. Dynamic Packages:`, finalPackages.length);
 
         return {
             id: clientData.id,
@@ -295,7 +327,7 @@ class AuthService {
                     marketing_campaigns: clientData.tenant.plan.marketing_campaigns,
                 } : null,
             } : null,
-            packages: uniquePackages
+            packages: finalPackages
         };
     }
 
@@ -498,7 +530,7 @@ class AuthService {
 
             return {
                 token,
-                user: this.formatClientResponse(client),
+                user: await this.formatClientResponse(client),
             };
         }
 
@@ -553,7 +585,7 @@ class AuthService {
                 throw new Error('Cliente não encontrado');
             }
 
-            return this.formatClientResponse(client);
+            return await this.formatClientResponse(client);
         }
 
         const user = await User.findByPk(userId, {
