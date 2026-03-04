@@ -48,7 +48,7 @@ class AuthController {
      */
     async register(req, res) {
         try {
-            const { tenantName, userName, email, password, planId, tenantId, phone, adminPhone, cep, cnpj_cpf, segmentType } = req.body;
+            const { tenantName, userName, email, password, planId, tenantId, adminPhone, cnpj_cpf, segmentType } = req.body;
             const userType = req.body.userType || req.body.user_type;
 
             if (userType !== 'client' && (!tenantName || !userName || !email || !password)) {
