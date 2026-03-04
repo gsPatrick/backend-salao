@@ -81,6 +81,12 @@ class TenantService {
             data.settings.bank_info.chave_pix = data.settings.bank_info.pixKey;
         }
 
+        // When switching to lifetime, remove any expiration limits
+        if (data.subscription_status === 'lifetime') {
+            data.trial_ends_at = null;
+            data.next_billing_date = null;
+        }
+
         await tenant.update(data);
         return this.getById(id, tenantId, isSuperAdmin);
     }

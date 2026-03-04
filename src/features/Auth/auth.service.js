@@ -335,7 +335,7 @@ class AuthService {
      * Register a new tenant with admin user or a new client
      */
     async register(data) {
-        const { tenantName, userName, email, password, planId, userType, tenantId, phone, cnpj_cpf, segmentType } = data;
+        const { tenantName, userName, email, password, planId, userType, tenantId, phone, adminPhone, cep, cnpj_cpf, segmentType } = data;
 
         if (userType === 'client') {
             const sanitizedEmail = email.trim().toLowerCase();
@@ -430,10 +430,18 @@ class AuthService {
 
         // Create tenant
         const slug = this.generateSlug(tenantName);
+        
+        let addressObj = {};
+        if (cep) {
+            addressObj = { cep: cep.replace(/\D/g, '').replace(/(\d{5})(\d{0,3})/, '$1-$2').replace(/-$/, '') };
+        }
+
         const tenant = await Tenant.create({
             name: tenantName,
             slug,
             cnpj_cpf,
+            phone: phone ? phone.replace(/\D/g, '') : null,
+            address: addressObj,
             logo_url: '/sa-sq.png',
             settings: { segment: segmentType },
             plan_id: plan.id,
@@ -446,6 +454,7 @@ class AuthService {
             tenant_id: tenant.id,
             name: userName,
             email: email.toLowerCase(),
+            phone: adminPhone ? adminPhone.replace(/\D/g, '') : null,
             password, // Will be hashed by hook
             role: 'admin',
             is_super_admin: false,
