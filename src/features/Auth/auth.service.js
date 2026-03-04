@@ -335,7 +335,7 @@ class AuthService {
      * Register a new tenant with admin user or a new client
      */
     async register(data) {
-        const { tenantName, userName, email, password, planId, userType, tenantId, adminPhone, cnpj_cpf, segmentType } = data;
+        const { tenantName, userName, email, password, planId, userType, tenantId, phone, adminPhone, cnpj_cpf, segmentType } = data;
 
         if (userType === 'client') {
             const sanitizedEmail = email.trim().toLowerCase();
