@@ -113,7 +113,7 @@ class CRMAutomationExecutor {
 
         // Calculate accurate inactivity
         let lastInteractionDate = client.createdAt ? new Date(client.createdAt) : new Date();
-        if (client.lastVisit) lastInteractionDate = new Date(client.lastVisit); // Legacy field
+        if (client.last_visit) lastInteractionDate = new Date(client.last_visit); // Correct DB field
         if (lastAppt) lastInteractionDate = new Date(lastAppt.date); // Appointment overrides
 
         const daysSinceLastVisit = Math.floor((new Date() - lastInteractionDate) / (1000 * 60 * 60 * 24));

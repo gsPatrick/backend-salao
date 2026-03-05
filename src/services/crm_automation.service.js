@@ -356,11 +356,11 @@ class CRMAutomationService {
         sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
         const dateStr = sixtyDaysAgo.toISOString().split('T')[0];
 
-        // Find clients with lastVisit older than 60 days AND not already in 'inactive' stage
+        // Find clients with last_visit older than 60 days AND not already in 'inactive' stage
         const clients = await Client.findAll({
             where: {
                 tenant_id: tenantId,
-                lastVisit: { [Op.lt]: dateStr },
+                last_visit: { [Op.lt]: dateStr },
                 crm_stage: { [Op.ne]: 'inactive' }
             }
         });
@@ -387,7 +387,7 @@ class CRMAutomationService {
     }
 
     async handleRecurrentDaily(tenantId, stage) {
-        // Move clients who are NOT inactive (lastVisit < 60 days ago) 
+        // Move clients who are NOT inactive (last_visit < 60 days ago) 
         // AND are currently in 'inactive' to 'recurrent' (revival)
 
         const sixtyDaysAgo = new Date();
@@ -397,7 +397,7 @@ class CRMAutomationService {
         const clients = await Client.findAll({
             where: {
                 tenant_id: tenantId,
-                lastVisit: { [Op.gte]: dateStr },
+                last_visit: { [Op.gte]: dateStr },
                 crm_stage: 'inactive'
             }
         });
