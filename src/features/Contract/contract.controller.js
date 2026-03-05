@@ -143,7 +143,10 @@ exports.getAllSignedContracts = async (req, res) => {
             order: [['created_at', 'DESC']]
         });
 
-        res.json(contracts);
+        res.json({
+            success: true,
+            data: contracts
+        });
     } catch (error) {
         console.error('Error fetching signed contracts:', error);
         res.status(500).json({ success: false, message: error.message });
