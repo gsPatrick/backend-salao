@@ -38,7 +38,8 @@ const models = {
     ScheduleBlock: require('./ScheduleBlock'),
     AuditLog: require('./AuditLog'),
     CommunityIdea: require('./CommunityIdea'),
-    CommunityIdeaVote: require('./CommunityIdeaVote')
+    CommunityIdeaVote: require('./CommunityIdeaVote'),
+    SignedContract: require('../features/Contract/signed_contract.model')
 };
 
 // Initialize models
@@ -62,7 +63,7 @@ const {
     Campaign, AcquisitionChannel, DirectMailCampaign, AIChat, AIAgentConfig,
     Promotion, ContractTemplate, MonthlyPackage, PackageSubscription,
     Lead, MarketingCampaign, SalonPlan, SalonPlanSubscription, Unit, ChatMessage, WhatsAppSession,
-    ScheduleBlock, AuditLog, CommunityIdea, CommunityIdeaVote
+    ScheduleBlock, AuditLog, CommunityIdea, CommunityIdeaVote, SignedContract
 } = db;
 
 // Call associate for all models
@@ -209,6 +210,13 @@ MonthlyPackage.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 Tenant.hasMany(PackageSubscription, { foreignKey: 'tenant_id' });
 PackageSubscription.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+// SignedContract associations
+Tenant.hasMany(SignedContract, { foreignKey: 'tenant_id' });
+SignedContract.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+
+Plan.hasMany(SignedContract, { foreignKey: 'plan_id' });
+SignedContract.belongsTo(Plan, { foreignKey: 'plan_id' });
 
 // Client-PackageSubscription associations
 Client.hasMany(PackageSubscription, { foreignKey: 'client_id', as: 'subscriptions' });

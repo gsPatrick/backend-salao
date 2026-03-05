@@ -1,4 +1,4 @@
-const ContractTemplate = require('./contract.model');
+const { ContractTemplate, SignedContract, Plan } = require('../../models');
 const { Op } = require('sequelize');
 
 exports.listTemplates = async (req, res) => {
@@ -105,5 +105,47 @@ exports.deleteTemplate = async (req, res) => {
     } catch (error) {
         console.error('Error deleting template:', error);
         res.status(500).json({ error: error.message });
+    }
+};
+
+exports.saveSignedContract = async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const { plan_id, content, signature, verification_photo, signed_date } = req.body;
+
+        const signedContract = await SignedContract.create({
+            tenant_id: tenantId,
+            plan_id,
+            content,
+            signature,
+            verification_photo,
+            signed_date,
+            status: 'signed'
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Contrato assinado com sucesso.',
+            data: signedContract
+        });
+    } catch (error) {
+        console.error('Error saving signed contract:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getAllSignedContracts = async (req, res) => {
+    try {
+        const tenantId = req.tenantId;
+        const contracts = await SignedContract.findAll({
+            where: { tenant_id: tenantId },
+            include: [{ model: Plan, attributes: ['id', 'name', 'display_name'] }],
+            order: [['created_at', 'DESC']]
+        });
+
+        res.json(contracts);
+    } catch (error) {
+        console.error('Error fetching signed contracts:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 };
