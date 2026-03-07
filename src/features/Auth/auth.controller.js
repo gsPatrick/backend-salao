@@ -160,6 +160,36 @@ class AuthController {
     }
 
     /**
+     * GET /api/auth/check-email
+     * Check if email exists in the system
+     */
+    async checkEmail(req, res) {
+        try {
+            const { email } = req.query;
+
+            if (!email) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email é obrigatório',
+                });
+            }
+
+            const result = await authService.checkEmailExists(email);
+
+            res.json({
+                success: true,
+                data: result,
+            });
+        } catch (error) {
+            console.error('Check email error:', error);
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Erro ao verificar email',
+            });
+        }
+    }
+
+    /**
      * POST /api/auth/refresh
      */
     async refreshToken(req, res) {

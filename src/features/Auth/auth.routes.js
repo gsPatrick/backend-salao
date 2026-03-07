@@ -8,6 +8,7 @@ router.post('/login', authController.login);
 router.post('/register', authController.register);
 router.post('/client-register', authController.clientRegisterByCpf);
 router.get('/check-cpf/:cpf', authController.checkCpf);
+router.get('/check-email', authController.checkEmail);
 router.post('/forgot-password', authController.forgotPassword);
 
 // Protected routes

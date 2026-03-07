@@ -227,6 +227,27 @@ class AuthService {
     }
 
     /**
+     * Check if email exists in the system (User or Client)
+     */
+    async checkEmailExists(email) {
+        const sanitizedEmail = email.trim().toLowerCase();
+        
+        const user = await User.findOne({ where: { email: sanitizedEmail } });
+        if (user) return { exists: true };
+
+        const client = await Client.findOne({
+            where: {
+                [require('sequelize').Op.or]: [
+                    { email: sanitizedEmail },
+                    { login_email: sanitizedEmail }
+                ]
+            }
+        });
+
+        return { exists: !!client };
+    }
+
+    /**
      * Format client response (similar to user)
      */
     async formatClientResponse(client) {
