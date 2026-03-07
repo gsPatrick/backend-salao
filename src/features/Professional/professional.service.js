@@ -1,4 +1,4 @@
-const { Professional, Service, ProfessionalReview, sequelize } = require('../../models');
+const { Professional, Service, Appointment, ProfessionalReview, sequelize } = require('../../models');
 
 class ProfessionalService {
     async getRanking(tenantId, limit = 5, unit = null, unitId = null) {
