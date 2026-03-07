@@ -15,6 +15,7 @@ router.delete('/:id/purge', requireRoles('admin', 'gerente'), professionalContro
 router.patch('/:id/suspend', requireRoles('admin', 'gerente'), professionalController.suspend);
 router.patch('/:id/archive', requireRoles('admin', 'gerente'), professionalController.archive);
 router.patch('/:id/services', requireRoles('admin', 'gerente'), professionalController.assignServices);
+router.get('/:id/reviews', professionalController.getReviews);
 router.post('/reviews', professionalController.submitReview);
 
 module.exports = router;

@@ -135,6 +135,15 @@ class ProfessionalController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async getReviews(req, res) {
+        try {
+            const reviews = await professionalService.getReviews(req.params.id, req.tenantId);
+            res.json({ success: true, data: reviews });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new ProfessionalController();

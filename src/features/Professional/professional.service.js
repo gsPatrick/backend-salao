@@ -1,4 +1,4 @@
-const { Professional, Service, Appointment, ProfessionalReview, sequelize } = require('../../models');
+const { Professional, Service, Appointment, Client, ProfessionalReview, sequelize } = require('../../models');
 
 class ProfessionalService {
     async getRanking(tenantId, limit = 5, unit = null, unitId = null) {
@@ -232,6 +232,19 @@ class ProfessionalService {
         });
 
         return review;
+    }
+
+    async getReviews(professionalId, tenantId) {
+        return await ProfessionalReview.findAll({
+            where: { professional_id: professionalId, tenant_id: tenantId },
+            include: [
+                {
+                    model: Client,
+                    attributes: ['id', 'name', 'photo']
+                }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
     }
 }
 
