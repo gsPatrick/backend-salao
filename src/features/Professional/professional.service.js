@@ -240,6 +240,7 @@ class ProfessionalService {
             include: [
                 {
                     model: Client,
+                    as: 'client',
                     attributes: ['id', 'name', 'photo']
                 }
             ],
