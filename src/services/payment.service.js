@@ -107,6 +107,28 @@ class PaymentService {
             throw new Error('Falha ao cancelar assinatura');
         }
     }
+
+    /**
+     * Update an existing subscription (Upgrade/Downgrade)
+     */
+    async updateSubscription(subscriptionId, plan, paymentMethod = 'UNDEFINED') {
+        if (!this.isConfigured()) {
+            console.log('[Asaas] Not configured. Simulating subscription update.');
+            return { id: subscriptionId, value: plan.price, nextDueDate: new Date().toISOString().split('T')[0] };
+        }
+
+        try {
+            const response = await this.client.post(`/subscriptions/${subscriptionId}`, {
+                billingType: paymentMethod,
+                value: plan.price,
+                description: `Plano ${plan.display_name || plan.name} - Salão24h`,
+            });
+            return response.data;
+        } catch (error) {
+            console.error('[Asaas] Update Subscription Error:', error.response?.data || error.message);
+            throw new Error('Falha ao atualizar assinatura no gateway de pagamento');
+        }
+    }
     /**
      * List payments for a customer
      */

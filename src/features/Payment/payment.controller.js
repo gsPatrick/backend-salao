@@ -112,27 +112,51 @@ class PaymentController {
                 return res.status(400).json({ success: false, message: 'Nenhuma assinatura ativa encontrada.' });
             }
 
-            // Call Asaas service
             await paymentService.cancelSubscription(tenant.asaas_subscription_id);
 
-            // Update local state
-            // We set it to canceled, but usually we should wait for webhook. 
-            // However, for UX, we can set a flag or keep it until webhook confirms.
-            // Asaas returns "deleted: true". 
-            // The user requested: "aviso que nao vai pagar no mes seguinte mas o mes vigente ele vai pagar"
-            // So we might want to set status to 'canceling' or similar if we want to support access until end of period.
-            // For now, let's mark as CANCELED or keep active until webhook?
-            // "mes vigente ele vai pagar" -> This implies access remains until end of period.
-            // We can check `next_billing_date` and keep access until then.
-
             await tenant.update({
-                subscription_status: 'CANCELED_PENDING' // Custom status to indicate cancellation requested but period active
+                subscription_status: 'CANCELED_PENDING'
             });
 
             res.json({ success: true, message: 'Assinatura cancelada com sucesso.' });
         } catch (error) {
             console.error('Cancellation Error:', error);
             res.status(500).json({ success: false, message: 'Erro ao cancelar assinatura.' });
+        }
+    }
+
+    /**
+     * Update/Upgrade subscription
+     */
+    async updateSubscription(req, res) {
+        try {
+            const { planId, paymentMethod } = req.body;
+            const tenant = await Tenant.findByPk(req.tenantId);
+            const plan = await Plan.findByPk(planId);
+
+            if (!plan) throw new Error('Plano não encontrado');
+            if (!tenant.asaas_subscription_id) throw new Error('Assinatura não encontrada para atualização');
+
+            // Call Asaas service to update
+            const subscription = await paymentService.updateSubscription(
+                tenant.asaas_subscription_id, 
+                plan, 
+                paymentMethod || 'UNDEFINED'
+            );
+
+            // Update local tenant
+            await tenant.update({
+                plan_id: planId,
+                // If Asaas created a NEW subscription (it shouldn't for POST :id, but good to be safe)
+                asaas_subscription_id: subscription.id || tenant.asaas_subscription_id,
+                subscription_status: 'ACTIVE', // Or keep current
+                next_billing_date: subscription.nextDueDate || tenant.next_billing_date
+            });
+
+            res.json({ success: true, data: subscription });
+        } catch (error) {
+            console.error('Update Subscription Error:', error);
+            res.status(400).json({ success: false, message: error.message });
         }
     }
 }
