@@ -421,7 +421,7 @@ class AuthService {
         if (planId) {
             plan = await Plan.findByPk(planId);
         } else {
-            plan = await Plan.findOne({ where: { name: 'essencial' } });
+            plan = await Plan.findOne({ where: { name: 'Empresa Essencial' } });
         }
 
         if (!plan) {

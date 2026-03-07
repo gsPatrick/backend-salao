@@ -20,8 +20,8 @@ async function seedDatabaseLogic() {
         console.log('📋 Creating plans...');
         await Plan.bulkCreate([
             {
-                name: 'individual',
-                display_name: 'Individual',
+                name: 'Plano Individual',
+                display_name: 'Plano Individual',
                 price: 79.87,
                 max_professionals: 1,
                 max_clients: null,
@@ -34,8 +34,8 @@ async function seedDatabaseLogic() {
                 is_active: true,
             },
             {
-                name: 'essencial',
-                display_name: 'Essencial',
+                name: 'Empresa Essencial',
+                display_name: 'Empresa Essencial',
                 price: 199.90,
                 max_professionals: 3,
                 max_clients: null,
@@ -48,8 +48,8 @@ async function seedDatabaseLogic() {
                 is_active: true,
             },
             {
-                name: 'pro',
-                display_name: 'Pro',
+                name: 'Empresa Pro',
+                display_name: 'Empresa Pro',
                 price: 349.90,
                 max_professionals: 10,
                 max_clients: null,
@@ -62,8 +62,8 @@ async function seedDatabaseLogic() {
                 is_active: true,
             },
             {
-                name: 'premium',
-                display_name: 'Premium',
+                name: 'Empresa Premium',
+                display_name: 'Empresa Premium',
                 price: 599.90,
                 max_professionals: null, // Unlimited
                 max_clients: null,
@@ -76,7 +76,7 @@ async function seedDatabaseLogic() {
                 is_active: true,
             },
             {
-                name: 'vitalicio',
+                name: 'Vitalício',
                 display_name: 'Vitalício',
                 price: 0,
                 max_professionals: null,
@@ -95,11 +95,11 @@ async function seedDatabaseLogic() {
         console.log(`✅ Processed ${allPlans.length} plans`);
 
         // Get the requested plans
-        const vitalicioPlan = allPlans.find(p => p.name === 'vitalicio');
-        const proPlan = allPlans.find(p => p.name === 'pro');
+        const vitalicioPlan = allPlans.find(p => p.name === 'Vitalício');
+        const proPlan = allPlans.find(p => p.name === 'Empresa Pro');
 
-        if (!vitalicioPlan) throw new Error('Vitalicio plan not found after creation');
-        if (!proPlan) throw new Error('Pro plan not found after creation');
+        if (!vitalicioPlan) throw new Error('Vitalício plan not found after creation');
+        if (!proPlan) throw new Error('Empresa Pro plan not found after creation');
 
         // 2. Create/Update main Tenant (ID 1 preference)
         console.log('🏢 Processing main tenant...');

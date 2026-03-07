@@ -9,8 +9,9 @@ class CRMAutomationService {
         const tenant = await Tenant.findByPk(tenantId, { include: [{ model: Plan, as: 'plan' }] });
         if (!tenant || !tenant.plan) return false;
         // Check for Pro/Premium or specific AI flag if added
-        const planName = tenant.plan.name.toLowerCase();
-        return ['pro', 'premium', 'superadmin', 'gold', 'diamond'].some(p => planName.includes(p));
+        const planName = tenant.plan.name;
+        const aiPlans = ['Empresa Pro', 'Empresa Premium', 'Vitalício', 'superadmin', 'gold', 'diamond'];
+        return aiPlans.some(p => planName.includes(p) || p.includes(planName));
     }
 
     async runDailyChecks() {
