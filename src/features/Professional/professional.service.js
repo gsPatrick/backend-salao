@@ -14,7 +14,7 @@ class ProfessionalService {
                     COUNT(pr.id) as review_count
                 FROM professionals p
                 LEFT JOIN professional_reviews pr ON p.id = pr.professional_id
-                WHERE pr.tenant_id = :tenantId
+                WHERE p.tenant_id = :tenantId AND p.is_archived = false
                 ${unitId ? 'AND p.unit_id = :unitId' : (unit ? 'AND p.unit = :unit' : '')}
                 GROUP BY p.id, p.name, p.photo, p.occupation
                 ORDER BY average_rating DESC
@@ -212,6 +212,26 @@ class ProfessionalService {
         });
         await professional.setServices(services);
         return this.getById(id, tenantId);
+    }
+
+    async submitReview(tenantId, data) {
+        const { professional_id, client_id, appointment_id, rating, comment } = data;
+        
+        // Find appointment to get unit_id
+        const appointment = await Appointment.findOne({ where: { id: appointment_id, tenant_id: tenantId } });
+        const unit_id = appointment ? appointment.unit_id : null;
+
+        const review = await ProfessionalReview.create({
+            tenant_id: tenantId,
+            unit_id: unit_id,
+            professional_id,
+            client_id,
+            appointment_id,
+            rating,
+            comment
+        });
+
+        return review;
     }
 }
 

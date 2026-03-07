@@ -155,6 +155,16 @@ SalonPlan.hasMany(Appointment, { foreignKey: 'salon_plan_id' });
 Appointment.belongsTo(Unit, { foreignKey: 'unit_id', as: 'unit' });
 Unit.hasMany(Appointment, { foreignKey: 'unit_id' });
 
+// ProfessionalReview associations
+ProfessionalReview.belongsTo(Tenant, { foreignKey: 'tenant_id' });
+ProfessionalReview.belongsTo(Unit, { foreignKey: 'unit_id' });
+ProfessionalReview.belongsTo(Professional, { foreignKey: 'professional_id', as: 'professional' });
+ProfessionalReview.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+ProfessionalReview.belongsTo(Appointment, { foreignKey: 'appointment_id', as: 'appointment' });
+
+Appointment.hasOne(ProfessionalReview, { foreignKey: 'appointment_id', as: 'review' });
+Professional.hasMany(ProfessionalReview, { foreignKey: 'professional_id', as: 'reviews' });
+
 Appointment.belongsTo(PackageSubscription, { foreignKey: 'package_subscription_id', as: 'package_subscription' });
 PackageSubscription.hasMany(Appointment, { foreignKey: 'package_subscription_id' });
 

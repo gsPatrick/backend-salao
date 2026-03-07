@@ -1,4 +1,4 @@
-const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription, Unit, Notification, sequelize } = require('../../models');
+const { Appointment, Client, Professional, Service, MonthlyPackage, SalonPlan, PackageSubscription, SalonPlanSubscription, Unit, Notification, ProfessionalReview, sequelize } = require('../../models');
 const { Op, Transaction } = require('sequelize');
 
 class AppointmentService {
@@ -23,6 +23,7 @@ class AppointmentService {
                 { model: Service, as: 'service' },
                 { model: MonthlyPackage, as: 'package' },
                 { model: SalonPlan, as: 'salon_plan' },
+                { model: ProfessionalReview, as: 'review' },
             ],
             order: [['date', 'ASC'], ['time', 'ASC']],
         });
@@ -86,6 +87,7 @@ class AppointmentService {
                 { model: Service, as: 'service' },
                 { model: MonthlyPackage, as: 'package' },
                 { model: SalonPlan, as: 'salon_plan' },
+                { model: ProfessionalReview, as: 'review' },
             ],
         });
         if (!appointment) throw new Error('Agendamento não encontrado');

@@ -119,6 +119,22 @@ class ProfessionalController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
+    async submitReview(req, res) {
+        try {
+            const data = {
+                professional_id: req.body.professionalId,
+                client_id: req.body.clientId,
+                appointment_id: req.body.appointmentId,
+                rating: req.body.rating,
+                comment: req.body.comment
+            };
+            const review = await professionalService.submitReview(req.tenantId, data);
+            res.status(201).json({ success: true, data: review });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 module.exports = new ProfessionalController();
