@@ -345,6 +345,35 @@ class AppointmentService {
             }, { transaction: t });
             console.log('--- DEBUG: insert done ---');
 
+            // AUTO-COMPLETE PREVIOUS SESSIONS: Process after commit to reuse safe service methods
+            if (packageSubId || salonPlanSubId) {
+                t.afterCommit(async () => {
+                    try {
+                        const previousPending = await Appointment.findAll({
+                            where: {
+                                client_id: appointment.client_id,
+                                tenant_id: tenantId,
+                                [Op.or]: [
+                                    packageSubId ? { package_subscription_id: packageSubId } : null,
+                                    salonPlanSubId ? { salon_plan_subscription_id: salonPlanSubId } : null
+                                ].filter(Boolean),
+                                status: { [Op.in]: ['agendado', 'confirmado'] },
+                                id: { [Op.ne]: appointment.id }
+                            }
+                        });
+
+                        for (const prevApt of previousPending) {
+                            console.log(`[Auto-Complete] Concluding previous session ${prevApt.id}`);
+                            // Note: use local require if not globally available, but we can just use `this.updateStatus` if context is bound.
+                            // Since it's an arrow function, `this` refers to `AppointmentService` instance.
+                            await this.updateStatus(prevApt.id, 'concluido', tenantId).catch(e => console.error('[Auto-Complete Hook Error]', e));
+                        }
+                    } catch (err) {
+                        console.error('[Auto-Complete Error]', err);
+                    }
+                });
+            }
+
             // AUTOMATION: Always move to 'scheduled' (Agendados) when a new appointment is created
             if (['agendado', 'confirmado'].includes(appointment.status)) {
                 const newStage = 'scheduled';
