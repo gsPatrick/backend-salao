@@ -751,7 +751,7 @@ class AppointmentService {
                 { crm_stage: newStage, classification: newClassification },
                 { where: { id: appointmentInstance.client_id } }
             );
-        } else if (status === 'faltou') {
+        } else if (['faltou', 'cancelado'].includes(status)) {
             await Client.update(
                 { crm_stage: 'absent', classification: 'Faltou' },
                 { where: { id: appointmentInstance.client_id } }
@@ -761,9 +761,11 @@ class AppointmentService {
         // --- Post-update hooks (CRM, Client Status) ---
         const crmAutomationService = require('../../services/crm_automation.service');
 
-        // Update client status if faltante
-        if (status === 'faltou') {
-            await Client.update({ status: 'Faltante' }, { where: { id: appointmentInstance.client_id } });
+        // Update client status if faltante or cancelado
+        if (['faltou', 'cancelado'].includes(status)) {
+            if (status === 'faltou') {
+                await Client.update({ status: 'Faltante' }, { where: { id: appointmentInstance.client_id } });
+            }
 
             // Real-time CRM hook — resets attempt counters for recovery sequence
             crmAutomationService.handleAbsent(tenantId, appointmentInstance.client).catch(err =>
