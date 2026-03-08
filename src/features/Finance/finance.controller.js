@@ -5,7 +5,7 @@ const auditLogService = require('../../services/auditLog.service');
 class FinanceController {
     async getAll(req, res) {
         try {
-            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+            const unitId = req.query.unitId || req.headers['x-unit-id'];
             const filters = { ...req.query };
             if (unitId) filters.unitId = unitId;
             const transactions = await financeService.getAll(req.tenantId, filters);
@@ -119,7 +119,7 @@ class FinanceController {
 
     async getSummary(req, res) {
         try {
-            const unitId = req.headers['x-unit-id'] || req.query.unitId;
+            const unitId = req.query.unitId || req.headers['x-unit-id'];
             const summary = await financeService.getSummary(req.tenantId, req.query.period, unitId, req.query.startDate, req.query.endDate);
             res.json({ success: true, data: summary });
         } catch (error) {
