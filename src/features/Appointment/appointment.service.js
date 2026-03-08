@@ -361,7 +361,7 @@ class AppointmentService {
             console.log('--- DEBUG: insert done ---');
 
             // AUTO-COMPLETE PREVIOUS SESSIONS: Process after commit to reuse safe service methods
-            if (packageSubId || salonPlanSubId) {
+            if (data.package_id || data.salon_plan_id) {
                 t.afterCommit(async () => {
                     try {
                         const previousPending = await Appointment.findAll({
@@ -369,8 +369,8 @@ class AppointmentService {
                                 client_id: appointment.client_id,
                                 tenant_id: tenantId,
                                 [Op.or]: [
-                                    packageSubId ? { package_subscription_id: packageSubId } : null,
-                                    salonPlanSubId ? { salon_plan_subscription_id: salonPlanSubId } : null
+                                    data.package_id ? { package_id: data.package_id } : null,
+                                    data.salon_plan_id ? { salon_plan_id: data.salon_plan_id } : null
                                 ].filter(Boolean),
                                 status: { [Op.in]: ['agendado', 'confirmado'] },
                                 id: { [Op.ne]: appointment.id },
@@ -527,6 +527,38 @@ class AppointmentService {
         } else if (data.status === 'agendado' && appointmentInstance.consumed_sessions > 0) {
             console.log(`[Status Safeguard] Appointment ${id} update blocking reversion to 'agendado' because consumed_sessions=${appointmentInstance.consumed_sessions}`);
             data.status = 'concluido';
+        }
+
+        // --- LAST SESSION AUTO-FINALIZATION FOR UPDATE ---
+        const pkgId = data.package_id || appointmentInstance.package_id;
+        const planId = data.salon_plan_id || appointmentInstance.salon_plan_id;
+        
+        if (pkgId || planId) {
+            let maxSessions = 0;
+            if (pkgId) {
+                const pkg = await MonthlyPackage.findByPk(pkgId);
+                maxSessions = pkg ? parseInt(String(pkg.clicks || '0'), 10) : 0;
+            } else if (planId) {
+                const plan = await SalonPlan.findByPk(planId);
+                maxSessions = plan ? parseInt(String(plan.sessions || '0'), 10) : 0;
+            }
+
+            if (maxSessions > 0) {
+                const where = {
+                    tenant_id: tenantId,
+                    client_id: data.client_id || appointmentInstance.client_id,
+                    status: { [Op.notIn]: ['cancelado', 'reagendado', 'faltou'] },
+                    id: { [Op.ne]: id } // Exclude current app
+                };
+                if (pkgId) where.package_id = pkgId;
+                else where.salon_plan_id = planId;
+
+                const existingCount = await Appointment.count({ where });
+                if (existingCount + 1 >= maxSessions) {
+                    console.log(`[Package Logic] Last session (${existingCount + 1}/${maxSessions}) detected during update of appointment ${id}. Forcing status to 'concluido'.`);
+                    data.status = 'concluido';
+                }
+            }
         }
 
         if (data.status && ['agendado', 'confirmado'].includes(data.status)) {
