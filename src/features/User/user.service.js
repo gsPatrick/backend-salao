@@ -5,7 +5,9 @@ class UserService {
      * Get all users for a tenant (or all users for Super Admin)
      */
     async getAll(tenantId, isSuperAdmin) {
-        const where = isSuperAdmin ? {} : { tenant_id: tenantId };
+        // ALWAYS filter by tenantId, even for Super Admins, because this endpoint
+        // is used by the CRM Settings Page to show the salon's team members.
+        const where = { tenant_id: tenantId };
 
         const users = await User.findAll({
             where,
