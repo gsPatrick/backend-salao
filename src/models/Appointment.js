@@ -102,6 +102,16 @@ module.exports = (sequelize) => {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: true,
         },
+        commission_rate: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            comment: 'Percentage rate at the time of completion'
+        },
+        commission_value: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            comment: 'Calculated BRL value'
+        },
         notes: {
             type: DataTypes.TEXT,
             allowNull: true,

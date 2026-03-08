@@ -71,8 +71,9 @@ class AppointmentService {
                 data.professionalName = data.professional.name;
             }
 
-            // Ensure service name is at top level
-            data.service = data.service?.name || data.package?.name || data.salon_plan?.name || data.service_name || 'Serviço';
+            // Ensure service name is at top level - NEVER use generic 'Serviço' if we have an ID
+            const fallbackName = data.service_id ? `Serviço #${data.service_id}` : (data.package_id ? `Pacote #${data.package_id}` : (data.salon_plan_id ? `Plano #${data.salon_plan_id}` : 'Serviço'));
+            data.service = data.service?.name || data.package?.name || data.salon_plan?.name || data.service_name || fallbackName;
 
             return data;
         });
@@ -539,6 +540,24 @@ class AppointmentService {
             if (!appointmentInstance.time) {
                 updateData.time = now.toTimeString().split(' ')[0].slice(0, 5);
                 appointmentInstance.time = updateData.time;
+            }
+        }
+        
+        // 0. Commission Capture: Store professional's current rate at the moment of completion
+        if (isConcluding && !wasConcluding) {
+            try {
+                const professional = appointmentInstance.professional || await Professional.findByPk(appointmentInstance.professional_id);
+                if (professional && professional.commission > 0) {
+                    const rate = parseFloat(professional.commission);
+                    const price = parseFloat(appointmentInstance.price || 0);
+                    updateData.commission_rate = rate;
+                    updateData.commission_value = (price * rate) / 100;
+                } else {
+                    updateData.commission_rate = 0;
+                    updateData.commission_value = 0;
+                }
+            } catch (error) {
+                console.error('[Commission Capture Error]:', error);
             }
         }
 
