@@ -161,6 +161,11 @@ class ProfessionalService {
             delete sanitized.openSchedule;
         }
 
+        // Handle numeric fields that might come as empty strings from frontend
+        if (sanitized.commission === '') {
+            sanitized.commission = 0;
+        }
+
         return sanitized;
     }
 
