@@ -241,7 +241,7 @@ class ProfessionalService {
                 {
                     model: Client,
                     as: 'client',
-                    attributes: ['id', 'name', 'photo']
+                    attributes: ['id', 'name']
                 }
             ],
             order: [['createdAt', 'DESC']]
