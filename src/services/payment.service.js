@@ -69,7 +69,7 @@ class PaymentService {
                 value: plan.price,
                 cycle: 'MONTHLY',
                 description: `Plano ${plan.display_name || plan.name} - Salão24h`,
-                externalReference: tenant.id.toString()
+                externalReference: `${tenant.id}:${plan.id}`
             };
 
             if (paymentMethod === 'CREDIT_CARD' && creditCard) {
@@ -83,6 +83,20 @@ class PaymentService {
             console.error('[Asaas] Create Subscription Error:', error.response?.data || error.message);
             const errMsg = error.response?.data?.errors?.[0]?.description || 'Falha ao criar assinatura';
             throw new Error(errMsg);
+        }
+    }
+
+    /**
+     * Get a specific payment
+     */
+    async getPayment(paymentId) {
+        if (!this.isConfigured()) return { status: 'CONFIRMED' };
+        try {
+            const response = await this.client.get(`/payments/${paymentId}`);
+            return response.data;
+        } catch (error) {
+            console.error('[Asaas] Get Payment Error:', error.response?.data || error.message);
+            throw new Error('Falha ao buscar detalhes do pagamento');
         }
     }
 

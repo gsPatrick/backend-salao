@@ -12,5 +12,6 @@ router.post('/subscribe', paymentController.createSubscription);
 router.post('/update-subscription', paymentController.updateSubscription);
 router.post('/cancel', paymentController.cancelSubscription);
 router.get('/invoices', paymentController.getInvoices);
+router.get('/status/:paymentId', paymentController.checkPaymentStatus);
 
 module.exports = router;

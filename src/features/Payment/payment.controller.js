@@ -1,5 +1,6 @@
 const paymentService = require('../../services/payment.service');
 const { Tenant, Plan } = require('../../models');
+const config = require('../../config');
 
 class PaymentController {
     /**
@@ -7,16 +8,23 @@ class PaymentController {
      */
     async handleWebhook(req, res) {
         try {
+            // Validate Webhook Token if configured
+            const webhookToken = config.externalServices.asaas.webhookToken;
+            if (webhookToken && req.headers['asaas-access-token'] !== webhookToken) {
+                console.error('[Asaas Webhook] Invalid access token');
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+
             const { event, payment, subscription: asaasSub } = req.body;
             console.log(`[Asaas Webhook] Event received: ${event}`);
 
-            // Get tenant by externalReference (which we set to tenant.id)
-            const tenantId = payment?.externalReference || asaasSub?.externalReference;
-            if (!tenantId) {
-                console.error('[Asaas Webhook] No tenant ID found in externalReference');
+            const extRef = payment?.externalReference || asaasSub?.externalReference;
+            if (!extRef) {
+                console.error('[Asaas Webhook] No externalReference found');
                 return res.status(200).json({ received: true });
             }
 
+            const [tenantId, planId] = extRef.split(':');
             const tenant = await Tenant.findByPk(tenantId);
             if (!tenant) {
                 console.error(`[Asaas Webhook] Tenant ${tenantId} not found`);
@@ -30,9 +38,11 @@ class PaymentController {
                     {
                         const asaasSubscription = await paymentService.getSubscription(tenant.asaas_subscription_id);
                         await tenant.update({
+                            plan_id: planId || tenant.plan_id, // Use planId from extRef if available
                             subscription_status: 'ACTIVE',
                             next_billing_date: asaasSubscription.nextDueDate
                         });
+                        console.log(`[Asaas Webhook] Tenant ${tenantId} updated to plan ${planId} (Status: ACTIVE)`);
                     }
                     break;
                 case 'PAYMENT_OVERDUE':
@@ -63,11 +73,14 @@ class PaymentController {
 
             if (!plan) throw new Error('Plano não encontrado');
 
-            // If tenant doesn't have asaas_customer_id, create it
-            // We can also update customer info with billingInfo if provided
+            // 1. Ensure Asaas Customer exists
             if (!tenant.asaas_customer_id) {
                 const customer = await paymentService.createCustomer({
-                    ...tenant,
+                    id: tenant.id,
+                    name: tenant.name,
+                    email: tenant.email,
+                    phone: tenant.phone,
+                    cnpj_cpf: tenant.cnpj_cpf,
                     ...(billingInfo || {})
                 });
                 await tenant.update({ asaas_customer_id: customer.id });
@@ -77,7 +90,7 @@ class PaymentController {
             let creditCard = null;
             let holderInfo = null;
 
-            if (paymentMethod === 'CREDIT_CARD' && creditCardInfo && billingInfo) {
+            if (req.body.paymentMethod === 'CREDIT_CARD' && creditCardInfo && billingInfo) {
                 creditCard = {
                     holderName: creditCardInfo.holderName,
                     number: creditCardInfo.number,
@@ -97,29 +110,52 @@ class PaymentController {
                 };
             }
 
-            // Create subscription
+            // 2. Create subscription in Asaas
             const subscription = await paymentService.createSubscription(tenant, plan, paymentMethod, creditCard, holderInfo);
 
+            // 3. Keep track of the subscription ID and the requested plan
+            // We DO NOT update plan_id yet unless it's CREDIT_CARD and confirmed (handled below or via webhook)
             await tenant.update({
-                plan_id: planId,
                 asaas_subscription_id: subscription.id,
-                subscription_status: 'ACTIVE', // Set to active if payment is expected immediately
-                next_billing_date: subscription.nextDueDate
+                // We store the "pending" plan in a temporary field if we had one, 
+                // but for now we'll rely on the webhook to set the final plan_id.
+                // However, the user expects access if it's confirmed.
+                // subscription_status stays as it is (likely 'TRIAL' or 'PENDING')
             });
 
             let responseData = { ...subscription };
 
-            // If PIX, get QR Code for the FIRST payment
+            // 4. Handle initial payment response
             if (paymentMethod === 'PIX') {
                 const payments = await paymentService.listPayments(tenant.asaas_customer_id, 1);
                 if (payments.data && payments.data.length > 0) {
-                    const pixData = await paymentService.getPixQrCode(payments.data[0].id);
+                    const firstPayment = payments.data[0];
+                    const pixData = await paymentService.getPixQrCode(firstPayment.id);
                     responseData.pixData = pixData;
+                    responseData.paymentId = firstPayment.id; // For polling
+                }
+            } else if (paymentMethod === 'CREDIT_CARD') {
+                // For Credit Card, Asaas might confirm immediately. 
+                // We check the first payment status.
+                const payments = await paymentService.listPayments(tenant.asaas_customer_id, 1);
+                if (payments.data && payments.data.length > 0) {
+                    const firstPayment = payments.data[0];
+                    responseData.paymentStatus = firstPayment.status;
+                    responseData.paymentId = firstPayment.id;
+
+                    if (firstPayment.status === 'CONFIRMED' || firstPayment.status === 'RECEIVED') {
+                        await tenant.update({
+                            plan_id: planId,
+                            subscription_status: 'ACTIVE',
+                            next_billing_date: subscription.nextDueDate
+                        });
+                    }
                 }
             }
 
             res.json({ success: true, data: responseData });
         } catch (error) {
+            console.error('[PaymentController] Error creating subscription:', error);
             res.status(400).json({ success: false, message: error.message });
         }
     }
@@ -194,6 +230,33 @@ class PaymentController {
             res.json({ success: true, data: subscription });
         } catch (error) {
             console.error('Update Subscription Error:', error);
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    /**
+     * Check status of a specific payment (Polling)
+     */
+    async checkPaymentStatus(req, res) {
+        try {
+            const { paymentId } = req.params;
+            const payment = await paymentService.getPayment(paymentId);
+            
+            // If payment is confirmed, ensure tenant is updated (fallback in case webhook is slow)
+            if (payment.status === 'CONFIRMED' || payment.status === 'RECEIVED') {
+                const tenant = await Tenant.findByPk(req.tenantId);
+                const [extTenantId, planId] = (payment.externalReference || '').split(':');
+                
+                if (tenant && planId) {
+                    await tenant.update({
+                        plan_id: planId,
+                        subscription_status: 'ACTIVE'
+                    });
+                }
+            }
+
+            res.json({ success: true, status: payment.status });
+        } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
     }
