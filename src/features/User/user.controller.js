@@ -4,12 +4,14 @@ const auditLogService = require('../../services/auditLog.service');
 class UserController {
     async getAll(req, res) {
         try {
+            // Garantindo que apenas usuários do mesmo tenant sejam retornados
             const users = await userService.getAll(req.tenantId, req.isSuperAdmin);
             res.json({ success: true, data: users });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
 
     async getById(req, res) {
         try {
@@ -22,6 +24,21 @@ class UserController {
 
     async create(req, res) {
         try {
+            const { Tenant, Plan } = require('../../models');
+            const tenant = await Tenant.findByPk(req.tenantId, {
+                include: [{ model: Plan, as: 'plan' }]
+            });
+
+            if (tenant && tenant.plan && tenant.plan.max_users !== null) {
+                const count = await userService.countByTenant(req.tenantId);
+                if (count >= tenant.plan.max_users) {
+                    return res.status(403).json({ 
+                        success: false, 
+                        message: "Limite atingido para o seu plano atual." 
+                    });
+                }
+            }
+
             const data = { ...req.body, tenant_id: req.tenantId };
             const user = await userService.create(data, req.tenantId, req.isSuperAdmin);
 
@@ -40,6 +57,7 @@ class UserController {
             res.status(400).json({ success: false, message: error.message });
         }
     }
+
 
     async update(req, res) {
         try {

@@ -24,9 +24,13 @@ class UnitController {
             if (tenant && tenant.plan && tenant.plan.max_units !== null) {
                 const count = await Unit.count({ where: { tenant_id: req.tenantId } });
                 if (count >= tenant.plan.max_units) {
-                    throw new Error(`Limite de unidades atingido para o seu plano (${tenant.plan.max_units}). Faça um upgrade para adicionar mais.`);
+                    return res.status(403).json({ 
+                        success: false, 
+                        message: "Limite atingido para o seu plano atual." 
+                    });
                 }
             }
+
 
             const unit = await Unit.create({
                 ...req.body,

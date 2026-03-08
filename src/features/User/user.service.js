@@ -77,13 +77,10 @@ class UserService {
 
         const userCount = await User.count({ where: { tenant_id: data.tenant_id } });
 
-        // Limits: Individual (1)=1, Essencial (2)=5, Pro (3)=10, Premium/Vitalicio (4/5)=Unlimited
-        const limits = { 1: 1, 2: 5, 3: 10 };
-        const maxUsers = limits[tenant.plan_id];
-
-        if (maxUsers && userCount >= maxUsers) {
-            throw new Error(`Limite de usuários atingido para o seu plano (${maxUsers} usuários). Faça um upgrade para adicionar mais.`);
+        if (tenant.plan && tenant.plan.max_users !== null && userCount >= tenant.plan.max_users) {
+            throw new Error("Limite atingido para o seu plano atual.");
         }
+
 
         const user = await User.create({
             ...data,

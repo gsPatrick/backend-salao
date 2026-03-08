@@ -26,6 +26,7 @@ async function seedDatabaseLogic() {
                 max_professionals: 1,
                 max_clients: null,
                 max_units: 1,
+                max_users: 1,
                 ai_voice_response: false,
                 priority_support: false,
                 whatsapp_integration: true,
@@ -40,6 +41,7 @@ async function seedDatabaseLogic() {
                 max_professionals: 3,
                 max_clients: null,
                 max_units: 1,
+                max_users: 3,
                 ai_voice_response: false,
                 priority_support: false,
                 whatsapp_integration: true,
@@ -53,7 +55,8 @@ async function seedDatabaseLogic() {
                 price: 349.90,
                 max_professionals: 10,
                 max_clients: null,
-                max_units: 5,
+                max_units: 3,
+                max_users: 10,
                 ai_voice_response: true,
                 priority_support: false,
                 whatsapp_integration: true,
@@ -67,7 +70,8 @@ async function seedDatabaseLogic() {
                 price: 599.90,
                 max_professionals: null, // Unlimited
                 max_clients: null,
-                max_units: 999,
+                max_units: 5,
+                max_users: null, // Unlimited
                 ai_voice_response: true,
                 priority_support: true,
                 whatsapp_integration: true,
@@ -82,6 +86,7 @@ async function seedDatabaseLogic() {
                 max_professionals: null,
                 max_clients: null,
                 max_units: 999,
+                max_users: null,
                 ai_voice_response: true,
                 priority_support: true,
                 whatsapp_integration: true,
@@ -90,6 +95,7 @@ async function seedDatabaseLogic() {
                 is_active: true,
             },
         ], { ignoreDuplicates: true });
+
 
         const allPlans = await Plan.findAll();
         console.log(`✅ Processed ${allPlans.length} plans`);

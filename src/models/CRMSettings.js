@@ -20,6 +20,8 @@ const CRMSettings = sequelize.define('crm_settings', {
                 icon: '⭐',
                 visible: true,
                 deletable: false,
+                tagIcon: '⭐',
+                tagTitle: 'Novo',
                 ai_actions: [
                     {
                         title: 'Funil Novos Clientes',
@@ -50,6 +52,8 @@ const CRMSettings = sequelize.define('crm_settings', {
                 icon: '✅',
                 visible: true,
                 deletable: false,
+                tagIcon: '✅',
+                tagTitle: 'Agendado',
                 ai_actions: [
                     {
                         title: 'Funil Agendados',
@@ -75,6 +79,8 @@ const CRMSettings = sequelize.define('crm_settings', {
                 icon: '❌',
                 visible: true,
                 deletable: false,
+                tagIcon: '❌',
+                tagTitle: 'Faltou',
                 ai_actions: [
                     {
                         title: 'Funil Faltantes',
@@ -105,6 +111,8 @@ const CRMSettings = sequelize.define('crm_settings', {
                 icon: '💎',
                 visible: true,
                 deletable: false,
+                tagIcon: '💎',
+                tagTitle: 'Recorrente',
                 ai_actions: [
                     {
                         title: 'Funil Recorrente',
@@ -123,6 +131,8 @@ const CRMSettings = sequelize.define('crm_settings', {
                 icon: '⏳',
                 visible: true,
                 deletable: false,
+                tagIcon: '⏳',
+                tagTitle: 'Inativo',
                 ai_actions: [
                     {
                         title: 'Funil Inativo',

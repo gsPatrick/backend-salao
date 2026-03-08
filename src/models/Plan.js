@@ -36,6 +36,12 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: 1,
         },
+        max_users: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            comment: 'null = unlimited',
+        },
+
         // Feature Flags
         ai_voice_response: {
             type: DataTypes.BOOLEAN,
