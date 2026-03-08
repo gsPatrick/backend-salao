@@ -308,6 +308,13 @@ class AppointmentService {
                         error.status = 400;
                         throw error;
                     }
+
+                    // --- LAST SESSION AUTO-FINALIZATION ---
+                    // If this is the last session (e.g., 3 of 3), mark it as 'concluido' immediately
+                    if (existingCount + 1 >= maxSessions) {
+                        console.log(`[Package Logic] Last session (${existingCount + 1}/${maxSessions}) detected for package ${pkgId}. Forcing status to 'concluido'.`);
+                        data.status = 'concluido';
+                    }
                 }
             }
             if (salonPlanSubId || data.salon_plan_id) {
@@ -328,6 +335,13 @@ class AppointmentService {
                         const error = new Error(`Limite de sessões atingido (${existingCount}/${maxSessions}). Não é possível agendar mais sessões para este plano.`);
                         error.status = 400;
                         throw error;
+                    }
+
+                    // --- LAST SESSION AUTO-FINALIZATION ---
+                    // If this is the last session (e.g., 3 of 3), mark it as 'concluido' immediately
+                    if (existingCount + 1 >= maxSessions) {
+                        console.log(`[Plan Logic] Last session (${existingCount + 1}/${maxSessions}) detected for plan ${planId}. Forcing status to 'concluido'.`);
+                        data.status = 'concluido';
                     }
                 }
             }
@@ -359,7 +373,12 @@ class AppointmentService {
                                     salonPlanSubId ? { salon_plan_subscription_id: salonPlanSubId } : null
                                 ].filter(Boolean),
                                 status: { [Op.in]: ['agendado', 'confirmado'] },
-                                id: { [Op.ne]: appointment.id }
+                                id: { [Op.ne]: appointment.id },
+                                // Chronological safeguard: Only auto-complete older appointments
+                                [Op.or]: [
+                                    { date: { [Op.lt]: appointment.date } },
+                                    { [Op.and]: [{ date: appointment.date }, { time: { [Op.lt]: appointment.time } }] }
+                                ]
                             }
                         });
 
