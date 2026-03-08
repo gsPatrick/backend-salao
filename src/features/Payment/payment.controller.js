@@ -127,7 +127,16 @@ class PaymentController {
 
             // 4. Handle initial payment response
             if (paymentMethod === 'PIX') {
-                const payments = await paymentService.listPayments(tenant.asaas_customer_id, 1);
+                // Retry a few times as Asaas might take a moment to generate the first invoice for a subscription
+                let attempts = 0;
+                let payments = { data: [] };
+                
+                while (attempts < 3 && (!payments.data || payments.data.length === 0)) {
+                    if (attempts > 0) await new Promise(resolve => setTimeout(resolve, 1500));
+                    payments = await paymentService.listPayments(tenant.asaas_customer_id, 1);
+                    attempts++;
+                }
+
                 if (payments.data && payments.data.length > 0) {
                     const firstPayment = payments.data[0];
                     const pixData = await paymentService.getPixQrCode(firstPayment.id);
@@ -218,16 +227,50 @@ class PaymentController {
                 paymentMethod || 'UNDEFINED'
             );
 
-            // Update local tenant
+            // Update local tenant subscription ID (if changed)
             await tenant.update({
-                plan_id: planId,
-                // If Asaas created a NEW subscription (it shouldn't for POST :id, but good to be safe)
                 asaas_subscription_id: subscription.id || tenant.asaas_subscription_id,
-                subscription_status: 'ACTIVE', // Or keep current
-                next_billing_date: subscription.nextDueDate || tenant.next_billing_date
+                // DO NOT update plan_id here, let webhook handle it or handle immediate CC confirmation below
             });
 
-            res.json({ success: true, data: subscription });
+            let responseData = { ...subscription };
+
+            // For Credit Card, try immediate confirmation
+            if (paymentMethod === 'CREDIT_CARD') {
+                const payments = await paymentService.listPayments(tenant.asaas_customer_id, 1);
+                if (payments.data && payments.data.length > 0) {
+                    const firstPayment = payments.data[0];
+                    responseData.paymentStatus = firstPayment.status;
+                    responseData.paymentId = firstPayment.id;
+
+                    if (firstPayment.status === 'CONFIRMED' || firstPayment.status === 'RECEIVED') {
+                        await tenant.update({
+                            plan_id: planId,
+                            subscription_status: 'ACTIVE',
+                            next_billing_date: subscription.nextDueDate || tenant.next_billing_date
+                        });
+                    }
+                }
+            } else if (paymentMethod === 'PIX') {
+                // Retry a few times
+                let attempts = 0;
+                let payments = { data: [] };
+                
+                while (attempts < 3 && (!payments.data || payments.data.length === 0)) {
+                    if (attempts > 0) await new Promise(resolve => setTimeout(resolve, 1500));
+                    payments = await paymentService.listPayments(tenant.asaas_customer_id, 1);
+                    attempts++;
+                }
+
+                if (payments.data && payments.data.length > 0) {
+                    const firstPayment = payments.data[0];
+                    const pixData = await paymentService.getPixQrCode(firstPayment.id);
+                    responseData.pixData = pixData;
+                    responseData.paymentId = firstPayment.id;
+                }
+            }
+
+            res.json({ success: true, data: responseData });
         } catch (error) {
             console.error('Update Subscription Error:', error);
             res.status(400).json({ success: false, message: error.message });
