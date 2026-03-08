@@ -68,8 +68,8 @@ class ClientService {
                     include: [
                         { model: Service, as: 'service', attributes: ['id', 'name', 'price', 'duration'] },
                         { model: Professional, as: 'professional', attributes: ['id', 'name', 'photo', 'occupation'] },
-                        { model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions'] },
-                        { model: SalonPlan, as: 'salon_plan', attributes: ['id', 'name', 'sessions'] }
+                        { model: MonthlyPackage, as: 'package', attributes: ['id', 'name', 'sessions', 'price'] },
+                        { model: SalonPlan, as: 'salon_plan', attributes: ['id', 'name', 'sessions', 'price'] }
                     ],
                     order: [['date', 'DESC'], ['time', 'DESC']]
                 },
@@ -743,7 +743,7 @@ class ClientService {
         if (!client) return;
 
         const dbCompletionStatuses = ['concluido'];
-        const legacyCompletionStatuses = ['concluido', 'finalizado', 'atendido', 'pago'];
+        const legacyCompletionStatuses = ['concluido', 'finalizado', 'atendido', 'pago', 'concluído'];
 
         // 1. Calculate total visits from ALL completed appointments (standalone or package)
         // Using raw SQL to bypass model issues with columns like created_at
