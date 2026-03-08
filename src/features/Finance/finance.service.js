@@ -139,30 +139,35 @@ class FinanceService {
         return transaction;
     }
 
-    async getSummary(tenantId, period = 'mes', unitId = null) {
-        const now = new Date();
+    async getSummary(tenantId, period = 'mes', unitId = null, reqStartDate = null, reqEndDate = null) {
         let dateFrom, dateTo;
 
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-        if (period === 'hoje' || period === 'today') {
-            dateFrom = startOfToday.toISOString().split('T')[0];
-            dateTo = endOfToday.toISOString().split('T')[0];
-        } else if (period === 'semana' || period === 'week') {
-            const day = now.getDay();
-            const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
-            const monday = new Date(now.setDate(diff));
-            monday.setHours(0, 0, 0, 0);
-            dateFrom = monday.toISOString().split('T')[0];
-            dateTo = endOfToday.toISOString().split('T')[0];
-        } else if (period === 'ano' || period === 'year') {
-            dateFrom = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-            dateTo = endOfToday.toISOString().split('T')[0];
+        if (reqStartDate && reqEndDate) {
+            dateFrom = new Date(reqStartDate).toISOString().split('T')[0];
+            dateTo = new Date(reqEndDate).toISOString().split('T')[0];
         } else {
-            // Default: month
-            dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-            dateTo = endOfToday.toISOString().split('T')[0];
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+            if (period === 'hoje' || period === 'today') {
+                dateFrom = startOfToday.toISOString().split('T')[0];
+                dateTo = endOfToday.toISOString().split('T')[0];
+            } else if (period === 'semana' || period === 'week') {
+                const day = now.getDay();
+                const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
+                const monday = new Date(now.setDate(diff));
+                monday.setHours(0, 0, 0, 0);
+                dateFrom = monday.toISOString().split('T')[0];
+                dateTo = endOfToday.toISOString().split('T')[0];
+            } else if (period === 'ano' || period === 'year') {
+                dateFrom = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                dateTo = endOfToday.toISOString().split('T')[0];
+            } else {
+                // Default: month
+                dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                dateTo = endOfToday.toISOString().split('T')[0];
+            }
         }
 
         const transactions = await this.getAll(tenantId, { dateFrom, dateTo, unitId });

@@ -120,7 +120,7 @@ class FinanceController {
     async getSummary(req, res) {
         try {
             const unitId = req.headers['x-unit-id'] || req.query.unitId;
-            const summary = await financeService.getSummary(req.tenantId, req.query.period, unitId);
+            const summary = await financeService.getSummary(req.tenantId, req.query.period, unitId, req.query.startDate, req.query.endDate);
             res.json({ success: true, data: summary });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
