@@ -200,6 +200,28 @@ const Client = sequelize.define('client', {
     most_frequent_service: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    crm_attempt_count: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false,
+        comment: 'Current attempt number within the funnel (0-8)'
+    },
+    crm_attempt_cycle: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1,
+        allowNull: false,
+        comment: 'Current cycle number (used for Inactive funnel, max 2)'
+    },
+    crm_last_attempt_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Precise timestamp of the last automated message attempt'
+    },
+    crm_funnel_entered_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Timestamp of when the client entered the current CRM funnel'
     }
 }, {
     tableName: 'clients',

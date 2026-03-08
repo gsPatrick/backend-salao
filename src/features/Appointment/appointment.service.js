@@ -765,10 +765,21 @@ class AppointmentService {
         if (status === 'faltou') {
             await Client.update({ status: 'Faltante' }, { where: { id: appointmentInstance.client_id } });
 
-            // Real-time CRM hook
-            crmAutomationService.handleAbsent(tenantId, appointmentInstance.client, appointmentInstance).catch(err =>
+            // Real-time CRM hook — resets attempt counters for recovery sequence
+            crmAutomationService.handleAbsent(tenantId, appointmentInstance.client).catch(err =>
                 console.error('[CRM Hook Error] handleAbsent:', err)
             );
+        }
+
+        // CRM hook for completed appointments — moves to Recorrente if no future appointments
+        const completionStatuses2 = ['concluido', 'finalizado', 'atendido', 'pago'];
+        if (completionStatuses2.includes(status)) {
+            const clientForComplete = appointmentInstance.client || await Client.findByPk(appointmentInstance.client_id);
+            if (clientForComplete) {
+                crmAutomationService.handleCompleted(tenantId, clientForComplete).catch(err =>
+                    console.error('[CRM Hook Error] handleCompleted:', err)
+                );
+            }
         }
 
         // Always update statistics on status change, just to be sure
