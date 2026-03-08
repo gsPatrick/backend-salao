@@ -688,6 +688,8 @@ class AuthService {
                 slug: userData.tenant.slug,
                 subscription_status: userData.tenant.subscription_status,
                 address: userData.tenant.address, // Include address for geolocation
+                cnpj_cpf: userData.tenant.cnpj_cpf,
+                settings: userData.tenant.settings,
                 plan: userData.tenant.plan ? {
                     id: userData.tenant.plan.id,
                     name: userData.tenant.plan.name,
