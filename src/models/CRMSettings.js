@@ -107,7 +107,7 @@ const CRMSettings = sequelize.define('crm_settings', {
             },
             {
                 id: 'recurrent',
-                title: 'Recorrente',
+                title: 'Recorrentes (Ativos)',
                 icon: '💎',
                 visible: true,
                 deletable: false,
@@ -127,7 +127,7 @@ const CRMSettings = sequelize.define('crm_settings', {
             },
             {
                 id: 'inactive',
-                title: 'Inativo',
+                title: 'Inativos (+60 Dias)',
                 icon: '⏳',
                 visible: true,
                 deletable: false,
