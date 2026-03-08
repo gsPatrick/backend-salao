@@ -52,31 +52,53 @@ class PaymentService {
     /**
      * Create a subscription for a plan
      */
-    async createSubscription(tenant, plan, paymentMethod = 'UNDEFINED') {
+    async createSubscription(tenant, plan, paymentMethod = 'UNDEFINED', creditCard = null, creditCardHolderInfo = null) {
         if (!this.isConfigured()) {
             console.log('[Asaas] Not configured. Simulating subscription creation.');
-            return { id: 'simulated_sub_' + Date.now() };
+            return { id: 'simulated_sub_' + Date.now(), nextDueDate: new Date().toISOString().split('T')[0] };
         }
 
         try {
-            // First due date: next month
-            const nextDueDate = new Date();
-            nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-            const formattedDate = nextDueDate.toISOString().split('T')[0];
+            // First due date: today for immediate access/payment
+            const nextDueDate = new Date().toISOString().split('T')[0];
 
-            const response = await this.client.post('/subscriptions', {
+            const body = {
                 customer: tenant.asaas_customer_id,
                 billingType: paymentMethod, // BOLETO, CREDIT_CARD, PIX, UNDEFINED
-                nextDueDate: formattedDate,
+                nextDueDate: nextDueDate,
                 value: plan.price,
                 cycle: 'MONTHLY',
-                description: `Plano ${plan.display_name} - Salão24h`,
+                description: `Plano ${plan.display_name || plan.name} - Salão24h`,
                 externalReference: tenant.id.toString()
-            });
+            };
+
+            if (paymentMethod === 'CREDIT_CARD' && creditCard) {
+                body.creditCard = creditCard;
+                body.creditCardHolderInfo = creditCardHolderInfo;
+            }
+
+            const response = await this.client.post('/subscriptions', body);
             return response.data;
         } catch (error) {
             console.error('[Asaas] Create Subscription Error:', error.response?.data || error.message);
-            throw new Error('Falha ao criar assinatura');
+            const errMsg = error.response?.data?.errors?.[0]?.description || 'Falha ao criar assinatura';
+            throw new Error(errMsg);
+        }
+    }
+
+    /**
+     * Get Pix QR Code for a payment
+     */
+    async getPixQrCode(paymentId) {
+        if (!this.isConfigured()) {
+            return { success: true, pixEncodedCode: 'mock_pix_code', payload: 'mock_payload', expirationDate: '2025-01-01' };
+        }
+        try {
+            const response = await this.client.get(`/payments/${paymentId}/pixQrCode`);
+            return response.data;
+        } catch (error) {
+            console.error('[Asaas] Get Pix QR Code Error:', error.response?.data || error.message);
+            return null;
         }
     }
 

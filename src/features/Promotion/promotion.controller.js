@@ -7,12 +7,18 @@ exports.list = async (req, res) => {
         const headerUnitId = req.headers['x-unit-id'];
         const unitId = queryUnitId || headerUnitId;
 
+        const { Op } = require('sequelize');
         const include = [{
             model: Tenant,
             attributes: ['id', 'name']
         }];
 
-        const where = { tenant_id: tenantId };
+        const where = {
+            [Op.or]: [
+                { tenant_id: tenantId },
+                { tenant_id: 1 } // System Owner
+            ]
+        };
         if (unitId) {
             where.unit_id = unitId;
         }

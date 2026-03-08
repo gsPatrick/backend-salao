@@ -24,12 +24,20 @@ class AdminController {
 
             if (userAddress.state) {
                 where.target_state = { [Op.or]: [null, '', userAddress.state] };
+            } else {
+                where.target_state = { [Op.or]: [null, ''] };
             }
+
             if (userAddress.city) {
                 where.target_city = { [Op.or]: [null, '', userAddress.city] };
+            } else {
+                where.target_city = { [Op.or]: [null, ''] };
             }
+
             if (userAddress.neighborhood) {
                 where.target_neighborhood = { [Op.or]: [null, '', userAddress.neighborhood] };
+            } else {
+                where.target_neighborhood = { [Op.or]: [null, ''] };
             }
 
             const banners = await AdBanner.findAll({

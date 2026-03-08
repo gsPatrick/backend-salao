@@ -57,30 +57,68 @@ class PaymentController {
      */
     async createSubscription(req, res) {
         try {
-            const { planId, paymentMethod } = req.body;
+            const { planId, paymentMethod, billingInfo, creditCardInfo } = req.body;
             const tenant = await Tenant.findByPk(req.tenantId);
             const plan = await Plan.findByPk(planId);
 
             if (!plan) throw new Error('Plano não encontrado');
 
             // If tenant doesn't have asaas_customer_id, create it
+            // We can also update customer info with billingInfo if provided
             if (!tenant.asaas_customer_id) {
-                const customer = await paymentService.createCustomer(tenant);
+                const customer = await paymentService.createCustomer({
+                    ...tenant,
+                    ...(billingInfo || {})
+                });
                 await tenant.update({ asaas_customer_id: customer.id });
                 tenant.asaas_customer_id = customer.id;
             }
 
+            let creditCard = null;
+            let holderInfo = null;
+
+            if (paymentMethod === 'CREDIT_CARD' && creditCardInfo && billingInfo) {
+                creditCard = {
+                    holderName: creditCardInfo.holderName,
+                    number: creditCardInfo.number,
+                    expiryMonth: creditCardInfo.expiryMonth,
+                    expiryYear: creditCardInfo.expiryYear,
+                    ccv: creditCardInfo.ccv
+                };
+                holderInfo = {
+                    name: billingInfo.name,
+                    email: billingInfo.email,
+                    cpfCnpj: billingInfo.cpfCnpj || tenant.cnpj_cpf,
+                    postalCode: billingInfo.postalCode,
+                    addressNumber: billingInfo.addressNumber,
+                    addressComplement: billingInfo.complement,
+                    phone: billingInfo.phone || tenant.phone,
+                    mobilePhone: billingInfo.phone || tenant.phone
+                };
+            }
+
             // Create subscription
-            const subscription = await paymentService.createSubscription(tenant, plan, paymentMethod);
+            const subscription = await paymentService.createSubscription(tenant, plan, paymentMethod, creditCard, holderInfo);
 
             await tenant.update({
                 plan_id: planId,
                 asaas_subscription_id: subscription.id,
-                subscription_status: 'trial', // Initial status
-                next_billing_date: subscription.nextDueDate || subscription.due_date
+                subscription_status: 'ACTIVE', // Set to active if payment is expected immediately
+                next_billing_date: subscription.nextDueDate
             });
 
-            res.json({ success: true, data: subscription });
+            let responseData = { ...subscription };
+
+            // If PIX, get QR Code for the FIRST payment
+            if (paymentMethod === 'PIX') {
+                const payments = await paymentService.listPayments(tenant.asaas_customer_id, 1);
+                if (payments.data && payments.data.length > 0) {
+                    const pixData = await paymentService.getPixQrCode(payments.data[0].id);
+                    responseData.pixData = pixData;
+                }
+            }
+
+            res.json({ success: true, data: responseData });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
