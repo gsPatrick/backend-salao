@@ -794,11 +794,15 @@ class ClientService {
         const serviceCounts = {};
         dbCompleted.forEach(apt => {
             const name = apt.service_name || 'Serviço';
-            serviceCounts[name] = (serviceCounts[name] || 0) + 1;
+            if (name && name !== 'Serviço' && name !== 'Atendimento') {
+                serviceCounts[name] = (serviceCounts[name] || 0) + 1;
+            }
         });
         legacyCompleted.forEach(lh => {
             const name = lh.name || 'Serviço';
-            serviceCounts[name] = (serviceCounts[name] || 0) + 1;
+            if (name && name !== 'Serviço' && name !== 'Atendimento') {
+                serviceCounts[name] = (serviceCounts[name] || 0) + 1;
+            }
         });
 
         const averageTicket = totalVisits > 0 ? totalSpent / totalVisits : 0;
