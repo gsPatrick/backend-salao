@@ -36,7 +36,7 @@ module.exports = (sequelize) => {
         avatar_url: {
             type: DataTypes.TEXT,
             allowNull: true,
-            defaultValue: 'https://i.pravatar.cc/150?u=default',
+            defaultValue: null,
         },
         cargo: {
             type: DataTypes.STRING(100),

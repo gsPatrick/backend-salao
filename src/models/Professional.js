@@ -48,7 +48,7 @@ module.exports = (sequelize) => {
         photo: {
             type: DataTypes.TEXT,
             allowNull: true,
-            defaultValue: 'https://i.pravatar.cc/150?u=default',
+            defaultValue: null,
         },
         occupation: {
             type: DataTypes.STRING(100),

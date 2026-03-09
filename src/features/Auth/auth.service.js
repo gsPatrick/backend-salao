@@ -326,7 +326,7 @@ class AuthService {
             id: clientData.id,
             name: clientData.name,
             email: clientData.email,
-            avatarUrl: clientData.photo_url || `https://i.pravatar.cc/150?u=${clientData.email}`,
+            avatarUrl: clientData.photo_url || null,
             role: 'cliente',
             is_super_admin: false,
             tenant_id: clientData.tenant_id,
