@@ -1,4 +1,5 @@
 const clientService = require('./client.service');
+const auditLogService = require('../../services/auditLog.service');
 
 class ClientController {
     async getAll(req, res) {
@@ -26,6 +27,9 @@ class ClientController {
             const unitId = req.headers['x-unit-id'] || req.body.unitId;
             const data = { ...req.body, tenant_id: req.tenantId, unit_id: unitId };
             const client = await clientService.create(data, req.tenantId, unitId);
+            
+            await auditLogService.record(req.tenantId, req.userId, 'create', 'Client', client.id, `Cliente criado: ${client.name}`, { unitId });
+            
             res.status(201).json({ success: true, data: client });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -57,6 +61,8 @@ class ClientController {
                 console.error('Socket emit error:', err);
             }
 
+            await auditLogService.record(req.tenantId, req.userId, 'update', 'Client', client.id, `Cliente atualizado: ${client.name}`, { unitId });
+
             res.json({ success: true, data: client });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -76,6 +82,9 @@ class ClientController {
     async delete(req, res) {
         try {
             const result = await clientService.delete(req.params.id, req.tenantId);
+            
+            await auditLogService.record(req.tenantId, req.userId, 'delete', 'Client', req.params.id, `Cliente excluído`);
+            
             res.json({ success: true, message: result.message });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -85,6 +94,9 @@ class ClientController {
     async block(req, res) {
         try {
             const client = await clientService.block(req.params.id, req.body.reason, req.tenantId);
+            
+            await auditLogService.record(req.tenantId, req.userId, 'block', 'Client', client.id, `Cliente bloqueado: ${req.body.reason}`);
+            
             res.json({ success: true, data: client });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });

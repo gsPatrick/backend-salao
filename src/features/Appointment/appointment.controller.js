@@ -1,4 +1,5 @@
 const appointmentService = require('./appointment.service');
+const auditLogService = require('../../services/auditLog.service');
 const whatsappService = require('../../services/whatsapp.service');
 const { Tenant, Client, Service, Professional } = require('../../models');
 const { parseMonetaryValue } = require('../../utils/number');
@@ -69,6 +70,8 @@ class AppointmentController {
             }
 
             res.status(201).json({ success: true, data: appointment });
+            
+            await auditLogService.record(req.tenantId, req.userId, 'create', 'Appointment', appointment.id, `Agendamento criado para o cliente ID ${data.client_id}`, { unitId });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
@@ -127,6 +130,8 @@ class AppointmentController {
     async delete(req, res) {
         try {
             const result = await appointmentService.delete(req.params.id, req.tenantId);
+            await auditLogService.record(req.tenantId, req.userId, 'delete', 'Appointment', req.params.id, `Agendamento excluído`);
+            
             res.json({ success: true, data: result });
         } catch (error) {
             res.status(404).json({ success: false, message: error.message });

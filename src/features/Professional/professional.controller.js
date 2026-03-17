@@ -1,4 +1,5 @@
 const professionalService = require('./professional.service');
+const auditLogService = require('../../services/auditLog.service');
 const { Unit } = require('../../models');
 
 class ProfessionalController {
@@ -46,6 +47,9 @@ class ProfessionalController {
 
             const data = { ...req.body, tenant_id: req.tenantId, targetUnitIds };
             const professional = await professionalService.create(data, req.tenantId);
+            
+            await auditLogService.record(req.tenantId, req.userId, 'create', 'Professional', professional.id, `Profissional criado: ${professional.name}`, { unitId: currentUnitId });
+            
             res.status(201).json({ success: true, data: professional });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
@@ -65,6 +69,9 @@ class ProfessionalController {
     async delete(req, res) {
         try {
             const result = await professionalService.delete(req.params.id, req.tenantId);
+            
+            await auditLogService.record(req.tenantId, req.userId, 'delete', 'Professional', req.params.id, `Profissional excluído`);
+            
             res.json({ success: true, message: result.message });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
