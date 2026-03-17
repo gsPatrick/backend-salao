@@ -61,6 +61,8 @@ class ProfessionalController {
             const unitId = req.headers['x-unit-id'] || req.body.unitId;
             const professional = await professionalService.update(req.params.id, { ...req.body, tenant_id: req.tenantId, unit_id: unitId }, req.tenantId);
             res.json({ success: true, data: professional });
+            
+            await auditLogService.record(req.tenantId, req.userId, 'update', 'Professional', professional.id, `Profissional atualizado: ${professional.name}`, { unitId });
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
@@ -82,6 +84,8 @@ class ProfessionalController {
         try {
             const result = await professionalService.purge(req.params.id, req.tenantId);
             res.json({ success: true, message: result.message });
+            
+            await auditLogService.record(req.tenantId, req.userId, 'purge', 'Professional', req.params.id, `Profissional limpo permanentemente`);
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
@@ -91,6 +95,8 @@ class ProfessionalController {
         try {
             const professional = await professionalService.suspend(req.params.id, req.tenantId);
             res.json({ success: true, data: professional });
+            
+            await auditLogService.record(req.tenantId, req.userId, 'suspend', 'Professional', professional.id, `Profissional suspenso/reativado`);
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }

@@ -90,6 +90,8 @@ class AppointmentController {
 
             const appointment = await appointmentService.update(req.params.id, { ...sanitizedBody, tenant_id: req.tenantId }, req.tenantId);
             res.json({ success: true, data: appointment });
+            
+            await auditLogService.record(req.tenantId, req.userId, 'update', 'Appointment', appointment.id, `Agendamento atualizado`);
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
@@ -102,6 +104,8 @@ class AppointmentController {
                 req.params.id, status, req.tenantId, sessionsConsumed, bypassNotice
             );
             res.json({ success: true, data: appointment });
+            
+            await auditLogService.record(req.tenantId, req.userId, 'update_status', 'Appointment', appointment.id, `Status do agendamento alterado para: ${status}`);
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
@@ -112,6 +116,8 @@ class AppointmentController {
             const { reason, bypassNotice } = req.body;
             const appointment = await appointmentService.cancel(req.params.id, req.tenantId, reason, bypassNotice);
             res.json({ success: true, data: appointment });
+            
+            await auditLogService.record(req.tenantId, req.userId, 'cancel', 'Appointment', appointment.id, `Agendamento cancelado: ${reason}`);
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
@@ -122,6 +128,8 @@ class AppointmentController {
             const { reason } = req.body;
             const appointment = await appointmentService.refund(req.params.id, reason, req.tenantId);
             res.json({ success: true, data: appointment });
+            
+            await auditLogService.record(req.tenantId, req.userId, 'refund', 'Appointment', appointment.id, `Agendamento estornado: ${reason}`);
         } catch (error) {
             res.status(400).json({ success: false, message: error.message });
         }
